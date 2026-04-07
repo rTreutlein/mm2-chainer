@@ -1,0 +1,58 @@
+; Reduced runtime fixture for `run-simple.sh`.
+; This keeps the same buffered-goal shape as `data.mm2` but with a small head cap.
+; Active control execs are recreated by a single low-priority `exec Z`.
+
+(, (Goal (Animal $x)))
+(kb (Dog x))
+(kb (Dog y))
+
+
+;(exec-template
+;  (exec 9
+;        (, (kb (Animal $x)) (exec $p $a $b))
+;        (O (- (exec $p $a $b)))))
+
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (rule $g $priority $ps $gs))
+        (O (- (, (Goal $g)))
+           (+ (pending $priority $g $ps $gs)))))
+
+(exec-template
+  (exec 2
+        (, (pending $priority $g $ps $gs))
+        (O (head 16 (selected $priority $g $ps $gs)))))
+
+(exec-template
+  (exec 3
+        (, (selected $priority $g $ps $gs))
+        (O (- (pending $priority $g $ps $gs))
+           (- (selected $priority $g $ps $gs))
+           (+ (exec-template
+                (exec 0
+                      $ps
+                      (, (kb $g)
+                         (completed (scheduled $priority $g $ps $gs))))))
+           (+ $gs))))
+
+(exec-template
+  (exec 4
+        (, (completed $id)
+           (exec-template
+             (exec 0
+                   $ps
+                   (, (kb $g)
+                      (completed $id)))))
+        (O (- (completed $id))
+           (- (exec-template
+                (exec 0
+                      $ps
+                      (, (kb $g)
+                         (completed $id))))))))
+
+(exec Z
+      (, (exec Z $loop_prem $loop_templ)
+         (exec-template $e))
+      (, (exec Z $loop_prem $loop_templ)
+         $e))

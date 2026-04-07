@@ -1,0 +1,10 @@
+; Minimal priority queue demo for the MM2 scheduler idea.
+; Lower lexical priority wins, so the first two pending items are selected.
+
+(pending 0000100 rule-mammal)
+(pending 0000200 rule-pet)
+(pending 0000300 rule-creature)
+
+(exec select
+      (, (pending $priority $rule))
+      (O (head 2 (selected $priority $rule))))

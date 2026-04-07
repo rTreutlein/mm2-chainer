@@ -1,0 +1,12 @@
+; Reduced rule set for scheduler experiments.
+; The priorities are already lexicalized, so 0000100 outranks 0000200, etc.
+
+(rule (Animal $x) 0000100 (, (kb (Mammal $x))) (, (Goal (Mammal $x))))
+
+(rule (Animal $x) 0000200 (, (kb (Pet $x))) (, (Goal (Pet $x))))
+
+(rule (Animal $x) 0000300 (, (kb (Creature $x))) (, (Goal (Creature $x))))
+
+(rule (Mammal $x) 0000100 (, (kb (Dog $x))) (, (Goal (Dog $x))))
+
+(rule (Pet $x) 0000100 (, (kb (Dog $x))) (, (Goal (Dog $x))))
