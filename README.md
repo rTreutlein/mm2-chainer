@@ -23,6 +23,7 @@ Quick usage:
 bash scripts/run-reduced.sh
 bash scripts/run-full.sh
 bash scripts/run-priority-demo.sh
+bash scripts/test.sh
 ```
 
 The STV pipeline takes more MM2 steps than the original chainer because it now separates:
@@ -39,5 +40,5 @@ needed valued fact exists.
 Current script defaults:
 
 - `scripts/run-reduced.sh`: `140` steps
-- `scripts/run-full.sh`: `2000` steps
+- `scripts/run-full.sh`: `1000` steps
 - `scripts/run-priority-demo.sh`: `1` step
