@@ -14,13 +14,12 @@
            (fact $g $s $c))
         (O (- (, (Goal $g))))))
 
-; Schedule rules for unsatisfied goals and open a merge slot for the head atom.
+; Schedule rules for unsatisfied goals.
 (exec-template
   (exec 1
         (, (, (Goal $g))
            (rule $g $priority $rule-s $rule-c $premise $gs))
         (O (- (, (Goal $g)))
-           (+ (slot $g))
            (+ (pending $priority $g $rule-s $rule-c $premise $gs)))))
 
 ; Keep the existing head-based priority scheduler.
@@ -86,6 +85,7 @@
         (O (- (proof-input $g $rule-s $rule-c $premise-s $premise-c $proof-id))
            (- (proof-strength $g $proof-id $s))
            (- (proof-confidence $g $proof-id $c))
+           (+ (slot $g))
            (+ (proved $g $s $c $proof-id))
            (+ (proof-open $proof-id)))))
 
@@ -95,6 +95,13 @@
         (, (slot $g)
            (fact $g $s $c))
         (O (- (slot $g)))))
+
+; If an open-query wait regenerates an already merged proof, drop the reopen token.
+(exec-template
+  (exec 8
+        (, (proof-open $proof-id)
+           (proof-merged $proof-id))
+        (O (- (proof-open $proof-id)))))
 
 ; Serialize proof merging so one proof is revised into the fact base at a time.
 (exec-template

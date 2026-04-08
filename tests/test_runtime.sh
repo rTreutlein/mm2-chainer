@@ -153,16 +153,46 @@ EOF
     '(fact (A) 1.0 1.0)'
 
   mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 48 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 50 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) 1.0 1.0)"
   assert_contains "$out_long" "(proved (Goal) 1.0 1.0 (scheduled 0000100 (Goal) (B) (, (Goal (B)))))"
 }
 
+# Port of the first open-query result case from
+# PeTTaChainer/pettachainer/metta/tests/test_backward_open_query_results.metta.
+run_reference_open_query_test() {
+  local runtime="outputs/test_reference_open_runtime.mm2"
+  local rules="outputs/test_reference_open_rules.mm2"
+  local out="outputs/test_reference_open.mm2"
+
+  cat > "$rules" <<'EOF'
+(rule (Animal $x)
+      0000100
+      1.0
+      0.9
+      (Dog $x)
+      (, (Goal (Dog $x))))
+EOF
+
+  build_runtime_from_reduced "$runtime" \
+    '(, (Goal (Animal $a)))' \
+    '(fact (Dog max) 1.0 1.0)' \
+    '(fact (Dog ann) 1.0 1.0)'
+
+  mork run "$rules" --steps 40 --aux-path "$runtime" "$out" >/dev/null
+
+  assert_contains "$out" "(fact (Animal ann) 1.0 0.9)"
+  assert_contains "$out" "(fact (Animal max) 1.0 0.9)"
+  assert_contains "$out" "(proved (Animal ann) 1.0 0.9 (scheduled 0000100 (Animal ann) (Dog ann) (, (Goal (Dog ann)))))"
+  assert_contains "$out" "(proved (Animal max) 1.0 0.9 (scheduled 0000100 (Animal max) (Dog max) (, (Goal (Dog max)))))"
+}
+
 run_reduced_test
 run_full_test
 run_priority_test
 run_reference_compose_test
+run_reference_open_query_test
 
 echo "PASS: runtime regression suite"
