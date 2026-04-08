@@ -52,6 +52,19 @@ assert_ge() {
   fi
 }
 
+build_runtime_from_reduced() {
+  local target="$1"
+  shift
+  {
+    printf '; generated test runtime\n'
+    for expr in "$@"; do
+      printf '%s\n' "$expr"
+    done
+    printf '\n'
+    sed -n '/^; If a goal/,$p' runtime/reduced_runtime.mm2
+  } > "$target"
+}
+
 run_reduced_test() {
   local out="outputs/test_reduced.mm2"
   mork run rules/reduced_rules.mm2 --steps 140 --aux-path runtime/reduced_runtime.mm2 "$out" >/dev/null
@@ -111,8 +124,45 @@ run_priority_test() {
   assert_contains "$out" "(selected 0000200 rule-pet)"
 }
 
+# Port of the single-premise composition behavior from
+# PeTTaChainer/pettachainer/metta/tests/test_forward_backward_compose.metta.
+run_reference_compose_test() {
+  local runtime="outputs/test_reference_compose_runtime.mm2"
+  local rules="outputs/test_reference_compose_rules.mm2"
+  local out_short="outputs/test_reference_compose_short.mm2"
+  local out_long="outputs/test_reference_compose_long.mm2"
+
+  cat > "$rules" <<'EOF'
+(rule (B)
+      0000100
+      1.0
+      1.0
+      (A)
+      (, (Goal (A))))
+
+(rule (Goal)
+      0000100
+      1.0
+      1.0
+      (B)
+      (, (Goal (B))))
+EOF
+
+  build_runtime_from_reduced "$runtime" \
+    '(, (Goal (Goal)))' \
+    '(fact (A) 1.0 1.0)'
+
+  mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
+  mork run "$rules" --steps 48 --aux-path "$runtime" "$out_long" >/dev/null
+
+  assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
+  assert_contains "$out_long" "(fact (Goal) 1.0 1.0)"
+  assert_contains "$out_long" "(proved (Goal) 1.0 1.0 (scheduled 0000100 (Goal) (B) (, (Goal (B)))))"
+}
+
 run_reduced_test
 run_full_test
 run_priority_test
+run_reference_compose_test
 
 echo "PASS: runtime regression suite"
