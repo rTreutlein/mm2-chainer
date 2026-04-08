@@ -32,6 +32,10 @@ The STV pipeline takes more MM2 steps than the original chainer because it now s
 3. STV computation
 4. one-shot proof merge into canonical facts
 
+It no longer allocates a temporary `exec-template` per proof attempt. Selected rules create
+`(await-proof ...)` records, and one generic `exec 4` turns those into `proof-input` once the
+needed valued fact exists.
+
 Current script defaults:
 
 - `scripts/run-reduced.sh`: `140` steps

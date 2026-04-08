@@ -29,52 +29,33 @@
         (, (pending $priority $g $rule-s $rule-c $premise $gs))
         (O (head 16 (selected $priority $g $rule-s $rule-c $premise $gs)))))
 
-; Selected rule applications become proof-producing exec templates.
+; Selected rule applications become proof waits keyed by a stable proof id.
 (exec-template
   (exec 3
         (, (selected $priority $g $rule-s $rule-c $premise $gs))
         (O (- (pending $priority $g $rule-s $rule-c $premise $gs))
            (- (selected $priority $g $rule-s $rule-c $premise $gs))
-           (+ (exec-template
-                (exec 0
-                      (, (fact $premise $premise-s $premise-c))
-                      (O (+ (proof-input
-                              $g
-                              $rule-s
-                              $rule-c
-                              $premise-s
-                              $premise-c
-                              (scheduled $priority $g $premise $gs)))
-                         (+ (completed (scheduled $priority $g $premise $gs)))))))
+           (+ (await-proof
+                $g
+                $rule-s
+                $rule-c
+                $premise
+                (scheduled $priority $g $premise $gs)))
            (+ $gs))))
 
-; Remove completed proof templates after they have fired once.
+; Once the required premise fact exists, emit a single proof input and consume the wait.
 (exec-template
   (exec 4
-        (, (completed $id)
-           (exec-template
-             (exec 0
-                   (, (fact $premise $premise-s $premise-c))
-                   (O (+ (proof-input
-                           $g
-                           $rule-s
-                           $rule-c
-                           $premise-s
-                           $premise-c
-                           $id))
-                      (+ (completed $id))))))
-        (O (- (completed $id))
-           (- (exec-template
-                (exec 0
-                      (, (fact $premise $premise-s $premise-c))
-                      (O (+ (proof-input
-                              $g
-                              $rule-s
-                              $rule-c
-                              $premise-s
-                              $premise-c
-                              $id))
-                         (+ (completed $id)))))))))
+        (, (await-proof $g $rule-s $rule-c $premise $proof-id)
+           (fact $premise $premise-s $premise-c))
+        (O (- (await-proof $g $rule-s $rule-c $premise $proof-id))
+           (+ (proof-input
+                $g
+                $rule-s
+                $rule-c
+                $premise-s
+                $premise-c
+                $proof-id)))))
 
 ; Modus ponens STV calculation for single-premise paired rules.
 (exec-template
@@ -225,7 +206,7 @@
            (- (merge-confidence $g $proof-id $merged-c))
            (- (merge-action $g $proof-id 0.0)))))
 
-; Keep control execs and generated proof execs active.
+; Keep control execs active.
 (exec Z
       (, (exec Z $loop_pat $loop_tpl)
          (exec-template $e))

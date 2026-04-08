@@ -27,45 +27,26 @@
         (, (selected $priority $g $rule-s $rule-c $premise $gs))
         (O (- (pending $priority $g $rule-s $rule-c $premise $gs))
            (- (selected $priority $g $rule-s $rule-c $premise $gs))
-           (+ (exec-template
-                (exec 0
-                      (, (fact $premise $premise-s $premise-c))
-                      (O (+ (proof-input
-                              $g
-                              $rule-s
-                              $rule-c
-                              $premise-s
-                              $premise-c
-                              (scheduled $priority $g $premise $gs)))
-                         (+ (completed (scheduled $priority $g $premise $gs)))))))
+           (+ (await-proof
+                $g
+                $rule-s
+                $rule-c
+                $premise
+                (scheduled $priority $g $premise $gs)))
            (+ $gs))))
 
 (exec-template
   (exec 4
-        (, (completed $id)
-           (exec-template
-             (exec 0
-                   (, (fact $premise $premise-s $premise-c))
-                   (O (+ (proof-input
-                           $g
-                           $rule-s
-                           $rule-c
-                           $premise-s
-                           $premise-c
-                           $id))
-                      (+ (completed $id))))))
-        (O (- (completed $id))
-           (- (exec-template
-                (exec 0
-                      (, (fact $premise $premise-s $premise-c))
-                      (O (+ (proof-input
-                              $g
-                              $rule-s
-                              $rule-c
-                              $premise-s
-                              $premise-c
-                              $id))
-                         (+ (completed $id)))))))))
+        (, (await-proof $g $rule-s $rule-c $premise $proof-id)
+           (fact $premise $premise-s $premise-c))
+        (O (- (await-proof $g $rule-s $rule-c $premise $proof-id))
+           (+ (proof-input
+                $g
+                $rule-s
+                $rule-c
+                $premise-s
+                $premise-c
+                $proof-id)))))
 
 (exec-template
   (exec 5
