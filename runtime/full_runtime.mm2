@@ -1,0 +1,218 @@
+(, (Goal (Animal x)))
+
+(fact (Dog x) 1.0 1.0)
+
+
+(exec-template
+  (exec 0
+        (, (, (Goal $g))
+           (fact $g $s $c))
+        (O (- (, (Goal $g))))))
+
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (rule $g $priority $rule-s $rule-c $premise $gs))
+        (O (- (, (Goal $g)))
+           (+ (slot $g))
+           (+ (pending $priority $g $rule-s $rule-c $premise $gs)))))
+
+(exec-template
+  (exec 2
+        (, (pending $priority $g $rule-s $rule-c $premise $gs))
+        (O (head 32 (selected $priority $g $rule-s $rule-c $premise $gs)))))
+
+(exec-template
+  (exec 3
+        (, (selected $priority $g $rule-s $rule-c $premise $gs))
+        (O (- (pending $priority $g $rule-s $rule-c $premise $gs))
+           (- (selected $priority $g $rule-s $rule-c $premise $gs))
+           (+ (exec-template
+                (exec 0
+                      (, (fact $premise $premise-s $premise-c))
+                      (O (+ (proof-input
+                              $g
+                              $rule-s
+                              $rule-c
+                              $premise-s
+                              $premise-c
+                              (scheduled $priority $g $premise $gs)))
+                         (+ (completed (scheduled $priority $g $premise $gs)))))))
+           (+ $gs))))
+
+(exec-template
+  (exec 4
+        (, (completed $id)
+           (exec-template
+             (exec 0
+                   (, (fact $premise $premise-s $premise-c))
+                   (O (+ (proof-input
+                           $g
+                           $rule-s
+                           $rule-c
+                           $premise-s
+                           $premise-c
+                           $id))
+                      (+ (completed $id))))))
+        (O (- (completed $id))
+           (- (exec-template
+                (exec 0
+                      (, (fact $premise $premise-s $premise-c))
+                      (O (+ (proof-input
+                              $g
+                              $rule-s
+                              $rule-c
+                              $premise-s
+                              $premise-c
+                              $id))
+                         (+ (completed $id)))))))))
+
+(exec-template
+  (exec 5
+        (, (proof-input $g $rule-s $rule-c $premise-s $premise-c $proof-id))
+        (O (pure (proof-strength $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (product_f64
+                     (f64_from_string $rule-s)
+                     (f64_from_string $premise-s)))))))
+
+(exec-template
+  (exec 6
+        (, (proof-input $g $rule-s $rule-c $premise-s $premise-c $proof-id))
+        (O (pure (proof-confidence $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (product_f64
+                     (f64_from_string $rule-c)
+                     (f64_from_string $premise-c)))))))
+
+(exec-template
+  (exec 7
+        (, (proof-input $g $rule-s $rule-c $premise-s $premise-c $proof-id)
+           (proof-strength $g $proof-id $s)
+           (proof-confidence $g $proof-id $c))
+        (O (- (proof-input $g $rule-s $rule-c $premise-s $premise-c $proof-id))
+           (- (proof-strength $g $proof-id $s))
+           (- (proof-confidence $g $proof-id $c))
+           (+ (proved $g $s $c $proof-id))
+           (+ (proof-open $proof-id)))))
+
+(exec-template
+  (exec 8
+        (, (slot $g)
+           (fact $g $s $c))
+        (O (- (slot $g)))))
+
+(exec-template
+  (exec 9
+        (, (proof-open $proof-id)
+           (proved $g $s $c $proof-id))
+        (O (head 1 (selected-merge $g $s $c $proof-id)))))
+
+(exec-template
+  (exec A
+        (, (selected-merge $g $s $c $proof-id)
+           (slot $g)
+           (proof-open $proof-id)
+           (proved $g $s $c $proof-id))
+        (O (- (selected-merge $g $s $c $proof-id))
+           (- (slot $g))
+           (- (proof-open $proof-id))
+           (+ (proof-merged $proof-id))
+           (+ (fact $g $s $c)))))
+
+(exec-template
+  (exec B
+        (, (selected-merge $g $s $c $proof-id)
+           (fact $g $old-s $old-c)
+           (proof-open $proof-id)
+           (proved $g $s $c $proof-id))
+        (O (- (selected-merge $g $s $c $proof-id))
+           (- (proof-open $proof-id))
+           (+ (proof-merged $proof-id))
+           (+ (merge-input $g $old-s $old-c $s $c $proof-id)))))
+
+(exec-template
+  (exec C
+        (, (merge-input $g $old-s $old-c $s $c $proof-id))
+        (O (pure (merge-confidence $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (sub_f64
+                     (f64_from_string 1.0)
+                     (product_f64
+                       (sub_f64 (f64_from_string 1.0)
+                                (f64_from_string $old-c))
+                       (sub_f64 (f64_from_string 1.0)
+                                (f64_from_string $c)))))))))
+
+(exec-template
+  (exec D
+        (, (merge-input $g $old-s $old-c $s $c $proof-id))
+        (O (pure (merge-strength $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (div_f64
+                     (sum_f64
+                       (product_f64
+                         (f64_from_string $old-s)
+                         (f64_from_string $old-c))
+                       (product_f64
+                         (f64_from_string $s)
+                         (f64_from_string $c)))
+                     (sum_f64
+                       (f64_from_string $old-c)
+                       (f64_from_string $c))))))))
+
+(exec-template
+  (exec E
+        (, (merge-input $g $old-s $old-c $s $c $proof-id)
+           (merge-strength $g $proof-id $merged-s)
+           (merge-confidence $g $proof-id $merged-c)
+           (fact $g $old-s $old-c))
+        (O (pure (merge-action $g $proof-id $out)
+                 $out
+                 (ifnz
+                   (sum_f64
+                     (abs_f64
+                       (sub_f64
+                         (f64_from_string $old-s)
+                         (f64_from_string $merged-s)))
+                     (abs_f64
+                       (sub_f64
+                         (f64_from_string $old-c)
+                         (f64_from_string $merged-c))))
+                   then (f64_to_string (f64_from_string 1.0))
+                   else (f64_to_string (f64_from_string 0.0)))))))
+
+(exec-template
+  (exec F
+        (, (merge-input $g $old-s $old-c $s $c $proof-id)
+           (merge-strength $g $proof-id $merged-s)
+           (merge-confidence $g $proof-id $merged-c)
+           (merge-action $g $proof-id 1.0)
+           (fact $g $old-s $old-c))
+        (O (- (merge-input $g $old-s $old-c $s $c $proof-id))
+           (- (merge-strength $g $proof-id $merged-s))
+           (- (merge-confidence $g $proof-id $merged-c))
+           (- (merge-action $g $proof-id 1.0))
+           (- (fact $g $old-s $old-c))
+           (+ (fact $g $merged-s $merged-c)))))
+
+(exec-template
+  (exec G
+        (, (merge-input $g $old-s $old-c $s $c $proof-id)
+           (merge-strength $g $proof-id $merged-s)
+           (merge-confidence $g $proof-id $merged-c)
+           (merge-action $g $proof-id 0.0))
+        (O (- (merge-input $g $old-s $old-c $s $c $proof-id))
+           (- (merge-strength $g $proof-id $merged-s))
+           (- (merge-confidence $g $proof-id $merged-c))
+           (- (merge-action $g $proof-id 0.0)))))
+
+(exec Z
+      (, (exec Z $loop_pat $loop_tpl)
+         (exec-template $e))
+      (, (exec Z $loop_pat $loop_tpl)
+         $e))
