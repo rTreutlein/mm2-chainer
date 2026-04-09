@@ -153,7 +153,7 @@ EOF
     '(fact (A) 1.0 1.0)'
 
   mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 50 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 70 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) 1.0 1.0)"
@@ -181,7 +181,7 @@ EOF
     '(fact (Dog max) 1.0 1.0)' \
     '(fact (Dog ann) 1.0 1.0)'
 
-  mork run "$rules" --steps 40 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps 45 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) 1.0 0.9)"
   assert_contains "$out" "(fact (Animal max) 1.0 0.9)"
@@ -189,10 +189,93 @@ EOF
   assert_contains "$out" "(proved (Animal max) 1.0 0.9 (scheduled 0000100 (Animal max) (Dog max) (, (Goal (Dog max)))))"
 }
 
+# Port of the independentKb behavior from
+# PeTTaChainer/pettachainer/metta/tests/test_forward_backward_compose.metta.
+run_reference_independent_test() {
+  local runtime="outputs/test_reference_independent_runtime.mm2"
+  local rules="outputs/test_reference_independent_rules.mm2"
+  local out_short="outputs/test_reference_independent_short.mm2"
+  local out_long="outputs/test_reference_independent_long.mm2"
+
+  cat > "$rules" <<'EOF'
+(rule (A)
+      0000100
+      1.0
+      1.0
+      (X)
+      (, (Goal (X))))
+
+(rule2 (C)
+       0000100
+       1.0
+       1.0
+       (A)
+       (B))
+EOF
+
+  build_runtime_from_reduced "$runtime" \
+    '(, (Goal (C)))' \
+    '(fact (X) 1.0 1.0)' \
+    '(fact (B) 1.0 1.0)'
+
+  mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
+  mork run "$rules" --steps 80 --aux-path "$runtime" "$out_long" >/dev/null
+
+  assert_no_line_regex "$out_short" '^\(fact \(C\) '
+  assert_contains "$out_long" "(fact (C) 1.0 1.0)"
+  assert_contains "$out_long" "(proved (C) 1.0 1.0 (scheduled2 0000100 (C) (A) (B)))"
+}
+
+# Simplified dependent-binding parity case modeled on the openAndFair behavior in
+# PeTTaChainer/pettachainer/metta/tests/test_backward_open_query_results.metta.
+run_reference_binding_test() {
+  local runtime="outputs/test_reference_binding_runtime.mm2"
+  local rules="outputs/test_reference_binding_rules.mm2"
+  local out_mid="outputs/test_reference_binding_mid.mm2"
+  local out_long="outputs/test_reference_binding_long.mm2"
+
+  cat > "$rules" <<'EOF'
+(rule (Own (i $x))
+      0000100
+      0.8
+      1.0
+      (Have (i $x))
+      (, (Goal (Have (i $x)))))
+
+(rule (Pet $x)
+      0000100
+      0.7
+      1.0
+      (Dog $x)
+      (, (Goal (Dog $x))))
+
+(rule2 (And (Own (i $x)) (Pet $x))
+       0000100
+       1.0
+       1.0
+       (Own (i $x))
+       (Pet $x))
+EOF
+
+  build_runtime_from_reduced "$runtime" \
+    '(, (Goal (And (Own (i $a)) (Pet $a))))' \
+    '(fact (Have (i ann)) 1.0 1.0)' \
+    '(fact (Dog ann) 1.0 1.0)'
+
+  mork run "$rules" --steps 50 --aux-path "$runtime" "$out_mid" >/dev/null
+  mork run "$rules" --steps 100 --aux-path "$runtime" "$out_long" >/dev/null
+
+  assert_contains "$out_mid" "(wait-prem2 (And (Own (i ann)) (Pet ann)) 1.0 1.0 (Pet ann) 0.8 1.0 (scheduled2 0000100 (And (Own (i ann)) (Pet ann)) (Own (i ann)) (Pet ann)))"
+  assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) 0.7 1.0)"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) 0.7 1.0 (scheduled2 0000100 (And (Own (i ann)) (Pet ann)) (Own (i ann)) (Pet ann)))"
+}
+
 run_reduced_test
 run_full_test
 run_priority_test
 run_reference_compose_test
 run_reference_open_query_test
+run_reference_independent_test
+run_reference_binding_test
 
 echo "PASS: runtime regression suite"

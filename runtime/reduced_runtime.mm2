@@ -22,11 +22,25 @@
         (O (- (, (Goal $g)))
            (+ (pending $priority $g $rule-s $rule-c $premise $gs)))))
 
+; Schedule explicit two-premise rules. The selected rule will open only the first
+; premise, and later premises are instantiated from earlier matches.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (rule2 $g $priority $rule-s $rule-c $prem1 $prem2))
+        (O (- (, (Goal $g)))
+           (+ (pending2 $priority $g $rule-s $rule-c $prem1 $prem2)))))
+
 ; Keep the existing head-based priority scheduler.
 (exec-template
   (exec 2
         (, (pending $priority $g $rule-s $rule-c $premise $gs))
         (O (head 16 (selected $priority $g $rule-s $rule-c $premise $gs)))))
+
+(exec-template
+  (exec 2
+        (, (pending2 $priority $g $rule-s $rule-c $prem1 $prem2))
+        (O (head 16 (selected2 $priority $g $rule-s $rule-c $prem1 $prem2)))))
 
 ; Selected rule applications become proof waits keyed by a stable proof id.
 (exec-template
@@ -42,12 +56,96 @@
                 (scheduled $priority $g $premise $gs)))
            (+ $gs))))
 
+; Two-premise rules wait on their first premise and only open later premises once
+; earlier ones have been matched and instantiated.
+(exec-template
+  (exec H
+        (, (selected2 $priority $g $rule-s $rule-c $prem1 $prem2))
+        (O (- (pending2 $priority $g $rule-s $rule-c $prem1 $prem2))
+           (- (selected2 $priority $g $rule-s $rule-c $prem1 $prem2))
+           (+ (wait-prem1
+                $g
+                $rule-s
+                $rule-c
+                $prem1
+                $prem2
+                (scheduled2 $priority $g $prem1 $prem2)))
+           (+ (, (Goal $prem1))))))
+
 ; Once the required premise fact exists, emit a single proof input and consume the wait.
 (exec-template
   (exec 4
         (, (await-proof $g $rule-s $rule-c $premise $proof-id)
            (fact $premise $premise-s $premise-c))
         (O (- (await-proof $g $rule-s $rule-c $premise $proof-id))
+           (+ (proof-input
+                $g
+                $rule-s
+                $rule-c
+                $premise-s
+                $premise-c
+                $proof-id)))))
+
+; First-premise matches instantiate the second premise before it is opened.
+(exec-template
+  (exec I
+        (, (wait-prem1 $g $rule-s $rule-c $prem1 $prem2 $proof-id)
+           (fact $prem1 $prem1-s $prem1-c))
+        (O (- (wait-prem1 $g $rule-s $rule-c $prem1 $prem2 $proof-id))
+           (+ (wait-prem2
+                $g
+                $rule-s
+                $rule-c
+                $prem2
+                $prem1-s
+                $prem1-c
+                $proof-id))
+           (+ (, (Goal $prem2))))))
+
+; Second-premise matches feed a two-premise aggregation stage.
+(exec-template
+  (exec J
+        (, (wait-prem2 $g $rule-s $rule-c $prem2 $prem1-s $prem1-c $proof-id)
+           (fact $prem2 $prem2-s $prem2-c))
+        (O (- (wait-prem2 $g $rule-s $rule-c $prem2 $prem1-s $prem1-c $proof-id))
+           (+ (proof-input2
+                $g
+                $rule-s
+                $rule-c
+                $prem1-s
+                $prem1-c
+                $prem2-s
+                $prem2-c
+                $proof-id)))))
+
+(exec-template
+  (exec K
+        (, (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id))
+        (O (pure (premise-strength2 $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (min_f64
+                     (f64_from_string $prem1-s)
+                     (f64_from_string $prem2-s)))))))
+
+(exec-template
+  (exec L
+        (, (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id))
+        (O (pure (premise-confidence2 $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (min_f64
+                     (f64_from_string $prem1-c)
+                     (f64_from_string $prem2-c)))))))
+
+(exec-template
+  (exec M
+        (, (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id)
+           (premise-strength2 $g $proof-id $premise-s)
+           (premise-confidence2 $g $proof-id $premise-c))
+        (O (- (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id))
+           (- (premise-strength2 $g $proof-id $premise-s))
+           (- (premise-confidence2 $g $proof-id $premise-c))
            (+ (proof-input
                 $g
                 $rule-s
