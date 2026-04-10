@@ -3,8 +3,9 @@
 Repository layout:
 
 - `runtime/`
-  - `full_runtime.mm2`: full STV-aware runtime and seed facts
-  - `reduced_runtime.mm2`: reduced example runtime used for debugging and demos
+  - `core_runtime.mm2`: shared STV-aware chainer core
+  - `full_seed.mm2`: seed goal/facts for the full run
+  - `reduced_seed.mm2`: seed goal/facts for the reduced example
 - `rules/`
   - `full_rules.mm2`: full paired one-premise rule export with rule STVs
   - `reduced_rules.mm2`: reduced example rule set with two distinct proofs for one atom
@@ -33,9 +34,10 @@ The STV pipeline takes more MM2 steps than the original chainer because it now s
 3. STV computation
 4. one-shot proof merge into canonical facts
 
-It no longer allocates a temporary `exec-template` per proof attempt. Selected rules create
-`(await-proof ...)` records, and one generic `exec 4` turns those into `proof-input` once the
-needed valued fact exists.
+It no longer allocates a temporary `exec-template` per proof attempt, and it no longer has
+separate single-premise and multi-premise execution paths. All rules flow through one generic
+`ruleN -> pendingN -> selectedN -> wait-premises` frontier, with `rule` and `rule2` kept only as
+compatibility shims.
 
 Current script defaults:
 

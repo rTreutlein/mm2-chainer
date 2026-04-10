@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-mork run rules/full_rules.mm2 --steps 1000 --aux-path runtime/full_runtime.mm2 outputs/full_run.mm2
+set -euo pipefail
+
+mkdir -p outputs
+cat runtime/full_seed.mm2 runtime/core_runtime.mm2 > outputs/full_runtime.mm2
+
+mork run rules/full_rules.mm2 --steps 1000 --aux-path outputs/full_runtime.mm2 outputs/full_run.mm2
 
 echo '== merged Animal fact =='
 sed -n '/^(fact (Animal x) /p' outputs/full_run.mm2

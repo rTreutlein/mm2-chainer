@@ -52,7 +52,7 @@ assert_ge() {
   fi
 }
 
-build_runtime_from_reduced() {
+build_runtime_from_core() {
   local target="$1"
   shift
   {
@@ -61,13 +61,26 @@ build_runtime_from_reduced() {
       printf '%s\n' "$expr"
     done
     printf '\n'
-    sed -n '/^; If a goal/,$p' runtime/reduced_runtime.mm2
+    cat runtime/core_runtime.mm2
+  } > "$target"
+}
+
+build_runtime_from_seed() {
+  local target="$1"
+  local seed="$2"
+  {
+    printf '; generated test runtime\n'
+    cat "$seed"
+    printf '\n'
+    cat runtime/core_runtime.mm2
   } > "$target"
 }
 
 run_reduced_test() {
+  local runtime="outputs/test_reduced_runtime.mm2"
   local out="outputs/test_reduced.mm2"
-  mork run rules/reduced_rules.mm2 --steps 140 --aux-path runtime/reduced_runtime.mm2 "$out" >/dev/null
+  build_runtime_from_seed "$runtime" runtime/reduced_seed.mm2
+  mork run rules/reduced_rules.mm2 --steps 140 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal x) 0.6867605633802818 0.584)"
   assert_contains "$out" "(fact (Mammal x) 0.9 0.6)"
@@ -82,7 +95,7 @@ run_reduced_test() {
   assert_eq "$merged_proofs" "4" "reduced merged proof count"
 
   local runtime_templates
-  runtime_templates="$(grep -c '^(exec-template' runtime/reduced_runtime.mm2)"
+  runtime_templates="$(grep -c '^(exec-template' runtime/core_runtime.mm2)"
   local out_templates
   out_templates="$(grep -c '^(exec-template' "$out")"
   assert_eq "$out_templates" "$runtime_templates" "reduced exec-template count"
@@ -94,8 +107,10 @@ run_reduced_test() {
 }
 
 run_full_test() {
+  local runtime="outputs/test_full_runtime.mm2"
   local out="outputs/test_full.mm2"
-  mork run rules/full_rules.mm2 --steps 1000 --aux-path runtime/full_runtime.mm2 "$out" >/dev/null
+  build_runtime_from_seed "$runtime" runtime/full_seed.mm2
+  mork run rules/full_rules.mm2 --steps 1000 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal x) 1.0 1.0)"
   assert_contains "$out" "(fact (Pet x) 1.0 1.0)"
@@ -105,7 +120,7 @@ run_full_test() {
   assert_ge "$animal_proofs" "2" "full Animal proof count"
 
   local runtime_templates
-  runtime_templates="$(grep -c '^(exec-template' runtime/full_runtime.mm2)"
+  runtime_templates="$(grep -c '^(exec-template' runtime/core_runtime.mm2)"
   local out_templates
   out_templates="$(grep -c '^(exec-template' "$out")"
   assert_eq "$out_templates" "$runtime_templates" "full exec-template count"
@@ -148,7 +163,7 @@ run_reference_compose_test() {
       (, (Goal (B))))
 EOF
 
-  build_runtime_from_reduced "$runtime" \
+  build_runtime_from_core "$runtime" \
     '(, (Goal (Goal)))' \
     '(fact (A) 1.0 1.0)'
 
@@ -157,7 +172,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) 1.0 1.0)"
-  assert_contains "$out_long" "(proved (Goal) 1.0 1.0 (scheduled 0000100 (Goal) (B) (, (Goal (B)))))"
+  assert_contains "$out_long" "(proved (Goal) 1.0 1.0 (scheduledN 0000100 (Goal) (pcons (B) pnil)))"
 }
 
 # Port of the first open-query result case from
@@ -176,7 +191,7 @@ run_reference_open_query_test() {
       (, (Goal (Dog $x))))
 EOF
 
-  build_runtime_from_reduced "$runtime" \
+  build_runtime_from_core "$runtime" \
     '(, (Goal (Animal $a)))' \
     '(fact (Dog max) 1.0 1.0)' \
     '(fact (Dog ann) 1.0 1.0)'
@@ -185,8 +200,8 @@ EOF
 
   assert_contains "$out" "(fact (Animal ann) 1.0 0.9)"
   assert_contains "$out" "(fact (Animal max) 1.0 0.9)"
-  assert_contains "$out" "(proved (Animal ann) 1.0 0.9 (scheduled 0000100 (Animal ann) (Dog ann) (, (Goal (Dog ann)))))"
-  assert_contains "$out" "(proved (Animal max) 1.0 0.9 (scheduled 0000100 (Animal max) (Dog max) (, (Goal (Dog max)))))"
+  assert_contains "$out" "(proved (Animal ann) 1.0 0.9 (scheduledN 0000100 (Animal ann) (pcons (Dog ann) pnil)))"
+  assert_contains "$out" "(proved (Animal max) 1.0 0.9 (scheduledN 0000100 (Animal max) (pcons (Dog max) pnil)))"
 }
 
 # Port of the independentKb behavior from
@@ -213,7 +228,7 @@ run_reference_independent_test() {
        (pcons (A) (pcons (B) pnil)))
 EOF
 
-  build_runtime_from_reduced "$runtime" \
+  build_runtime_from_core "$runtime" \
     '(, (Goal (C)))' \
     '(fact (X) 1.0 1.0)' \
     '(fact (B) 1.0 1.0)'
@@ -257,13 +272,13 @@ run_reference_binding_test() {
        (pcons (Own (i $x)) (pcons (Pet $x) pnil)))
 EOF
 
-  build_runtime_from_reduced "$runtime" \
+  build_runtime_from_core "$runtime" \
     '(, (Goal (And (Own (i $a)) (Pet $a))))' \
     '(fact (Have (i ann)) 1.0 1.0)' \
     '(fact (Dog ann) 1.0 1.0)'
 
   mork run "$rules" --steps 70 --aux-path "$runtime" "$out_mid" >/dev/null
-  mork run "$rules" --steps 110 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 220 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_contains "$out_mid" "(wait-premises (And (Own (i ann)) (Pet ann)) 1.0 1.0 (Pet ann) pnil 0.8 1.0 (scheduledN 0000100 (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) 0.7 1.0)"
@@ -291,7 +306,7 @@ run_reference_three_premise_test() {
        (pcons (A) (pcons (B) (pcons (D) pnil))))
 EOF
 
-  build_runtime_from_reduced "$runtime" \
+  build_runtime_from_core "$runtime" \
     '(, (Goal (Goal3)))' \
     '(fact (X) 1.0 1.0)' \
     '(fact (B) 1.0 1.0)' \
