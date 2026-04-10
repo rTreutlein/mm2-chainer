@@ -22,14 +22,27 @@
         (O (- (, (Goal $g)))
            (+ (pending $priority $g $rule-s $rule-c $premise $gs)))))
 
-; Schedule explicit two-premise rules. The selected rule will open only the first
-; premise, and later premises are instantiated from earlier matches.
+; Schedule generic multi-premise rules. Premises are encoded as
+; (pcons prem1 (pcons prem2 ... pnil)).
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g $priority $rule-s $rule-c $premises))
+        (O (- (, (Goal $g)))
+           (+ (pendingN $priority $g $rule-s $rule-c $premises)))))
+
+; Compatibility shim while tests and exporters migrate off the old 2-premise form.
 (exec-template
   (exec 1
         (, (, (Goal $g))
            (rule2 $g $priority $rule-s $rule-c $prem1 $prem2))
         (O (- (, (Goal $g)))
-           (+ (pending2 $priority $g $rule-s $rule-c $prem1 $prem2)))))
+           (+ (pendingN
+                $priority
+                $g
+                $rule-s
+                $rule-c
+                (pcons $prem1 (pcons $prem2 pnil)))))))
 
 ; Keep the existing head-based priority scheduler.
 (exec-template
@@ -39,8 +52,8 @@
 
 (exec-template
   (exec 2
-        (, (pending2 $priority $g $rule-s $rule-c $prem1 $prem2))
-        (O (head 16 (selected2 $priority $g $rule-s $rule-c $prem1 $prem2)))))
+        (, (pendingN $priority $g $rule-s $rule-c $premises))
+        (O (head 16 (selectedN $priority $g $rule-s $rule-c $premises)))))
 
 ; Selected rule applications become proof waits keyed by a stable proof id.
 (exec-template
@@ -56,21 +69,36 @@
                 (scheduled $priority $g $premise $gs)))
            (+ $gs))))
 
-; Two-premise rules wait on their first premise and only open later premises once
-; earlier ones have been matched and instantiated.
+; Multi-premise rules open one concrete frontier premise at a time. Shared
+; variables are instantiated by earlier matches before later premises are opened.
 (exec-template
   (exec H
-        (, (selected2 $priority $g $rule-s $rule-c $prem1 $prem2))
-        (O (- (pending2 $priority $g $rule-s $rule-c $prem1 $prem2))
-           (- (selected2 $priority $g $rule-s $rule-c $prem1 $prem2))
-           (+ (wait-prem1
+        (, (selectedN $priority $g $rule-s $rule-c pnil))
+        (O (- (pendingN $priority $g $rule-s $rule-c pnil))
+           (- (selectedN $priority $g $rule-s $rule-c pnil))
+           (+ (proof-input
                 $g
                 $rule-s
                 $rule-c
-                $prem1
-                $prem2
-                (scheduled2 $priority $g $prem1 $prem2)))
-           (+ (, (Goal $prem1))))))
+                1.0
+                1.0
+                (scheduledN $priority $g pnil))))))
+
+(exec-template
+  (exec H
+        (, (selectedN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+        (O (- (pendingN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+           (- (selectedN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+           (+ (wait-premises
+                $g
+                $rule-s
+                $rule-c
+                $prem
+                $rest
+                1.0
+                1.0
+                (scheduledN $priority $g (pcons $prem $rest))))
+           (+ (, (Goal $prem))))))
 
 ; Once the required premise fact exists, emit a single proof input and consume the wait.
 (exec-template
@@ -86,66 +114,52 @@
                 $premise-c
                 $proof-id)))))
 
-; First-premise matches instantiate the second premise before it is opened.
+; Matching the current frontier premise updates the running premise STV.
 (exec-template
   (exec I
-        (, (wait-prem1 $g $rule-s $rule-c $prem1 $prem2 $proof-id)
-           (fact $prem1 $prem1-s $prem1-c))
-        (O (- (wait-prem1 $g $rule-s $rule-c $prem1 $prem2 $proof-id))
-           (+ (wait-prem2
+        (, (wait-premises $g $rule-s $rule-c $prem $rest $agg-s $agg-c $proof-id)
+           (fact $prem $prem-s $prem-c))
+        (O (- (wait-premises $g $rule-s $rule-c $prem $rest $agg-s $agg-c $proof-id))
+           (+ (premise-step
                 $g
                 $rule-s
                 $rule-c
-                $prem2
-                $prem1-s
-                $prem1-c
-                $proof-id))
-           (+ (, (Goal $prem2))))))
+                $rest
+                $agg-s
+                $agg-c
+                $prem-s
+                $prem-c
+                $proof-id)))))
 
-; Second-premise matches feed a two-premise aggregation stage.
+; Advance a generic multi-premise frontier, or finish it if no premises remain.
 (exec-template
   (exec J
-        (, (wait-prem2 $g $rule-s $rule-c $prem2 $prem1-s $prem1-c $proof-id)
-           (fact $prem2 $prem2-s $prem2-c))
-        (O (- (wait-prem2 $g $rule-s $rule-c $prem2 $prem1-s $prem1-c $proof-id))
-           (+ (proof-input2
-                $g
-                $rule-s
-                $rule-c
-                $prem1-s
-                $prem1-c
-                $prem2-s
-                $prem2-c
-                $proof-id)))))
+        (, (premise-step $g $rule-s $rule-c $rest $agg-s $agg-c $prem-s $prem-c $proof-id))
+        (O (pure (premise-strengthN $g $proof-id $out)
+                 $out
+                 (f64_to_string
+                   (min_f64
+                     (f64_from_string $agg-s)
+                     (f64_from_string $prem-s)))))))
 
 (exec-template
   (exec K
-        (, (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id))
-        (O (pure (premise-strength2 $g $proof-id $out)
+        (, (premise-step $g $rule-s $rule-c $rest $agg-s $agg-c $prem-s $prem-c $proof-id))
+        (O (pure (premise-confidenceN $g $proof-id $out)
                  $out
                  (f64_to_string
                    (min_f64
-                     (f64_from_string $prem1-s)
-                     (f64_from_string $prem2-s)))))))
+                     (f64_from_string $agg-c)
+                     (f64_from_string $prem-c)))))))
 
 (exec-template
   (exec L
-        (, (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id))
-        (O (pure (premise-confidence2 $g $proof-id $out)
-                 $out
-                 (f64_to_string
-                   (min_f64
-                     (f64_from_string $prem1-c)
-                     (f64_from_string $prem2-c)))))))
-
-(exec-template
-  (exec M
-        (, (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id)
-           (premise-strength2 $g $proof-id $premise-s)
-           (premise-confidence2 $g $proof-id $premise-c))
-        (O (- (proof-input2 $g $rule-s $rule-c $prem1-s $prem1-c $prem2-s $prem2-c $proof-id))
-           (- (premise-strength2 $g $proof-id $premise-s))
-           (- (premise-confidence2 $g $proof-id $premise-c))
+        (, (premise-step $g $rule-s $rule-c pnil $agg-s $agg-c $prem-s $prem-c $proof-id)
+           (premise-strengthN $g $proof-id $premise-s)
+           (premise-confidenceN $g $proof-id $premise-c))
+        (O (- (premise-step $g $rule-s $rule-c pnil $agg-s $agg-c $prem-s $prem-c $proof-id))
+           (- (premise-strengthN $g $proof-id $premise-s))
+           (- (premise-confidenceN $g $proof-id $premise-c))
            (+ (proof-input
                 $g
                 $rule-s
@@ -153,6 +167,25 @@
                 $premise-s
                 $premise-c
                 $proof-id)))))
+
+(exec-template
+  (exec M
+        (, (premise-step $g $rule-s $rule-c (pcons $next $more) $agg-s $agg-c $prem-s $prem-c $proof-id)
+           (premise-strengthN $g $proof-id $next-agg-s)
+           (premise-confidenceN $g $proof-id $next-agg-c))
+        (O (- (premise-step $g $rule-s $rule-c (pcons $next $more) $agg-s $agg-c $prem-s $prem-c $proof-id))
+           (- (premise-strengthN $g $proof-id $next-agg-s))
+           (- (premise-confidenceN $g $proof-id $next-agg-c))
+           (+ (wait-premises
+                $g
+                $rule-s
+                $rule-c
+                $next
+                $more
+                $next-agg-s
+                $next-agg-c
+                $proof-id))
+           (+ (, (Goal $next))))))
 
 ; Modus ponens STV calculation for single-premise paired rules.
 (exec-template

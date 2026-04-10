@@ -153,7 +153,7 @@ EOF
     '(fact (A) 1.0 1.0)'
 
   mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 70 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 75 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) 1.0 1.0)"
@@ -190,7 +190,8 @@ EOF
 }
 
 # Port of the independentKb behavior from
-# PeTTaChainer/pettachainer/metta/tests/test_forward_backward_compose.metta.
+# PeTTaChainer/pettachainer/metta/tests/test_forward_backward_compose.metta,
+# now via the generic ruleN frontend.
 run_reference_independent_test() {
   local runtime="outputs/test_reference_independent_runtime.mm2"
   local rules="outputs/test_reference_independent_rules.mm2"
@@ -205,12 +206,11 @@ run_reference_independent_test() {
       (X)
       (, (Goal (X))))
 
-(rule2 (C)
+(ruleN (C)
        0000100
        1.0
        1.0
-       (A)
-       (B))
+       (pcons (A) (pcons (B) pnil)))
 EOF
 
   build_runtime_from_reduced "$runtime" \
@@ -219,15 +219,16 @@ EOF
     '(fact (B) 1.0 1.0)'
 
   mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 80 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 110 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) 1.0 1.0)"
-  assert_contains "$out_long" "(proved (C) 1.0 1.0 (scheduled2 0000100 (C) (A) (B)))"
+  assert_contains "$out_long" "(proved (C) 1.0 1.0 (scheduledN 0000100 (C) (pcons (A) (pcons (B) pnil))))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
-# PeTTaChainer/pettachainer/metta/tests/test_backward_open_query_results.metta.
+# PeTTaChainer/pettachainer/metta/tests/test_backward_open_query_results.metta,
+# now via the generic ruleN frontend.
 run_reference_binding_test() {
   local runtime="outputs/test_reference_binding_runtime.mm2"
   local rules="outputs/test_reference_binding_rules.mm2"
@@ -249,12 +250,11 @@ run_reference_binding_test() {
       (Dog $x)
       (, (Goal (Dog $x))))
 
-(rule2 (And (Own (i $x)) (Pet $x))
+(ruleN (And (Own (i $x)) (Pet $x))
        0000100
        1.0
        1.0
-       (Own (i $x))
-       (Pet $x))
+       (pcons (Own (i $x)) (pcons (Pet $x) pnil)))
 EOF
 
   build_runtime_from_reduced "$runtime" \
@@ -262,12 +262,47 @@ EOF
     '(fact (Have (i ann)) 1.0 1.0)' \
     '(fact (Dog ann) 1.0 1.0)'
 
-  mork run "$rules" --steps 50 --aux-path "$runtime" "$out_mid" >/dev/null
-  mork run "$rules" --steps 100 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 70 --aux-path "$runtime" "$out_mid" >/dev/null
+  mork run "$rules" --steps 110 --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-prem2 (And (Own (i ann)) (Pet ann)) 1.0 1.0 (Pet ann) 0.8 1.0 (scheduled2 0000100 (And (Own (i ann)) (Pet ann)) (Own (i ann)) (Pet ann)))"
+  assert_contains "$out_mid" "(wait-premises (And (Own (i ann)) (Pet ann)) 1.0 1.0 (Pet ann) pnil 0.8 1.0 (scheduledN 0000100 (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) 0.7 1.0)"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) 0.7 1.0 (scheduled2 0000100 (And (Own (i ann)) (Pet ann)) (Own (i ann)) (Pet ann)))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) 0.7 1.0 (scheduledN 0000100 (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+}
+
+run_reference_three_premise_test() {
+  local runtime="outputs/test_reference_three_runtime.mm2"
+  local rules="outputs/test_reference_three_rules.mm2"
+  local out_short="outputs/test_reference_three_short.mm2"
+  local out_long="outputs/test_reference_three_long.mm2"
+
+  cat > "$rules" <<'EOF'
+(rule (A)
+      0000100
+      1.0
+      1.0
+      (X)
+      (, (Goal (X))))
+
+(ruleN (Goal3)
+       0000100
+       1.0
+       1.0
+       (pcons (A) (pcons (B) (pcons (D) pnil))))
+EOF
+
+  build_runtime_from_reduced "$runtime" \
+    '(, (Goal (Goal3)))' \
+    '(fact (X) 1.0 1.0)' \
+    '(fact (B) 1.0 1.0)' \
+    '(fact (D) 1.0 1.0)'
+
+  mork run "$rules" --steps 60 --aux-path "$runtime" "$out_short" >/dev/null
+  mork run "$rules" --steps 140 --aux-path "$runtime" "$out_long" >/dev/null
+
+  assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
+  assert_contains "$out_long" "(fact (Goal3) 1.0 1.0)"
+  assert_contains "$out_long" "(proved (Goal3) 1.0 1.0 (scheduledN 0000100 (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))))"
 }
 
 run_reduced_test
@@ -277,5 +312,6 @@ run_reference_compose_test
 run_reference_open_query_test
 run_reference_independent_test
 run_reference_binding_test
+run_reference_three_premise_test
 
 echo "PASS: runtime regression suite"
