@@ -79,7 +79,7 @@ build_runtime_from_seed() {
 run_reduced_test() {
   local runtime="outputs/test_reduced_runtime.mm2"
   local out="outputs/test_reduced.mm2"
-  build_runtime_from_seed "$runtime" runtime/reduced_seed.mm2
+  build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/reduced_rules.mm2 --steps 140 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal x) 0.6867605633802818 0.584)"
@@ -109,7 +109,7 @@ run_reduced_test() {
 run_full_test() {
   local runtime="outputs/test_full_runtime.mm2"
   local out="outputs/test_full.mm2"
-  build_runtime_from_seed "$runtime" runtime/full_seed.mm2
+  build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/full_rules.mm2 --steps 1000 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal x) 1.0 1.0)"

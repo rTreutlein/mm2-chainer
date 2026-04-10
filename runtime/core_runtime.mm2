@@ -29,19 +29,6 @@
         (O (- (, (Goal $g)))
            (+ (pendingN $priority $g $rule-s $rule-c $premises)))))
 
-; Compatibility shim while older exporters still emit the old 2-premise form.
-(exec-template
-  (exec 1
-        (, (, (Goal $g))
-           (rule2 $g $priority $rule-s $rule-c $prem1 $prem2))
-        (O (- (, (Goal $g)))
-           (+ (pendingN
-                $priority
-                $g
-                $rule-s
-                $rule-c
-                (pcons $prem1 (pcons $prem2 pnil)))))))
-
 ; Keep the existing head-based priority scheduler.
 (exec-template
   (exec 2

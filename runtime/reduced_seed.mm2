@@ -1,3 +1,0 @@
-(, (Goal (Animal x)))
-
-(fact (Dog x) 1.0 1.0)
