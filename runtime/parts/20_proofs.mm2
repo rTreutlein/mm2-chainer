@@ -1,0 +1,27 @@
+; Modus ponens STV calculation and proof emission.
+; STVs are carried internally as packed pairs: (strength confidence).
+
+(exec-template
+  (exec 8
+        (, (proof-input $g ($rule-s $rule-c) ($premise-s $premise-c) $proof-id))
+        (O (pure (proof-stv $g $proof-id $rule-s $rule-c $premise-s $premise-c $out)
+                 $out
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $rule-s)
+                       (f64_from_string $premise-s)))
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $rule-c)
+                       (f64_from_string $premise-c))))))))
+
+(exec-template
+  (exec A
+        (, (proof-input $g $rule-stv $premise-stv $proof-id)
+           (proof-stv $g $proof-id $rule-s $rule-c $premise-s $premise-c ($s $c)))
+        (O (- (proof-input $g $rule-stv $premise-stv $proof-id))
+           (- (proof-stv $g $proof-id $rule-s $rule-c $premise-s $premise-c ($s $c)))
+           (+ (slot $g))
+           (+ (proved $g $s $c $proof-id))
+           (+ (proof-open $proof-id)))))

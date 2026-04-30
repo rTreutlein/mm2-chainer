@@ -1,0 +1,37 @@
+; Shared STV-aware runtime: goal satisfaction, rule lowering, and scheduling.
+; Seed goals and facts live in separate seed files or generated test runtimes.
+
+; If a goal is already satisfied by a valued fact, drop it before scheduling.
+(exec-template
+  (exec 0
+        (, (, (Goal $g))
+           (fact $g $s $c))
+        (O (- (, (Goal $g))))))
+
+; Unified rules use ruleN for both single- and multi-premise rules.
+; Premises are encoded as (pcons prem1 (pcons prem2 ... pnil)).
+; The scheduler key is derived from rule confidence rather than stored as a
+; separate authored rule field:
+;
+;   uncertainty = 1.0 - confidence
+;   key = hex(big_endian_f64(uncertainty))
+;
+; For finite non-negative f64 values, big-endian IEEE-754 bytes sort in numeric
+; order.  The fixed-width 16-character hex encoding therefore gives `head` a
+; lexicographically sortable key while keeping it readable in output files.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g $rule-s $rule-c $premises))
+        (O (- (, (Goal $g)))
+           (pure (pendingN $priority $g $rule-s $rule-c $premises)
+                 $priority
+                 (encode_hex
+                   (sub_f64 (f64_from_string 1.0)
+                            (f64_from_string $rule-c)))))))
+
+; Keep the existing head-based scheduler.
+(exec-template
+  (exec 2
+        (, (pendingN $priority $g $rule-s $rule-c $premises))
+        (O (head 32 (selectedN $priority $g $rule-s $rule-c $premises)))))

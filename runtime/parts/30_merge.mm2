@@ -1,0 +1,148 @@
+; Proof merge and truth-value revision into canonical facts.
+; STVs are carried internally as packed pairs where practical. Public facts and
+; proofs remain `(fact g s c)` / `(proved g s c proof-id)` for compatibility.
+
+; Clean up stale first-proof slots once a canonical fact exists.
+(exec-template
+  (exec B
+        (, (slot $g)
+           (fact $g $s $c))
+        (O (- (slot $g)))))
+
+; If an open-query wait regenerates an already merged proof, drop the reopen token.
+(exec-template
+  (exec B
+        (, (proof-open $proof-id)
+           (proof-merged $proof-id))
+        (O (- (proof-open $proof-id)))))
+
+; Serialize proof merging so one proof is revised into the fact base at a time.
+(exec-template
+  (exec C
+        (, (proof-open $proof-id)
+           (proved $g $s $c $proof-id))
+        (O (head 1 (selected-merge $g $s $c $proof-id)))))
+
+; First proof for an atom promotes directly into the canonical fact.
+(exec-template
+  (exec D
+        (, (selected-merge $g $s $c $proof-id)
+           (slot $g)
+           (proof-open $proof-id)
+           (proved $g $s $c $proof-id))
+        (O (- (selected-merge $g $s $c $proof-id))
+           (- (slot $g))
+           (- (proof-open $proof-id))
+           (+ (proof-merged $proof-id))
+           (+ (fact $g $s $c)))))
+
+; Later proofs feed a separate fact-revision path.
+(exec-template
+  (exec E
+        (, (selected-merge $g $s $c $proof-id)
+           (fact $g $old-s $old-c)
+           (proof-open $proof-id)
+           (proved $g $s $c $proof-id))
+        (O (- (selected-merge $g $s $c $proof-id))
+           (- (proof-open $proof-id))
+           (+ (proof-merged $proof-id))
+           (+ (merge-input $g ($old-s $old-c) ($s $c) $proof-id)))))
+
+; Compute both the packed merged STV and the change/no-change action at once.
+; Decision shape: (action (merged-strength merged-confidence)).
+(exec-template
+  (exec F
+        (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
+        (O (pure (merge-decision $g $proof-id $old-s $old-c $s $c $decision)
+                 $decision
+                 (ifnz
+                   (sum_f64
+                     (abs_f64
+                       (sub_f64
+                         (f64_from_string $old-s)
+                         (div_f64
+                           (sum_f64
+                             (product_f64
+                               (f64_from_string $old-s)
+                               (f64_from_string $old-c))
+                             (product_f64
+                               (f64_from_string $s)
+                               (f64_from_string $c)))
+                           (sum_f64
+                             (f64_from_string $old-c)
+                             (f64_from_string $c)))))
+                     (abs_f64
+                       (sub_f64
+                         (f64_from_string $old-c)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (product_f64
+                             (sub_f64 (f64_from_string 1.0)
+                                      (f64_from_string $old-c))
+                             (sub_f64 (f64_from_string 1.0)
+                                      (f64_from_string $c)))))))
+                   then
+                     (tuple
+                       (f64_to_string (f64_from_string 1.0))
+                       (tuple
+                         (f64_to_string
+                           (div_f64
+                             (sum_f64
+                               (product_f64
+                                 (f64_from_string $old-s)
+                                 (f64_from_string $old-c))
+                               (product_f64
+                                 (f64_from_string $s)
+                                 (f64_from_string $c)))
+                             (sum_f64
+                               (f64_from_string $old-c)
+                               (f64_from_string $c))))
+                         (f64_to_string
+                           (sub_f64
+                             (f64_from_string 1.0)
+                             (product_f64
+                               (sub_f64 (f64_from_string 1.0)
+                                        (f64_from_string $old-c))
+                               (sub_f64 (f64_from_string 1.0)
+                                        (f64_from_string $c)))))))
+                   else
+                     (tuple
+                       (f64_to_string (f64_from_string 0.0))
+                       (tuple
+                         (f64_to_string
+                           (div_f64
+                             (sum_f64
+                               (product_f64
+                                 (f64_from_string $old-s)
+                                 (f64_from_string $old-c))
+                               (product_f64
+                                 (f64_from_string $s)
+                                 (f64_from_string $c)))
+                             (sum_f64
+                               (f64_from_string $old-c)
+                               (f64_from_string $c))))
+                         (f64_to_string
+                           (sub_f64
+                             (f64_from_string 1.0)
+                             (product_f64
+                               (sub_f64 (f64_from_string 1.0)
+                                        (f64_from_string $old-c))
+                               (sub_f64 (f64_from_string 1.0)
+                                        (f64_from_string $c))))))))))))
+
+(exec-template
+  (exec I
+        (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id)
+           (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 ($merged-s $merged-c)))
+           (fact $g $old-s $old-c))
+        (O (- (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
+           (- (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 ($merged-s $merged-c))))
+           (- (fact $g $old-s $old-c))
+           (+ (fact $g $merged-s $merged-c)))))
+
+(exec-template
+  (exec J
+        (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id)
+           (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 ($merged-s $merged-c))))
+        (O (- (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
+           (- (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 ($merged-s $merged-c)))))))

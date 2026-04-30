@@ -1,0 +1,76 @@
+; Multi-premise rules open one concrete frontier premise at a time. Shared
+; variables are instantiated by earlier matches before later premises are opened.
+; STVs are carried internally as packed pairs: (strength confidence).
+
+(exec-template
+  (exec 3
+        (, (selectedN $priority $g $rule-s $rule-c pnil))
+        (O (- (pendingN $priority $g $rule-s $rule-c pnil))
+           (- (selectedN $priority $g $rule-s $rule-c pnil))
+           (+ (proof-input
+                $g
+                ($rule-s $rule-c)
+                (1.0 1.0)
+                (scheduledN $g pnil))))))
+
+(exec-template
+  (exec 3
+        (, (selectedN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+        (O (- (pendingN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+           (- (selectedN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+           (+ (wait-premises
+                $g
+                ($rule-s $rule-c)
+                $prem
+                $rest
+                (1.0 1.0)
+                (scheduledN $g (pcons $prem $rest))))
+           (+ (, (Goal $prem))))))
+
+; Matching the current frontier premise updates the running premise STV.  The
+; computed aggregate STV is used directly in the pure output expression, so no
+; separate aggregate-STV helper fact is required.
+(exec-template
+  (exec 4
+        (, (wait-premises $g ($rule-s $rule-c) $prem pnil ($agg-s $agg-c) $proof-id)
+           (fact $prem $prem-s $prem-c))
+        (O (- (wait-premises $g ($rule-s $rule-c) $prem pnil ($agg-s $agg-c) $proof-id))
+           (pure (proof-input
+                   $g
+                   ($rule-s $rule-c)
+                   $premise-stv
+                   $proof-id)
+                 $premise-stv
+                 (tuple
+                   (f64_to_string
+                     (min_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $prem-s)))
+                   (f64_to_string
+                     (min_f64
+                       (f64_from_string $agg-c)
+                       (f64_from_string $prem-c))))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises $g ($rule-s $rule-c) $prem (pcons $next $more) ($agg-s $agg-c) $proof-id)
+           (fact $prem $prem-s $prem-c))
+        (O (- (wait-premises $g ($rule-s $rule-c) $prem (pcons $next $more) ($agg-s $agg-c) $proof-id))
+           (pure (wait-premises
+                   $g
+                   ($rule-s $rule-c)
+                   $next
+                   $more
+                   $next-agg-stv
+                   $proof-id)
+                 $next-agg-stv
+                 (tuple
+                   (f64_to_string
+                     (min_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $prem-s)))
+                   (f64_to_string
+                     (min_f64
+                       (f64_from_string $agg-c)
+                       (f64_from_string $prem-c)))))
+           (+ (, (Goal $next))))))

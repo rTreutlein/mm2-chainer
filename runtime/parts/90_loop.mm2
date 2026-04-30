@@ -1,0 +1,7 @@
+; Keep control execs active.
+
+(exec Z
+      (, (exec Z $loop_pat $loop_tpl)
+         (exec-template $e))
+      (, (exec Z $loop_pat $loop_tpl)
+         $e))
