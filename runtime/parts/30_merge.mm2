@@ -35,7 +35,10 @@
            (+ (proof-merged $proof-id))
            (+ (fact $g $stv)))))
 
-; Later proofs feed a separate fact-revision path.
+; Later proofs compute the packed merged STV and change/no-change action in the
+; pure output directly.  Decision shape:
+;
+;   (merge-decision g proof-id old-s old-c s c (action (merged-s merged-c)))
 (exec-template
   (exec E
         (, (selected-merge $g ($s $c) $proof-id)
@@ -45,14 +48,7 @@
         (O (- (selected-merge $g ($s $c) $proof-id))
            (- (proof-open $proof-id))
            (+ (proof-merged $proof-id))
-           (+ (merge-input $g ($old-s $old-c) ($s $c) $proof-id)))))
-
-; Compute both the packed merged STV and the change/no-change action at once.
-; Decision shape: (action (merged-strength merged-confidence)).
-(exec-template
-  (exec F
-        (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
-        (O (pure (merge-decision $g $proof-id $old-s $old-c $s $c $decision)
+           (pure (merge-decision $g $proof-id $old-s $old-c $s $c $decision)
                  $decision
                  (ifnz
                    (sum_f64
@@ -131,17 +127,13 @@
 
 (exec-template
   (exec I
-        (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id)
-           (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv))
+        (, (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv))
            (fact $g ($old-s $old-c)))
-        (O (- (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
-           (- (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv)))
+        (O (- (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv)))
            (- (fact $g ($old-s $old-c)))
            (+ (fact $g $merged-stv)))))
 
 (exec-template
   (exec J
-        (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id)
-           (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv)))
-        (O (- (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
-           (- (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv))))))
+        (, (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv)))
+        (O (- (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv))))))
