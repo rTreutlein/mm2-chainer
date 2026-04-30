@@ -1,12 +1,11 @@
 ; Proof merge and truth-value revision into canonical facts.
-; STVs are carried internally as packed pairs where practical. Public facts and
-; proofs remain `(fact g s c)` / `(proved g s c proof-id)` for compatibility.
+; STVs are carried as packed pairs: (strength confidence).
 
 ; Clean up stale first-proof slots once a canonical fact exists.
 (exec-template
   (exec B
         (, (slot $g)
-           (fact $g $s $c))
+           (fact $g $stv))
         (O (- (slot $g)))))
 
 ; If an open-query wait regenerates an already merged proof, drop the reopen token.
@@ -20,30 +19,30 @@
 (exec-template
   (exec C
         (, (proof-open $proof-id)
-           (proved $g $s $c $proof-id))
-        (O (head 1 (selected-merge $g $s $c $proof-id)))))
+           (proved $g $stv $proof-id))
+        (O (head 1 (selected-merge $g $stv $proof-id)))))
 
 ; First proof for an atom promotes directly into the canonical fact.
 (exec-template
   (exec D
-        (, (selected-merge $g $s $c $proof-id)
+        (, (selected-merge $g $stv $proof-id)
            (slot $g)
            (proof-open $proof-id)
-           (proved $g $s $c $proof-id))
-        (O (- (selected-merge $g $s $c $proof-id))
+           (proved $g $stv $proof-id))
+        (O (- (selected-merge $g $stv $proof-id))
            (- (slot $g))
            (- (proof-open $proof-id))
            (+ (proof-merged $proof-id))
-           (+ (fact $g $s $c)))))
+           (+ (fact $g $stv)))))
 
 ; Later proofs feed a separate fact-revision path.
 (exec-template
   (exec E
-        (, (selected-merge $g $s $c $proof-id)
-           (fact $g $old-s $old-c)
+        (, (selected-merge $g ($s $c) $proof-id)
+           (fact $g ($old-s $old-c))
            (proof-open $proof-id)
-           (proved $g $s $c $proof-id))
-        (O (- (selected-merge $g $s $c $proof-id))
+           (proved $g ($s $c) $proof-id))
+        (O (- (selected-merge $g ($s $c) $proof-id))
            (- (proof-open $proof-id))
            (+ (proof-merged $proof-id))
            (+ (merge-input $g ($old-s $old-c) ($s $c) $proof-id)))))
@@ -133,16 +132,16 @@
 (exec-template
   (exec I
         (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id)
-           (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 ($merged-s $merged-c)))
-           (fact $g $old-s $old-c))
+           (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv))
+           (fact $g ($old-s $old-c)))
         (O (- (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
-           (- (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 ($merged-s $merged-c))))
-           (- (fact $g $old-s $old-c))
-           (+ (fact $g $merged-s $merged-c)))))
+           (- (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv)))
+           (- (fact $g ($old-s $old-c)))
+           (+ (fact $g $merged-stv)))))
 
 (exec-template
   (exec J
         (, (merge-input $g ($old-s $old-c) ($s $c) $proof-id)
-           (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 ($merged-s $merged-c))))
+           (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv)))
         (O (- (merge-input $g ($old-s $old-c) ($s $c) $proof-id))
-           (- (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 ($merged-s $merged-c)))))))
+           (- (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv))))))

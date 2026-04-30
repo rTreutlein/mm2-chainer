@@ -1,26 +1,26 @@
 ; Multi-premise rules open one concrete frontier premise at a time. Shared
 ; variables are instantiated by earlier matches before later premises are opened.
-; STVs are carried internally as packed pairs: (strength confidence).
+; STVs are carried as packed pairs: (strength confidence).
 
 (exec-template
   (exec 3
-        (, (selectedN $priority $g $rule-s $rule-c pnil))
-        (O (- (pendingN $priority $g $rule-s $rule-c pnil))
-           (- (selectedN $priority $g $rule-s $rule-c pnil))
+        (, (selectedN $priority $g $rule-stv pnil))
+        (O (- (pendingN $priority $g $rule-stv pnil))
+           (- (selectedN $priority $g $rule-stv pnil))
            (+ (proof-input
                 $g
-                ($rule-s $rule-c)
+                $rule-stv
                 (1.0 1.0)
                 (scheduledN $g pnil))))))
 
 (exec-template
   (exec 3
-        (, (selectedN $priority $g $rule-s $rule-c (pcons $prem $rest)))
-        (O (- (pendingN $priority $g $rule-s $rule-c (pcons $prem $rest)))
-           (- (selectedN $priority $g $rule-s $rule-c (pcons $prem $rest)))
+        (, (selectedN $priority $g $rule-stv (pcons $prem $rest)))
+        (O (- (pendingN $priority $g $rule-stv (pcons $prem $rest)))
+           (- (selectedN $priority $g $rule-stv (pcons $prem $rest)))
            (+ (wait-premises
                 $g
-                ($rule-s $rule-c)
+                $rule-stv
                 $prem
                 $rest
                 (1.0 1.0)
@@ -33,7 +33,7 @@
 (exec-template
   (exec 4
         (, (wait-premises $g ($rule-s $rule-c) $prem pnil ($agg-s $agg-c) $proof-id)
-           (fact $prem $prem-s $prem-c))
+           (fact $prem ($prem-s $prem-c)))
         (O (- (wait-premises $g ($rule-s $rule-c) $prem pnil ($agg-s $agg-c) $proof-id))
            (pure (proof-input
                    $g
@@ -54,7 +54,7 @@
 (exec-template
   (exec 4
         (, (wait-premises $g ($rule-s $rule-c) $prem (pcons $next $more) ($agg-s $agg-c) $proof-id)
-           (fact $prem $prem-s $prem-c))
+           (fact $prem ($prem-s $prem-c)))
         (O (- (wait-premises $g ($rule-s $rule-c) $prem (pcons $next $more) ($agg-s $agg-c) $proof-id))
            (pure (wait-premises
                    $g

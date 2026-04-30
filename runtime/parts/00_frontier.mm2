@@ -5,7 +5,7 @@
 (exec-template
   (exec 0
         (, (, (Goal $g))
-           (fact $g $s $c))
+           (fact $g $stv))
         (O (- (, (Goal $g))))))
 
 ; Unified rules use ruleN for both single- and multi-premise rules.
@@ -24,7 +24,7 @@
         (, (, (Goal $g))
            (ruleN $g $rule-s $rule-c $premises))
         (O (- (, (Goal $g)))
-           (pure (pendingN $priority $g $rule-s $rule-c $premises)
+           (pure (pendingN $priority $g ($rule-s $rule-c) $premises)
                  $priority
                  (encode_hex
                    (sub_f64 (f64_from_string 1.0)
@@ -33,5 +33,5 @@
 ; Keep the existing head-based scheduler.
 (exec-template
   (exec 2
-        (, (pendingN $priority $g $rule-s $rule-c $premises))
-        (O (head 32 (selectedN $priority $g $rule-s $rule-c $premises)))))
+        (, (pendingN $priority $g $rule-stv $premises))
+        (O (head 32 (selectedN $priority $g $rule-stv $premises)))))
