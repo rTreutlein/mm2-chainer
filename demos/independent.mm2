@@ -1,0 +1,13 @@
+; Independent goals demo.
+; Two unrelated conclusions are derived from the same root fact in parallel.
+
+; Seed
+
+; Rules
+(ruleN (Mammal $x) 0.9 0.9 (pcons (Dog $x) pnil))
+(ruleN (Pet $x) 0.8 0.8 (pcons (Dog $x) pnil))
+(, (Goal (Mammal x)))
+(, (Goal (Pet x)))
+(goal-path (Mammal x) pnil)
+(goal-path (Pet x) pnil)
+(fact (Dog x) (1.0 1.0))

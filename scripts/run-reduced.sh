@@ -3,7 +3,7 @@
 set -euo pipefail
 
 mkdir -p outputs
-cat runtime/default_seed.mm2 runtime/core_runtime.mm2 > outputs/reduced_runtime.mm2
+bash scripts/build-runtime.sh outputs/reduced_runtime.mm2 runtime/default_seed.mm2
 
 mork run rules/reduced_rules.mm2 --steps 140 --aux-path outputs/reduced_runtime.mm2 outputs/reduced_run.mm2
 

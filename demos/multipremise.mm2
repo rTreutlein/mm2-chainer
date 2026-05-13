@@ -1,0 +1,11 @@
+; Multi-premise rule demo.
+; Both premises must be matched before the conclusion is derived.
+
+; Seed
+
+; Rules
+(ruleN (FlyingMammal $x) 1.0 1.0 (pcons (Mammal $x) (pcons (CanFly $x) pnil)))
+(, (Goal (FlyingMammal bat)))
+(goal-path (FlyingMammal bat) pnil)
+(fact (Mammal bat) (1.0 1.0))
+(fact (CanFly bat) (1.0 1.0))

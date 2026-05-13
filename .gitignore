@@ -2,3 +2,6 @@
 
 # Generated outputs
 outputs/
+
+# Local MM2 scratch probes
+/test*.mm2

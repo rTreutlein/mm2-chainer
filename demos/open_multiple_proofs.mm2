@@ -1,0 +1,11 @@
+; Open-goal demo with multiple proofs for the same grounded fact.
+; The open goal (Animal $who) can bind to ann through two different rules:
+; Dog -> Animal and Cat -> Animal.  Both proofs are retained while the
+; canonical fact is revised/merged into a single packed STV.
+
+(ruleN (Animal $x) 0.9 0.8 (pcons (Dog $x) pnil))
+(ruleN (Animal $x) 0.95 0.8 (pcons (Cat $x) pnil))
+
+(, (Goal (Animal $who)))
+(fact (Dog ann) (1.0 1.0))
+(fact (Cat ann) (1.0 1.0))

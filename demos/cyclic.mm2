@@ -1,0 +1,13 @@
+; Cyclic-goal detection demo.
+; A rule that tries to prove A from A creates an immediate self-loop.
+; The runtime detects this and drops the looping goal before it spawns
+; infinite work.
+
+; Seed
+; No fact for A — the only available path is the self-loop.
+
+; Rules
+(ruleN (A $x) 1.0 1.0 (pcons (A $x) pnil))
+(, (Goal (A x)))
+(goal-path (A x) pnil)
+(fact (D x) (1.0 1.0))
