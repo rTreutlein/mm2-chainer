@@ -15,12 +15,46 @@
            (proof-merged $proof-id))
         (O (- (proof-open $proof-id)))))
 
-; Serialize proof merging so one proof is revised into the fact base at a time.
+; Drop a generated per-goal selector after one of that goal's proofs merges.
+; Any still-open proof for the same goal can regenerate the same selector.
+(exec-template
+  (exec B
+        (, (proof-merged $proof-id)
+           (proved $g $stv $proof-id)
+           (exec-template
+             (exec C
+                   (, (proof-open $candidate-id)
+                      (proved $g $candidate-stv $candidate-id))
+                   (O (head 1
+                        (selected-merge
+                          $g
+                          $candidate-stv
+                          $candidate-id))))))
+        (O (- (exec-template
+                (exec C
+                      (, (proof-open $candidate-id)
+                         (proved $g $candidate-stv $candidate-id))
+                      (O (head 1
+                           (selected-merge
+                             $g
+                             $candidate-stv
+                             $candidate-id)))))))))
+
+; Install one selector per concrete goal.  Each selector uses `head 1` over only
+; that goal's open proofs, so distinct goals can merge independently.
 (exec-template
   (exec C
         (, (proof-open $proof-id)
            (proved $g $stv $proof-id))
-        (O (head 1 (selected-merge $g $stv $proof-id)))))
+        (O (+ (exec-template
+                (exec C
+                      (, (proof-open $candidate-id)
+                         (proved $g $candidate-stv $candidate-id))
+                      (O (head 1
+                           (selected-merge
+                             $g
+                             $candidate-stv
+                             $candidate-id)))))))))
 
 ; First proof for an atom promotes directly into the canonical fact.
 (exec-template
@@ -35,10 +69,9 @@
            (+ (proof-merged $proof-id))
            (+ (fact $g $stv)))))
 
-; Later proofs compute the packed merged STV and change/no-change action in the
-; pure output directly.  Decision shape:
-;
-;   (merge-decision g proof-id old-s old-c s c (action (merged-s merged-c)))
+; Later proofs atomically consume the current canonical fact and re-emit the
+; revised STV.  This serializes merges per goal while allowing distinct goals
+; to merge independently.
 (exec-template
   (exec E
         (, (selected-merge $g ($s $c) $proof-id)
@@ -47,93 +80,28 @@
            (proved $g ($s $c) $proof-id))
         (O (- (selected-merge $g ($s $c) $proof-id))
            (- (proof-open $proof-id))
-           (+ (proof-merged $proof-id))
-           (pure (merge-decision $g $proof-id $old-s $old-c $s $c $decision)
-                 $decision
-                 (ifnz
-                   (sum_f64
-                     (abs_f64
-                       (sub_f64
-                         (f64_from_string $old-s)
-                         (div_f64
-                           (sum_f64
-                             (product_f64
-                               (f64_from_string $old-s)
-                               (f64_from_string $old-c))
-                             (product_f64
-                               (f64_from_string $s)
-                               (f64_from_string $c)))
-                           (sum_f64
-                             (f64_from_string $old-c)
-                             (f64_from_string $c)))))
-                     (abs_f64
-                       (sub_f64
-                         (f64_from_string $old-c)
-                         (sub_f64
-                           (f64_from_string 1.0)
-                           (product_f64
-                             (sub_f64 (f64_from_string 1.0)
-                                      (f64_from_string $old-c))
-                             (sub_f64 (f64_from_string 1.0)
-                                      (f64_from_string $c)))))))
-                   then
-                     (tuple
-                       (f64_to_string (f64_from_string 1.0))
-                       (tuple
-                         (f64_to_string
-                           (div_f64
-                             (sum_f64
-                               (product_f64
-                                 (f64_from_string $old-s)
-                                 (f64_from_string $old-c))
-                               (product_f64
-                                 (f64_from_string $s)
-                                 (f64_from_string $c)))
-                             (sum_f64
-                               (f64_from_string $old-c)
-                               (f64_from_string $c))))
-                         (f64_to_string
-                           (sub_f64
-                             (f64_from_string 1.0)
-                             (product_f64
-                               (sub_f64 (f64_from_string 1.0)
-                                        (f64_from_string $old-c))
-                               (sub_f64 (f64_from_string 1.0)
-                                        (f64_from_string $c)))))))
-                   else
-                     (tuple
-                       (f64_to_string (f64_from_string 0.0))
-                       (tuple
-                         (f64_to_string
-                           (div_f64
-                             (sum_f64
-                               (product_f64
-                                 (f64_from_string $old-s)
-                                 (f64_from_string $old-c))
-                               (product_f64
-                                 (f64_from_string $s)
-                                 (f64_from_string $c)))
-                             (sum_f64
-                               (f64_from_string $old-c)
-                               (f64_from_string $c))))
-                         (f64_to_string
-                           (sub_f64
-                             (f64_from_string 1.0)
-                             (product_f64
-                               (sub_f64 (f64_from_string 1.0)
-                                        (f64_from_string $old-c))
-                               (sub_f64 (f64_from_string 1.0)
-                                        (f64_from_string $c))))))))))))
-
-(exec-template
-  (exec I
-        (, (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv))
-           (fact $g ($old-s $old-c)))
-        (O (- (merge-decision $g $proof-id $old-s $old-c $s $c (1.0 $merged-stv)))
            (- (fact $g ($old-s $old-c)))
-           (+ (fact $g $merged-stv)))))
-
-(exec-template
-  (exec J
-        (, (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv)))
-        (O (- (merge-decision $g $proof-id $old-s $old-c $s $c (0.0 $merged-stv))))))
+           (+ (proof-merged $proof-id))
+           (pure (fact $g $merged-stv)
+                 $merged-stv
+                 (tuple
+                   (f64_to_string
+                     (div_f64
+                       (sum_f64
+                         (product_f64
+                           (f64_from_string $old-s)
+                           (f64_from_string $old-c))
+                         (product_f64
+                           (f64_from_string $s)
+                           (f64_from_string $c)))
+                       (sum_f64
+                         (f64_from_string $old-c)
+                         (f64_from_string $c))))
+                   (f64_to_string
+                     (sub_f64
+                       (f64_from_string 1.0)
+                       (product_f64
+                         (sub_f64 (f64_from_string 1.0)
+                                  (f64_from_string $old-c))
+                         (sub_f64 (f64_from_string 1.0)
+                                  (f64_from_string $c))))))))))
