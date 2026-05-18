@@ -52,6 +52,20 @@ assert_ge() {
   fi
 }
 
+assert_semantic_outputs_equal() {
+  local lhs="$1"
+  local rhs="$2"
+  local label="$3"
+  local lhs_sem="outputs/${label}_lhs_semantic.mm2"
+  local rhs_sem="outputs/${label}_rhs_semantic.mm2"
+  grep -E '^\((fact|proved) ' "$lhs" | sort > "$lhs_sem"
+  grep -E '^\((fact|proved) ' "$rhs" | sort > "$rhs_sem"
+  if ! diff -u "$lhs_sem" "$rhs_sem" >/dev/null; then
+    diff -u "$lhs_sem" "$rhs_sem" >&2 || true
+    fail "$label semantic outputs differ"
+  fi
+}
+
 build_runtime_from_core() {
   local target="$1"
   shift
@@ -64,6 +78,46 @@ build_runtime_from_core() {
     cat runtime/parts/00_frontier.mm2
     printf '\n'
     cat runtime/parts/10_premises.mm2
+    printf '\n'
+    cat runtime/parts/20_proofs.mm2
+    printf '\n'
+    cat runtime/parts/30_merge.mm2
+    printf '\n'
+    cat runtime/parts/90_loop.mm2
+  } > "$target"
+}
+
+build_runtime_from_core_with_sink_head() {
+  local target="$1"
+  shift
+  {
+    printf '; generated test runtime with sink-head scheduler\n'
+    for expr in "$@"; do
+      printf '%s\n' "$expr"
+    done
+    printf '\n'
+    cat runtime/parts/00_frontier.mm2
+    cat <<'RUNTIME'
+
+(exec-template
+  (exec 2
+        (, (pendingN $priority $g $rule-stv $premises))
+        (O (head 32 (selectedN $priority $g $rule-stv $premises)))))
+
+(exec-template
+  (exec 3
+        (, (selectedN $priority $g $rule-stv $premises))
+        (O (- (pendingN $priority $g $rule-stv $premises))
+           (- (selectedN $priority $g $rule-stv $premises))
+           (+ (wait-premises
+                $g
+                $rule-stv
+                $premises
+                (1.0 1.0)
+                (scheduledN $g $premises))))))
+RUNTIME
+    printf '\n'
+    sed '1,15d' runtime/parts/10_premises.mm2
     printf '\n'
     cat runtime/parts/20_proofs.mm2
     printf '\n'
@@ -117,9 +171,9 @@ run_full_test() {
   local runtime="outputs/test_full_runtime.mm2"
   local out="outputs/test_full.mm2"
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
-  mork run rules/full_rules.mm2 --steps 1000 --aux-path "$runtime" "$out" >/dev/null
+  mork run rules/full_rules.mm2 --steps 30 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(pendingN 0000000000000000 (Bat x) (1.0 1.0) (pcons (Racket x) pnil))"
+  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Racket x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Racket x) pnil)))"
   assert_no_line_regex "$out" '^\(pendingN \$'
 
   local runtime_templates
@@ -154,9 +208,9 @@ EOF
 
   mork run "$rules" --steps 30 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premises (Animal x) (0.4 0.4) (Creature x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Creature x) pnil)))"
-  assert_contains "$out" "(wait-premises (Animal x) (0.4 0.4) (LowPrem33 x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)))"
-  assert_contains "$out" "(wait-premises (Animal x) (0.9 0.9) (Mammal x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Mammal x) pnil)))"
+  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (Creature x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Creature x) pnil)))"
+  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (LowPrem33 x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)))"
+  assert_contains "$out" "(wait-premise (Animal x) (0.9 0.9) (Mammal x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Mammal x) pnil)))"
 }
 
 # Port of the single-premise composition behavior from
@@ -177,7 +231,7 @@ EOF
     '(fact (A) (1.0 1.0))'
 
   mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 100 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 130 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 1.0))"
@@ -228,7 +282,7 @@ EOF
     '(fact (B) (1.0 1.0))'
 
   mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 110 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 150 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 1.0))"
@@ -256,9 +310,9 @@ EOF
     '(fact (Dog ann) (1.0 1.0))'
 
   mork run "$rules" --steps 70 --aux-path "$runtime" "$out_mid" >/dev/null
-  mork run "$rules" --steps 220 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 260 --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premises (And (Own (i ann)) (Pet ann)) (1.0 1.0) (Pet ann) pnil (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+  assert_contains "$out_mid" "(wait-premises (And (Own (i ann)) (Pet ann)) (1.0 1.0) (pcons (Pet ann) pnil) (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.7 1.0))"
   assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.7 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
 }
@@ -281,7 +335,7 @@ EOF
     '(fact (D) (1.0 1.0))'
 
   mork run "$rules" --steps 50 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 140 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps 190 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 1.0))"
@@ -293,7 +347,7 @@ run_open_multiple_proofs_demo_test() {
   local out="outputs/test_open_multiple_proofs.mm2"
 
   build_runtime_from_core "$runtime"
-  mork run demos/open_multiple_proofs.mm2 --steps 90 --aux-path "$runtime" "$out" >/dev/null
+  mork run demos/open_multiple_proofs.mm2 --steps 130 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.9249999999999999 0.96))"
   assert_contains "$out" "(proved (Animal ann) (0.9 0.8) (scheduledN (Animal ann) (pcons (Dog ann) pnil)))"
@@ -302,6 +356,36 @@ run_open_multiple_proofs_demo_test() {
   local animal_ann_proofs
   animal_ann_proofs="$(grep -c '^(proved (Animal ann) ' "$out")"
   assert_eq "$animal_ann_proofs" "2" "open multiple proofs demo Animal ann proof count"
+}
+
+run_head_source_sink_equivalence_test() {
+  local rules="outputs/test_head_equivalence_rules.mm2"
+  local source_runtime="outputs/test_head_source_runtime.mm2"
+  local sink_runtime="outputs/test_head_sink_runtime.mm2"
+  local source_out="outputs/test_head_source.mm2"
+  local sink_out="outputs/test_head_sink.mm2"
+
+  cat > "$rules" <<'EOF'
+(ruleN (Animal $x) 0.9 0.8 (pcons (Dog $x) pnil))
+(ruleN (Animal $x) 0.95 0.8 (pcons (Cat $x) pnil))
+(ruleN (Pet $x) 0.8 0.7 (pcons (Dog $x) pnil))
+(ruleN (Combo $x) 0.7 0.9 (pcons (Animal $x) (pcons (Pet $x) pnil)))
+EOF
+
+  build_runtime_from_core "$source_runtime" \
+    '(, (Goal (Combo ann)))' \
+    '(fact (Dog ann) (1.0 1.0))' \
+    '(fact (Cat ann) (1.0 1.0))'
+  build_runtime_from_core_with_sink_head "$sink_runtime" \
+    '(, (Goal (Combo ann)))' \
+    '(fact (Dog ann) (1.0 1.0))' \
+    '(fact (Cat ann) (1.0 1.0))'
+
+  mork run "$rules" --steps 260 --aux-path "$source_runtime" "$source_out" >/dev/null
+  mork run "$rules" --steps 260 --aux-path "$sink_runtime" "$sink_out" >/dev/null
+
+  assert_semantic_outputs_equal "$source_out" "$sink_out" "head_source_sink"
+  assert_contains "$source_out" "(fact (Combo ann) (0.5599999999999999 0.63))"
 }
 
 run_reduced_test
@@ -313,5 +397,6 @@ run_reference_independent_test
 run_reference_binding_test
 run_reference_three_premise_test
 run_open_multiple_proofs_demo_test
+run_head_source_sink_equivalence_test
 
 echo "PASS: runtime regression suite"

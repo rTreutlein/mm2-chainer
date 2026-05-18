@@ -5,7 +5,7 @@ set -euo pipefail
 mkdir -p outputs
 bash scripts/build-runtime.sh outputs/chain_runtime.mm2
 
-mork run demos/chain.mm2 --steps 200 --aux-path outputs/chain_runtime.mm2 outputs/chain_run.mm2
+mork run demos/chain.mm2 --steps 260 --aux-path outputs/chain_runtime.mm2 outputs/chain_run.mm2
 
 echo '== merged Creature fact =='
 sed -n '/^(fact (Creature /p' outputs/chain_run.mm2

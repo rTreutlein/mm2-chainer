@@ -5,7 +5,7 @@ set -euo pipefail
 mkdir -p outputs
 bash scripts/build-runtime.sh outputs/cyclic_runtime.mm2
 
-mork run demos/cyclic.mm2 --steps 80 --aux-path outputs/cyclic_runtime.mm2 outputs/cyclic_run.mm2
+mork run demos/cyclic.mm2 --steps 100 --aux-path outputs/cyclic_runtime.mm2 outputs/cyclic_run.mm2
 
 echo '== final facts =='
 sed -n '/^(fact /p' outputs/cyclic_run.mm2

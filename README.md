@@ -64,16 +64,16 @@ It no longer allocates a temporary `exec-template` per proof attempt. Merge sele
 short-lived per-goal selectors so proofs for distinct goals can merge independently, while
 proofs for the same goal still revise the canonical fact one at a time. It no longer has
 separate single-premise and multi-premise execution paths. All rules flow through one generic
-`ruleN -> pendingN -> selectedN -> wait-premises` frontier, with plain `rule` lowered into a
+`ruleN -> pendingN -> wait-premises` frontier, with plain `rule` lowered into a
 single-premise `ruleN` shape at runtime.
 
 Current script defaults:
 
-- `scripts/run-reduced.sh`: `140` steps
-- `scripts/run-full.sh`: `1000` steps
+- `scripts/run-reduced.sh`: `220` steps
+- `scripts/run-full.sh`: `200` steps
 - `scripts/run-priority-demo.sh`: `1` step
-- `scripts/run-multipremise.sh`: `60` steps
-- `scripts/run-open-multiple-proofs.sh`: `90` steps
-- `scripts/run-chain.sh`: `200` steps
-- `scripts/run-cyclic.sh`: `80` steps
-- `scripts/run-independent.sh`: `60` steps
+- `scripts/run-multipremise.sh`: `90` steps
+- `scripts/run-open-multiple-proofs.sh`: `130` steps
+- `scripts/run-chain.sh`: `260` steps
+- `scripts/run-cyclic.sh`: `100` steps
+- `scripts/run-independent.sh`: `90` steps

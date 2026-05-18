@@ -3,7 +3,7 @@
 This document visualizes the current MM2 chainer runtime from two angles:
 
 - how the runnable runtime is assembled by the shell entrypoints
-- how a `Goal` moves through the generic `ruleN -> pendingN -> selectedN -> wait-premises -> proof -> merge` pipeline
+- how a `Goal` moves through the generic `ruleN -> pendingN -> wait-premises -> proof -> merge` pipeline
 
 ## Assembly View
 
@@ -73,21 +73,22 @@ exec 1"]
 exec 1"]
     LowerRule --> Pending["pendingN(priority, g, rule STV, premises)
 produce: exec 1
-consume: exec 2, exec 3"]
-    Pending -->|head 32 via exec 2| Selected["selectedN(...)
-produce: exec 2
-consume: exec 3"]
+consume: exec 3 via head 32 source"]
 
-    Selected --> PremiseCheck{Premises empty?}
-    PremiseCheck -->|yes| ProofSeed["proof-input(g, rule-stv, premise-stv, proof-id)
-produce: exec 3, exec 4
-consume: exec 8"]
-    PremiseCheck -->|no| Wait["wait-premises(current premise, rest, agg-stv, proof-id)
+    Pending -->|head 32 source via exec 3| WaitList["wait-premises(remaining-premises, agg-stv, proof-id)
 produce: exec 3, exec 4
 consume: exec 4"]
 
+    WaitList --> PremiseCheck{Premises empty?}
+    PremiseCheck -->|yes| ProofSeed["proof-input(g, rule-stv, premise-stv, proof-id)
+ produce: exec 4
+ consume: exec 8"]
+    PremiseCheck -->|no| Wait["wait-premise(current premise, rest, agg-stv, proof-id)
+ produce: exec 4
+ consume: exec 4"]
+
     Wait --> SpawnSubgoal["Emit Goal for current premise
-produce: exec 3, exec 4"]
+produce: exec 4"]
     SpawnSubgoal --> Goal
     Wait --> FactPrem["Match fact for current premise
 exec 4"]
@@ -97,7 +98,7 @@ produce: exec 4"]
 exec 4"]
 
     PremCalc --> PremDone{More premises left?}
-    PremDone -->|yes| WaitNext["Advance wait-premises to next premise
+    PremDone -->|yes| WaitNext["Advance wait-premises to remaining premises
 exec 4"]
     WaitNext --> SpawnSubgoal
     PremDone -->|no| ProofSeed
@@ -139,7 +140,7 @@ exec 0"]
 
 ## Reading Notes
 
-- `head 32` is the rule scheduler gate from `pendingN` into `selectedN`.
+- `head 32` is the rule scheduler gate from `pendingN` into `wait-premises`.
 - Merge selection installs a small selector for each concrete goal; each selector uses `head 1`, so proofs for the same goal are serialized while distinct goals can merge independently.
 - Single-premise `rule` entries are normalized into the same generic `ruleN` path as multi-premise rules.
 - STVs are packed as `(strength confidence)` tuples throughout the runtime. Premise aggregation uses `min` across premise STVs, then proof STV uses rule STV `*` aggregated premise STV.

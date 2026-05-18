@@ -4,27 +4,30 @@
 
 (exec-template
   (exec 3
-        (, (selectedN $priority $g $rule-stv pnil))
-        (O (- (pendingN $priority $g $rule-stv pnil))
-           (- (selectedN $priority $g $rule-stv pnil))
-           (+ (proof-input
-                $g
-                $rule-stv
-                (1.0 1.0)
-                (scheduledN $g pnil))))))
-
-(exec-template
-  (exec 3
-        (, (selectedN $priority $g $rule-stv (pcons $prem $rest)))
-        (O (- (pendingN $priority $g $rule-stv (pcons $prem $rest)))
-           (- (selectedN $priority $g $rule-stv (pcons $prem $rest)))
+        (I (head 32 (pendingN $priority $g $rule-stv $premises)))
+        (O (- (pendingN $priority $g $rule-stv $premises))
            (+ (wait-premises
                 $g
                 $rule-stv
-                $prem
-                $rest
+                $premises
                 (1.0 1.0)
-                (scheduledN $g (pcons $prem $rest))))
+                (scheduledN $g $premises))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises $g $rule-stv pnil $premise-stv $proof-id))
+        (O (- (wait-premises $g $rule-stv pnil $premise-stv $proof-id))
+           (+ (proof-input
+                $g
+                $rule-stv
+                $premise-stv
+                $proof-id)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id))
+        (O (- (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id))
+           (+ (wait-premise $g $rule-stv $prem $rest $agg-stv $proof-id))
            (+ (, (Goal $prem))))))
 
 ; Matching the current frontier premise updates the running premise STV.  The
@@ -32,35 +35,13 @@
 ; separate aggregate-STV helper fact is required.
 (exec-template
   (exec 4
-        (, (wait-premises $g ($rule-s $rule-c) $prem pnil ($agg-s $agg-c) $proof-id)
+        (, (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id)
            (fact $prem ($prem-s $prem-c)))
-        (O (- (wait-premises $g ($rule-s $rule-c) $prem pnil ($agg-s $agg-c) $proof-id))
-           (pure (proof-input
-                   $g
-                   ($rule-s $rule-c)
-                   $premise-stv
-                   $proof-id)
-                 $premise-stv
-                 (tuple
-                   (f64_to_string
-                     (min_f64
-                       (f64_from_string $agg-s)
-                       (f64_from_string $prem-s)))
-                   (f64_to_string
-                     (min_f64
-                       (f64_from_string $agg-c)
-                       (f64_from_string $prem-c))))))))
-
-(exec-template
-  (exec 4
-        (, (wait-premises $g ($rule-s $rule-c) $prem (pcons $next $more) ($agg-s $agg-c) $proof-id)
-           (fact $prem ($prem-s $prem-c)))
-        (O (- (wait-premises $g ($rule-s $rule-c) $prem (pcons $next $more) ($agg-s $agg-c) $proof-id))
+        (O (- (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id))
            (pure (wait-premises
                    $g
                    ($rule-s $rule-c)
-                   $next
-                   $more
+                   $rest
                    $next-agg-stv
                    $proof-id)
                  $next-agg-stv
@@ -72,5 +53,4 @@
                    (f64_to_string
                      (min_f64
                        (f64_from_string $agg-c)
-                       (f64_from_string $prem-c)))))
-           (+ (, (Goal $next))))))
+                       (f64_from_string $prem-c))))))))

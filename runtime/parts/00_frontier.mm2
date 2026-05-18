@@ -29,9 +29,3 @@
                  (encode_hex
                    (sub_f64 (f64_from_string 1.0)
                             (f64_from_string $rule-c)))))))
-
-; Keep the existing head-based scheduler.
-(exec-template
-  (exec 2
-        (, (pendingN $priority $g $rule-stv $premises))
-        (O (head 32 (selectedN $priority $g $rule-stv $premises)))))
