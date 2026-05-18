@@ -157,7 +157,7 @@ run_reduced_test() {
   out_templates="$(grep -c '^(exec-template' "$out")"
   assert_eq "$out_templates" "$runtime_templates" "reduced exec-template count"
 
-  assert_no_line_regex "$out" '^\(proof-open '
+  assert_no_line_regex "$out" '^\(open-proof '
   assert_no_line_regex "$out" '^\(selected-merge '
   assert_no_line_regex "$out" '^\(merge-input '
   assert_no_line_regex "$out" '^\(completed '
@@ -178,7 +178,7 @@ run_full_test() {
   out_templates="$(grep -c '^(exec-template' "$out")"
   assert_eq "$out_templates" "$runtime_templates" "full exec-template count"
 
-  assert_no_line_regex "$out" '^\(proof-open '
+  assert_no_line_regex "$out" '^\(open-proof '
   assert_no_line_regex "$out" '^\(selected-merge '
   assert_no_line_regex "$out" '^\(merge-input '
   assert_no_line_regex "$out" '^\(completed '

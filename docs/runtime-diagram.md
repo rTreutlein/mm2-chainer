@@ -100,20 +100,16 @@ exec 4"]
     WaitNext --> SpawnSubgoal
     PremDone -->|no| ProofCalc
 
-    ProofCalc --> Proved["proved(g, stv, proof-id)
+    ProofCalc --> OpenProof["open-proof(g, stv, proof-id)
 produce: exec 4
-consume: exec C, exec D, exec E"]
+consume: exec B, exec C, exec D, exec E"]
     ProofCalc --> Slot["slot(g)
 produce: exec 4
 consume: exec B, exec D"]
-    ProofCalc --> ProofOpen["proof-open(proof-id)
-produce: exec 4
-consume: exec B, exec C, exec D, exec E"]
 
-    Proved --> MergeSelect["selected-merge(g, stv, proof-id)
+    OpenProof --> MergeSelect["selected-merge(g, stv, proof-id)
 produce: per-goal exec C via head 1
 consume: exec D, exec E"]
-    ProofOpen --> MergeSelect
 
     MergeSelect --> FirstProof{Canonical fact already present?}
     FirstProof -->|no| Promote["Promote first proof directly to fact
@@ -121,13 +117,16 @@ exec D"]
     FirstProof -->|yes| ReplaceFact["Atomically consume fact(g, old-stv)
 and emit fact(g, merged-stv)
 exec E"]
+    Promote --> Proved["proved(g, stv, proof-id)
+produce: exec D, exec E"]
+    ReplaceFact --> Proved
 
     Promote --> Fact["fact(g, stv)
 produce: exec D, exec E
 consume: exec 0, exec 4, exec B, exec E"]
     ReplaceFact --> Fact
 
-    Fact --> CleanupSlot["Drop stale slot or stale reopen token
+    Fact --> CleanupSlot["Drop stale slot or stale open-proof token
 exec B"]
     Fact --> FutureGoals["Later Goal checks short-circuit on fact
 exec 0"]

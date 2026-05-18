@@ -8,12 +8,12 @@
            (fact $g $stv))
         (O (- (slot $g)))))
 
-; If an open-query wait regenerates an already merged proof, drop the reopen token.
+; If an open-query wait regenerates an already merged proof, drop the open token.
 (exec-template
   (exec B
-        (, (proof-open $proof-id)
+        (, (open-proof $g $stv $proof-id)
            (proof-merged $proof-id))
-        (O (- (proof-open $proof-id)))))
+        (O (- (open-proof $g $stv $proof-id)))))
 
 ; Drop a generated per-goal selector after one of that goal's proofs merges.
 ; Any still-open proof for the same goal can regenerate the same selector.
@@ -23,8 +23,7 @@
            (proved $g $stv $proof-id)
            (exec-template
              (exec C
-                   (, (proof-open $candidate-id)
-                      (proved $g $candidate-stv $candidate-id))
+                   (, (open-proof $g $candidate-stv $candidate-id))
                    (O (head 1
                         (selected-merge
                           $g
@@ -32,8 +31,7 @@
                           $candidate-id))))))
         (O (- (exec-template
                 (exec C
-                      (, (proof-open $candidate-id)
-                         (proved $g $candidate-stv $candidate-id))
+                      (, (open-proof $g $candidate-stv $candidate-id))
                       (O (head 1
                            (selected-merge
                              $g
@@ -44,12 +42,10 @@
 ; that goal's open proofs, so distinct goals can merge independently.
 (exec-template
   (exec C
-        (, (proof-open $proof-id)
-           (proved $g $stv $proof-id))
+        (, (open-proof $g $stv $proof-id))
         (O (+ (exec-template
                 (exec C
-                      (, (proof-open $candidate-id)
-                         (proved $g $candidate-stv $candidate-id))
+                      (, (open-proof $g $candidate-stv $candidate-id))
                       (O (head 1
                            (selected-merge
                              $g
@@ -61,12 +57,12 @@
   (exec D
         (, (selected-merge $g $stv $proof-id)
            (slot $g)
-           (proof-open $proof-id)
-           (proved $g $stv $proof-id))
+           (open-proof $g $stv $proof-id))
         (O (- (selected-merge $g $stv $proof-id))
            (- (slot $g))
-           (- (proof-open $proof-id))
+           (- (open-proof $g $stv $proof-id))
            (+ (proof-merged $proof-id))
+           (+ (proved $g $stv $proof-id))
            (+ (fact $g $stv)))))
 
 ; Later proofs atomically consume the current canonical fact and re-emit the
@@ -76,12 +72,12 @@
   (exec E
         (, (selected-merge $g ($s $c) $proof-id)
            (fact $g ($old-s $old-c))
-           (proof-open $proof-id)
-           (proved $g ($s $c) $proof-id))
+           (open-proof $g ($s $c) $proof-id))
         (O (- (selected-merge $g ($s $c) $proof-id))
-           (- (proof-open $proof-id))
+           (- (open-proof $g ($s $c) $proof-id))
            (- (fact $g ($old-s $old-c)))
            (+ (proof-merged $proof-id))
+           (+ (proved $g ($s $c) $proof-id))
            (pure (fact $g $merged-stv)
                  $merged-stv
                  (tuple
