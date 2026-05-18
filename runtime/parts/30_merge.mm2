@@ -12,15 +12,14 @@
 (exec-template
   (exec B
         (, (open-proof $g $stv $proof-id)
-           (proof-merged $proof-id))
+           (proved $g $stv $proof-id))
         (O (- (open-proof $g $stv $proof-id)))))
 
 ; Drop a generated per-goal selector after one of that goal's proofs merges.
 ; Any still-open proof for the same goal can regenerate the same selector.
 (exec-template
   (exec B
-        (, (proof-merged $proof-id)
-           (proved $g $stv $proof-id)
+        (, (proved $g $stv $proof-id)
            (exec-template
              (exec C
                    (, (open-proof $g $candidate-stv $candidate-id))
@@ -61,7 +60,6 @@
         (O (- (selected-merge $g $stv $proof-id))
            (- (slot $g))
            (- (open-proof $g $stv $proof-id))
-           (+ (proof-merged $proof-id))
            (+ (proved $g $stv $proof-id))
            (+ (fact $g $stv)))))
 
@@ -76,7 +74,6 @@
         (O (- (selected-merge $g ($s $c) $proof-id))
            (- (open-proof $g ($s $c) $proof-id))
            (- (fact $g ($old-s $old-c)))
-           (+ (proof-merged $proof-id))
            (+ (proved $g ($s $c) $proof-id))
            (pure (fact $g $merged-stv)
                  $merged-stv

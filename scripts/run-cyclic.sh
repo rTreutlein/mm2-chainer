@@ -10,8 +10,8 @@ mork run demos/cyclic.mm2 --steps 100 --aux-path outputs/cyclic_runtime.mm2 outp
 echo '== final facts =='
 sed -n '/^(fact /p' outputs/cyclic_run.mm2
 
-echo '== merged proof ids =='
-sed -n '/^(proof-merged /p' outputs/cyclic_run.mm2
+echo '== proof records =='
+sed -n '/^(proved /p' outputs/cyclic_run.mm2
 
 echo '== goal-paths (should NOT contain cyclic self-reference) =='
 sed -n '/^(goal-path /p' outputs/cyclic_run.mm2

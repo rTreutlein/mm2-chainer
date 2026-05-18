@@ -17,5 +17,5 @@ sed -n '/^(fact (Mammal x) /p' outputs/full_run.mm2
 echo '== Animal proofs =='
 sed -n '/^(proved (Animal x) /p' outputs/full_run.mm2
 
-echo '== merged proof ids =='
-sed -n '/^(proof-merged /p' outputs/full_run.mm2 | sed -n '1,20p'
+echo '== proof records =='
+sed -n '/^(proved /p' outputs/full_run.mm2 | sed -n '1,20p'

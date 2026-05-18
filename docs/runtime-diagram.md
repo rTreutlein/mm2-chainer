@@ -145,4 +145,4 @@ exec 0"]
 
 Some helper states are part of the runtime but were left out of the main flowchart to keep it readable:
 
-- `proof-merged(...)`: produced by `exec D` or `exec E`, consumed by `exec B`
+- `proved(...)`: durable proof record produced by `exec D` or `exec E`; also used to drop regenerated `open-proof(...)` tokens

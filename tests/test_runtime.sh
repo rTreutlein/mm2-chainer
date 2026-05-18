@@ -147,9 +147,9 @@ run_reduced_test() {
   animal_proofs="$(grep -c '^(proved (Animal x) ' "$out")"
   assert_eq "$animal_proofs" "2" "reduced Animal proof count"
 
-  local merged_proofs
-  merged_proofs="$(grep -c '^(proof-merged ' "$out")"
-  assert_eq "$merged_proofs" "4" "reduced merged proof count"
+  local proof_records
+  proof_records="$(grep -c '^(proved ' "$out")"
+  assert_eq "$proof_records" "4" "reduced proof record count"
 
   local runtime_templates
   runtime_templates="$(runtime_template_count)"

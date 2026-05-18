@@ -13,8 +13,8 @@ sed -n '/^(fact (Animal /p' outputs/reduced_run.mm2
 echo '== proofs for animal =='
 sed -n '/^(proved (Animal /p' outputs/reduced_run.mm2
 
-echo '== merged proof ids =='
-sed -n '/^(proof-merged /p' outputs/reduced_run.mm2
+echo '== proof records =='
+sed -n '/^(proved /p' outputs/reduced_run.mm2
 
 echo '== all facts =='
 sed -n '/^(fact /p' outputs/reduced_run.mm2

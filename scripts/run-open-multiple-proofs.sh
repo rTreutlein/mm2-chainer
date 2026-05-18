@@ -13,5 +13,5 @@ sed -n '/^(fact (Animal /p' outputs/open_multiple_proofs_run.mm2
 echo '== proofs for Animal ann =='
 sed -n '/^(proved (Animal ann) /p' outputs/open_multiple_proofs_run.mm2
 
-echo '== merge bookkeeping =='
-sed -n '/^(proof-merged /p' outputs/open_multiple_proofs_run.mm2
+echo '== proof records =='
+sed -n '/^(proved /p' outputs/open_multiple_proofs_run.mm2
