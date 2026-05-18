@@ -79,8 +79,6 @@ build_runtime_from_core() {
     printf '\n'
     cat runtime/parts/10_premises.mm2
     printf '\n'
-    cat runtime/parts/20_proofs.mm2
-    printf '\n'
     cat runtime/parts/30_merge.mm2
     printf '\n'
     cat runtime/parts/90_loop.mm2
@@ -118,8 +116,6 @@ build_runtime_from_core_with_sink_head() {
 RUNTIME
     printf '\n'
     sed '1,15d' runtime/parts/10_premises.mm2
-    printf '\n'
-    cat runtime/parts/20_proofs.mm2
     printf '\n'
     cat runtime/parts/30_merge.mm2
     printf '\n'
@@ -171,7 +167,7 @@ run_full_test() {
   local runtime="outputs/test_full_runtime.mm2"
   local out="outputs/test_full.mm2"
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
-  mork run rules/full_rules.mm2 --steps 30 --aux-path "$runtime" "$out" >/dev/null
+  mork run rules/full_rules.mm2 --steps 20 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Racket x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Racket x) pnil)))"
   assert_no_line_regex "$out" '^\(pendingN \$'

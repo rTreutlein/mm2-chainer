@@ -7,8 +7,7 @@ Repository layout:
   - `default_seed.mm2`: default seed goal/facts for the shipped demos
   - `parts/`: ordered runtime phases assembled by `scripts/build-runtime.sh`
     - `00_frontier.mm2`: goal satisfaction, rule lowering, and scheduling
-    - `10_premises.mm2`: premise frontier traversal and premise STV aggregation
-    - `20_proofs.mm2`: proof STV calculation and proof emission
+    - `10_premises.mm2`: premise frontier traversal, premise STV aggregation, and proof emission
     - `30_merge.mm2`: proof merge and canonical fact revision
     - `90_loop.mm2`: `exec-template` activation loop
 - `rules/`

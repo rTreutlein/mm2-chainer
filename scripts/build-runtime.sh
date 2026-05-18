@@ -22,8 +22,6 @@ mkdir -p "$(dirname "$output")"
   printf '\n'
   cat runtime/parts/10_premises.mm2
   printf '\n'
-  cat runtime/parts/20_proofs.mm2
-  printf '\n'
   cat runtime/parts/30_merge.mm2
   printf '\n'
   cat runtime/parts/90_loop.mm2

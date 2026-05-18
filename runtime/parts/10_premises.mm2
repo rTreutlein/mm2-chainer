@@ -15,13 +15,21 @@
 
 (exec-template
   (exec 4
-        (, (wait-premises $g $rule-stv pnil $premise-stv $proof-id))
-        (O (- (wait-premises $g $rule-stv pnil $premise-stv $proof-id))
-           (+ (proof-input
-                $g
-                $rule-stv
-                $premise-stv
-                $proof-id)))))
+        (, (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id))
+        (O (- (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id))
+           (pure (proved $g $proof-stv $proof-id)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $rule-s)
+                       (f64_from_string $premise-s)))
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $rule-c)
+                       (f64_from_string $premise-c)))))
+           (+ (slot $g))
+           (+ (proof-open $proof-id)))))
 
 (exec-template
   (exec 4

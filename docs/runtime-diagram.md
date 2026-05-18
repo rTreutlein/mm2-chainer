@@ -13,7 +13,6 @@ flowchart LR
         Seed[runtime/default_seed.mm2]
         Frontier[runtime/parts/00_frontier.mm2]
         Premises[runtime/parts/10_premises.mm2]
-        Proofs[runtime/parts/20_proofs.mm2]
         Merge[runtime/parts/30_merge.mm2]
         Loop[runtime/parts/90_loop.mm2]
         ReducedRules[rules/reduced_rules.mm2]
@@ -39,7 +38,6 @@ flowchart LR
     Seed --> BuildRuntime
     Frontier --> BuildRuntime
     Premises --> BuildRuntime
-    Proofs --> BuildRuntime
     Merge --> BuildRuntime
     Loop --> BuildRuntime
     BuildRuntime --> ReducedRuntime
@@ -80,9 +78,8 @@ produce: exec 3, exec 4
 consume: exec 4"]
 
     WaitList --> PremiseCheck{Premises empty?}
-    PremiseCheck -->|yes| ProofSeed["proof-input(g, rule-stv, premise-stv, proof-id)
- produce: exec 4
- consume: exec 8"]
+    PremiseCheck -->|yes| ProofCalc["Compute packed proof STV and emit proof
+exec 4"]
     PremiseCheck -->|no| Wait["wait-premise(current premise, rest, agg-stv, proof-id)
  produce: exec 4
  consume: exec 4"]
@@ -101,18 +98,16 @@ exec 4"]
     PremDone -->|yes| WaitNext["Advance wait-premises to remaining premises
 exec 4"]
     WaitNext --> SpawnSubgoal
-    PremDone -->|no| ProofSeed
+    PremDone -->|no| ProofCalc
 
-    ProofSeed --> ProofCalc["Compute packed proof STV and emit proof
-exec 8"]
     ProofCalc --> Proved["proved(g, stv, proof-id)
-produce: exec 8
+produce: exec 4
 consume: exec C, exec D, exec E"]
     ProofCalc --> Slot["slot(g)
-produce: exec 8
+produce: exec 4
 consume: exec B, exec D"]
     ProofCalc --> ProofOpen["proof-open(proof-id)
-produce: exec 8
+produce: exec 4
 consume: exec B, exec C, exec D, exec E"]
 
     Proved --> MergeSelect["selected-merge(g, stv, proof-id)
