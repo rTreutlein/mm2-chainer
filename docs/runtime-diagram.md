@@ -108,7 +108,7 @@ produce: exec 4
 consume: exec B, exec D"]
 
     OpenProof --> MergeSelect["selected-merge(g, stv, proof-id)
-produce: per-goal exec C via head 1
+produce: exec C via global head 1
 consume: exec D, exec E"]
 
     MergeSelect --> FirstProof{Canonical fact already present?}
@@ -135,7 +135,7 @@ exec 0"]
 ## Reading Notes
 
 - `head 32` is the rule scheduler gate from `pendingN` into `wait-premises`.
-- Merge selection installs a small selector for each concrete goal; each selector uses `head 1`, so proofs for the same goal are serialized while distinct goals can merge independently.
+- Merge selection uses one static `head 1` selector over open proofs. This avoids generated selector templates while keeping a one-step merge delay before fact promotion or revision.
 - Single-premise `rule` entries are normalized into the same generic `ruleN` path as multi-premise rules.
 - STVs are packed as `(strength confidence)` tuples throughout the runtime. Premise aggregation uses `min` across premise STVs, then proof STV uses rule STV `*` aggregated premise STV.
 - Later proofs do not create duplicate canonical facts; they revise the existing `fact` through the merge path.

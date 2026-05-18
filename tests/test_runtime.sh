@@ -308,7 +308,7 @@ EOF
   mork run "$rules" --steps 70 --aux-path "$runtime" "$out_mid" >/dev/null
   mork run "$rules" --steps 260 --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premises (And (Own (i ann)) (Pet ann)) (1.0 1.0) (pcons (Pet ann) pnil) (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+  assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) (1.0 1.0) (Pet ann) pnil (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.7 1.0))"
   assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.7 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
 }

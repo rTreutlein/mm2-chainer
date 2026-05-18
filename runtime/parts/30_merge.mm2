@@ -15,41 +15,19 @@
            (proved $g $stv $proof-id))
         (O (- (open-proof $g $stv $proof-id)))))
 
-; Drop a generated per-goal selector after one of that goal's proofs merges.
-; Any still-open proof for the same goal can regenerate the same selector.
+; Drop stale merge selections for proofs that have already merged.
 (exec-template
   (exec B
         (, (proved $g $stv $proof-id)
-           (exec-template
-             (exec C
-                   (, (open-proof $g $candidate-stv $candidate-id))
-                   (O (head 1
-                        (selected-merge
-                          $g
-                          $candidate-stv
-                          $candidate-id))))))
-        (O (- (exec-template
-                (exec C
-                      (, (open-proof $g $candidate-stv $candidate-id))
-                      (O (head 1
-                           (selected-merge
-                             $g
-                             $candidate-stv
-                             $candidate-id)))))))))
+           (selected-merge $g $stv $proof-id))
+        (O (- (selected-merge $g $stv $proof-id)))))
 
-; Install one selector per concrete goal.  Each selector uses `head 1` over only
-; that goal's open proofs, so distinct goals can merge independently.
+; Select one open proof globally for merging.  This avoids generated per-goal
+; templates; selected-merge still gives stale slots a cleanup step before merge.
 (exec-template
   (exec C
         (, (open-proof $g $stv $proof-id))
-        (O (+ (exec-template
-                (exec C
-                      (, (open-proof $g $candidate-stv $candidate-id))
-                      (O (head 1
-                           (selected-merge
-                             $g
-                             $candidate-stv
-                             $candidate-id)))))))))
+        (O (head 1 (selected-merge $g $stv $proof-id)))))
 
 ; First proof for an atom promotes directly into the canonical fact.
 (exec-template
@@ -64,8 +42,7 @@
            (+ (fact $g $stv)))))
 
 ; Later proofs atomically consume the current canonical fact and re-emit the
-; revised STV.  This serializes merges per goal while allowing distinct goals
-; to merge independently.
+; revised STV.
 (exec-template
   (exec E
         (, (selected-merge $g ($s $c) $proof-id)

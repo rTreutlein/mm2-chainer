@@ -59,9 +59,8 @@ The STV pipeline takes more MM2 steps than the original chainer because it separ
 The source is split by those runtime phases under `runtime/parts/`. MM2 aux loading uses one file,
 so the run scripts first assemble the ordered parts into `outputs/*_runtime.mm2`.
 
-It no longer allocates a temporary `exec-template` per proof attempt. Merge selection uses
-short-lived per-goal selectors so proofs for distinct goals can merge independently, while
-proofs for the same goal still revise the canonical fact one at a time. It no longer has
+It no longer allocates temporary `exec-template`s per proof attempt or per merge goal.
+Proofs still revise the canonical fact one at a time. It no longer has
 separate single-premise and multi-premise execution paths. All rules flow through one generic
 `ruleN -> pendingN -> wait-premises` frontier, with plain `rule` lowered into a
 single-premise `ruleN` shape at runtime.
