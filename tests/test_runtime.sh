@@ -139,7 +139,7 @@ run_reduced_test() {
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/reduced_rules.mm2 --steps 220 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(fact (Animal x) (0.6867605633802818 0.584))"
+  assert_contains "$out" "(fact (Animal x) (0.6877292576419214 0.5240274599542334))"
   assert_contains "$out" "(fact (Mammal x) (0.9 0.6))"
   assert_contains "$out" "(fact (Pet x) (0.8 0.7))"
 
@@ -169,7 +169,7 @@ run_full_test() {
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/full_rules.mm2 --steps 20 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Racket x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Racket x) pnil)))"
+  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Paddle x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Paddle x) pnil)))"
   assert_no_line_regex "$out" '^\(pendingN \$'
 
   local runtime_templates
@@ -345,7 +345,7 @@ run_open_multiple_proofs_demo_test() {
   build_runtime_from_core "$runtime"
   mork run demos/open_multiple_proofs.mm2 --steps 130 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(fact (Animal ann) (0.9249999999999999 0.96))"
+  assert_contains "$out" "(fact (Animal ann) (0.925 0.888888888888889))"
   assert_contains "$out" "(proved (Animal ann) (0.9 0.8) (scheduledN (Animal ann) (pcons (Dog ann) pnil)))"
   assert_contains "$out" "(proved (Animal ann) (0.95 0.8) (scheduledN (Animal ann) (pcons (Cat ann) pnil)))"
 

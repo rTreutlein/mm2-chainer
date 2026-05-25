@@ -1,13 +1,6 @@
 ; Proof merge and truth-value revision into canonical facts.
 ; STVs are carried as packed pairs: (strength confidence).
 
-; Clean up stale first-proof slots once a canonical fact exists.
-(exec-template
-  (exec B
-        (, (slot $g)
-           (fact $g $stv))
-        (O (- (slot $g)))))
-
 ; If an open-query wait regenerates an already merged proof, drop the open token.
 (exec-template
   (exec B
@@ -15,63 +8,16 @@
            (proved $g $stv $proof-id))
         (O (- (open-proof $g $stv $proof-id)))))
 
-; Drop stale merge selections for proofs that have already merged.
-(exec-template
-  (exec B
-        (, (proved $g $stv $proof-id)
-           (selected-merge $g $stv $proof-id))
-        (O (- (selected-merge $g $stv $proof-id)))))
-
-; Select one open proof globally for merging.  This avoids generated per-goal
-; templates; selected-merge still gives stale slots a cleanup step before merge.
+; Batch-revise every open proof for each goal.  The revise-proofs sink groups
+; inputs by goal, removes consumed open proofs and old canonical facts, writes
+; proved records, and emits one revised canonical fact per goal.
 (exec-template
   (exec C
         (, (open-proof $g $stv $proof-id))
-        (O (head 1 (selected-merge $g $stv $proof-id)))))
+        (O (revise-proofs $g $proof-id $stv))))
 
-; First proof for an atom promotes directly into the canonical fact.
 (exec-template
-  (exec D
-        (, (selected-merge $g $stv $proof-id)
-           (slot $g)
-           (open-proof $g $stv $proof-id))
-        (O (- (selected-merge $g $stv $proof-id))
-           (- (slot $g))
-           (- (open-proof $g $stv $proof-id))
-           (+ (proved $g $stv $proof-id))
-           (+ (fact $g $stv)))))
-
-; Later proofs atomically consume the current canonical fact and re-emit the
-; revised STV.
-(exec-template
-  (exec E
-        (, (selected-merge $g ($s $c) $proof-id)
-           (fact $g ($old-s $old-c))
-           (open-proof $g ($s $c) $proof-id))
-        (O (- (selected-merge $g ($s $c) $proof-id))
-           (- (open-proof $g ($s $c) $proof-id))
-           (- (fact $g ($old-s $old-c)))
-           (+ (proved $g ($s $c) $proof-id))
-           (pure (fact $g $merged-stv)
-                 $merged-stv
-                 (tuple
-                   (f64_to_string
-                     (div_f64
-                       (sum_f64
-                         (product_f64
-                           (f64_from_string $old-s)
-                           (f64_from_string $old-c))
-                         (product_f64
-                           (f64_from_string $s)
-                           (f64_from_string $c)))
-                       (sum_f64
-                         (f64_from_string $old-c)
-                         (f64_from_string $c))))
-                   (f64_to_string
-                     (sub_f64
-                       (f64_from_string 1.0)
-                       (product_f64
-                         (sub_f64 (f64_from_string 1.0)
-                                  (f64_from_string $old-c))
-                         (sub_f64 (f64_from_string 1.0)
-                                  (f64_from_string $c))))))))))
+  (exec C
+        (, (open-proof $g $stv $proof-id)
+           (fact $g $old-stv))
+        (O (revise-proofs $g $proof-id $stv $old-stv))))

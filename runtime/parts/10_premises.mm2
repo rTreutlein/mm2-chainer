@@ -27,8 +27,7 @@
                    (f64_to_string
                      (product_f64
                        (f64_from_string $rule-c)
-                       (f64_from_string $premise-c)))))
-           (+ (slot $g)))))
+                       (f64_from_string $premise-c))))))))
 
 (exec-template
   (exec 4
