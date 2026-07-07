@@ -74,8 +74,26 @@
 
 ; --- rule-kind classification of the cpu tail -------------------------------
 
-(= (mm2-ir-fold-pattern (cpu FoldAllCompiled ($kbid $pat extract-tv $zero $acc $finish $resmode) $out))
-   (let $skb (mm2-ir-scope-kb $kbid) ($skb $pat)))
+; Only the plain base-rate fold shape maps onto the runtime's base-rate
+; relation. Anything else (weighted-universe folds for var-headed patterns,
+; grouped folds, ...) makes the whole tail unsupported -- loudly: a partial
+; match here used to leave an unreduced helper call inside the rule atom,
+; which silently dropped the rule.
+(= (mm2-ir-fold-pattern $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled ($kbid $pat extract-tv $zero BaseRateAcc base-rate $resmode) $out)
+       (let $skb (mm2-ir-scope-kb $kbid) (brfold ($skb $pat))))
+      ($other unsupported-fold))))
+
+(= (mm2-ir-stv-kind $pos $fa $fb $tail)
+   (case ($fa $fb)
+     ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
+      ($other (unsupported-tail $tail)))))
+
+(= (mm2-ir-inv-kind $pos $fa $fb $materialize $tail)
+   (case ($fa $fb)
+     ((((brfold $pa) (brfold $pb)) (inv-kind $pos $pa $pb $materialize))
+      ($other (unsupported-tail $tail)))))
 
 (= (mm2-ir-classify $tail)
    (case $tail
@@ -93,16 +111,20 @@
          (cons $fold-b
            (cons (cpu ImplicationCTVFormula ($atv $btv (STV $s $c)) $ctv)
              (cons (cpu CTVModusPonensFormula ($agg $ctv) $out) ()))))
-       (stv-kind ($s $c) (mm2-ir-fold-pattern $fold-a) (mm2-ir-fold-pattern $fold-b)))
+       (mm2-ir-stv-kind ($s $c)
+                        (mm2-ir-fold-pattern $fold-a)
+                        (mm2-ir-fold-pattern $fold-b)
+                        $tail))
       ((cons $fold-a
          (cons $fold-b
            (cons (cpu ImplicationCTVFormula ($atv $btv $rule-tv) $ctv)
              (cons (cpu CTVInversionFormula ($atv2 $btv2 $ctv) $ictv)
                (cons (cpu CTVModusPonensFormula ($agg $ictv) $out) ())))))
-       (inv-kind (mm2-ir-rule-pos $rule-tv)
-                 (mm2-ir-fold-pattern $fold-a)
-                 (mm2-ir-fold-pattern $fold-b)
-                 (mm2-ir-materialize? $rule-tv)))
+       (mm2-ir-inv-kind (mm2-ir-rule-pos $rule-tv)
+                        (mm2-ir-fold-pattern $fold-a)
+                        (mm2-ir-fold-pattern $fold-b)
+                        (mm2-ir-materialize? $rule-tv)
+                        $tail))
       ($other (unsupported-tail $other)))))
 
 ; Total-implication rules assemble their conclusion TV structurally as
@@ -161,15 +183,34 @@
      (fact $g ($s $c))
      (fact-evidence $g ($s $c) (pcons (fact-ev $g) pnil)))))
 
+; The TV is is-var-checked before structural matching: a case pattern
+; (STV $s $c) would UNIFY with a free tv var (identity-query ctxatoms carry
+; one) and emit a wildcard fact with unbound strength/confidence that then
+; unifies with every premise lookup.
+(= (mm2-ir-fact-stmt $g $tv)
+   (if (is-var $tv)
+     (notsupported-ir (free-tv-fact $g))
+     (case $tv
+       (((STV $s $c)
+         (if (or (is-var $s) (is-var $c))
+           (notsupported-ir (free-tv-fact $g))
+           (mm2-ir-emit-fact $g ($s $c))))
+        ($other (notsupported-ir (fact-tv $g $other)))))))
+
 ; Rules with an implication-typed premise need that premise's
 ; total-implication query scaffold (assumption contexts + ctvpair rule) in
 ; the store -- PeTTa compiles it lazily when the chainer reaches the subgoal;
 ; mm2 expands it eagerly at add time. The marker is resolved by the harness
 ; (mm2-add-compiled), which guards against duplicate scaffolds.
+; The head is matched as a variable and checked explicitly: a case pattern
+; (Implication $ps $cs) would UNIFY with a var-headed premise like ($r $x $y),
+; binding the rule's own $r to Implication and mangling the rule.
 (= (mm2-ir-implication-query $p)
    (case $p
-     (((($kb $ctx $vars) (Implication $ps $cs))
-       (needs-implication-query $kb (Implication $ps $cs)))
+     (((($kb $ctx $vars) ($head $ps $cs))
+       (if (and (not (is-var $head)) (== $head Implication))
+         (needs-implication-query $kb ($head $ps $cs))
+         (empty)))
       ($other (empty)))))
 
 (= (mm2-ir-implication-queries pnil) (empty))
@@ -182,8 +223,8 @@
 ; queries add into their fresh contexts.
 (= (mm2-translate-stmt $stmt)
    (case $stmt
-     (((: $shape $prf $type (STV $s $c))
-       (mm2-ir-emit-fact ($shape $type) ($s $c)))
+     (((: $shape $prf $type $tv)
+       (mm2-ir-fact-stmt ($shape $type) $tv))
       ((rules ($prems |- $ccl))
        (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
               ((subgoal $ctype $ctv) (mm2-ir-item $ccl))
@@ -192,8 +233,8 @@
                        $ctv)))
          (superpose ((mm2-ir-emit-rule $ctype $ptypes $kind)
                      (mm2-ir-implication-queries $ptypes)))))
-      (($type $shape $prf (STV $s $c))
-       (mm2-ir-emit-fact ($shape $type) ($s $c)))
+      (($type $shape $prf $tv)
+       (mm2-ir-fact-stmt ($shape $type) $tv))
       ($other (notsupported-ir (stmt $other))))))
 
 (= (mm2-translate-all ()) ())

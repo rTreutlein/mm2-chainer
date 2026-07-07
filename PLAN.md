@@ -203,6 +203,51 @@ Commit 49782b9 (mm2-chainer) + 3b7e80d (MORK):
   and margproj proofs together (that's the task-#15 proof-store pooling
   work, not a projection bug). Independent-fact conjunctions pass exactly.
 
+## Total-implication + negated conclusions (DONE 2026-07-07, commits
+## 0a1c5da..HEAD)
+
+- `(proj ctvpair)` rule kind: total-implication queries conclude a
+  contextual pair fact `(fact $g (ctvpair $pos $neg))` assembled
+  structurally from the two assumption-context conclusions (detected by the
+  CTV-shaped conclusion TV, guarded by is-expr since adapter TVs are free
+  vars). ctvpair facts bypass open-proof (revision is (s c)-only); CTV
+  premises contribute their positive branch (tv_formulas.metta MP/BaseRateAcc
+  CTV clauses); base-rate + revise execs destructure packed pairs so ctvpair
+  facts can't panic the sinks (sinks.rs:763 asserts arity 2).
+- Implication-typed rule premises eagerly expand their total-implication
+  scaffold at add time (needs-implication-query marker, ti-compiled guard) —
+  PeTTa compiles sub-queries lazily at chain time, mm2 can't.
+- `ctvn` rule kind: modus ponens + NotFormula tails (negated conclusions).
+- mm2-test keys compare with =alpha (open-query results carry free vars whose
+  identities differ; == counted alpha-equivalent answers as FAIL).
+- test_implication_premise 14 pass / 2 fail (was 7/8 at first corpus run).
+  Remaining: LocalFact self-implication (identity-query ctxatom with free TV),
+  BiImplication combined query (one context conclusion lands at strength 0.0
+  — suspect inverse-rule interference via revision; the directional
+  bi-forward/bi-backward tests pass).
+
+## Open investigation notes (2026-07-07)
+
+- **test_var_head** (2 fails, `(Symmetric $r), ($r $x $y) -> ($r $y $x)`):
+  MORK unification handles var-headed data fine (verified with a minimal
+  exec probe) — the failure is elsewhere in the schedule/premise chain;
+  trace with a live single-file run.
+- **test_math** now segfaults mork_ffi (SIGSEGV, was TIMEOUT) near the end
+  of the file; verdicts before it survive. Compute-heavy recursion suspect.
+- **test_best_first_runtime** fails are agenda-order semantics: expected
+  values assume PeTTa's best-first agenda finds specific proofs first under
+  budget; mm2's wave execution derives all and revises (same family as
+  frontier bounding, PLAN item 6).
+- **Lifting-merge pooling algorithm** (backward_proof_store.metta:265-425)
+  is now understood: group proofs of one grounded output; shared = evidence
+  intersection (fact-ev only); guards = all proofs implication-shaped +
+  residual evidence pairwise disjoint + 2-point strength round-trip; pooled
+  = MP(real shared conjunction TV, revised residual CTVs) where residual =
+  CTV(reeval shared->STV(1 1), reeval shared->STV(0 1)) re-evaluated through
+  each proof's own premise-fold+MP tree. Port needs per-premise TVs carried
+  into the revise sink rows (evset items are in premise order) and the rule
+  CTV in the proof token — flat (s c) agg is not enough.
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
