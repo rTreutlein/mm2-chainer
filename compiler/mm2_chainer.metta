@@ -158,13 +158,16 @@
       ((cons (: $prf $type $tv) $rest) (cons ($type $tv) (mm2-result-keys $rest)))
       ((cons $other $rest) (mm2-result-keys $rest)))))
 
+; Keys are compared alpha-equivalently: open-query results carry free
+; variables whose identities differ between the expected list and the
+; readback.
 (= (mm2-contains-key () $key) false)
 (= (mm2-contains-key (cons $x $rest) $key)
-   (if (== $x $key) true (mm2-contains-key $rest $key)))
+   (if (=alpha $x $key) true (mm2-contains-key $rest $key)))
 
 (= (mm2-contains-close () $key) false)
 (= (mm2-contains-close (cons ($type $tv) $rest) ($wtype $wtv))
-   (if (and (== $type $wtype) (mm2-tv-close $tv $wtv))
+   (if (and (=alpha $type $wtype) (mm2-tv-close $tv $wtv))
      true
      (mm2-contains-close $rest ($wtype $wtv))))
 

@@ -25,6 +25,31 @@
                        (f64_from_string $neg-s)
                        (f64_from_string $neg-c))))))))
 
+; Negated-conclusion rules (kind ctvn) are modus ponens followed by
+; NotFormula: strength complemented, confidence unchanged.
+(exec-template
+  (exec 4
+        (, (wait-premises $g (ctvn ($pos-s $pos-c) ($neg-s $neg-c)) pnil ($premise-s $premise-c) $proof-id $evset))
+        (O (- (wait-premises $g (ctvn ($pos-s $pos-c) ($neg-s $neg-c)) pnil ($premise-s $premise-c) $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (sub_f64
+                       (f64_from_string 1.0)
+                       (pln_mp_strength_f64
+                         (f64_from_string $premise-s)
+                         (f64_from_string $pos-s)
+                         (f64_from_string $neg-s))))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $premise-c)
+                       (f64_from_string $pos-s)
+                       (f64_from_string $pos-c)
+                       (f64_from_string $neg-s)
+                       (f64_from_string $neg-c))))))))
+
 ; Plain STV rules first derive their negative branch from the current base
 ; rates of the rule's antecedent and consequent patterns (PeTTaChainer's
 ; ImplicationCTVFormula):

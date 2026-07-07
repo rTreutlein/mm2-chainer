@@ -86,6 +86,9 @@
       ((cons (cpu NotFormula ($tvin) $out) ()) (proj-kind not))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
+      ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
+         (cons (cpu NotFormula ($out2) $final) ()))
+       (ctvn-kind ($ps $pc) ($ns $nc)))
       ((cons $fold-a
          (cons $fold-b
            (cons (cpu ImplicationCTVFormula ($atv $btv (STV $s $c)) $ctv)
@@ -131,6 +134,9 @@
 
 (= (mm2-ir-emit-rule $ctype $ptypes (ctv-kind $pos $neg))
    (ruleN $ctype (ctv $pos $neg) $ptypes))
+
+(= (mm2-ir-emit-rule $ctype $ptypes (ctvn-kind $pos $neg))
+   (ruleN $ctype (ctvn $pos $neg) $ptypes))
 
 (= (mm2-ir-emit-rule $ctype $ptypes (stv-kind $pos $pa $pb))
    (superpose (
