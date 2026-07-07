@@ -14,21 +14,69 @@
                 (scheduledN $g $premises)
                 pnil)))))
 
+; Rule application is PeTTa's CTVModusPonensFormula: the aggregated premise
+; TV is pushed through the rule's contextual TV (positive and negative
+; branches) with idealized second-order confidence propagation.
 (exec-template
   (exec 4
-        (, (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id $evset))
-        (O (- (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id $evset))
+        (, (wait-premises $g (ctv ($pos-s $pos-c) ($neg-s $neg-c)) pnil ($premise-s $premise-c) $proof-id $evset))
+        (O (- (wait-premises $g (ctv ($pos-s $pos-c) ($neg-s $neg-c)) pnil ($premise-s $premise-c) $proof-id $evset))
            (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (product_f64
-                       (f64_from_string $rule-s)
-                       (f64_from_string $premise-s)))
+                     (pln_mp_strength_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $pos-s)
+                       (f64_from_string $neg-s)))
                    (f64_to_string
-                     (product_f64
+                     (pln_mp_confidence_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $premise-c)
+                       (f64_from_string $pos-s)
+                       (f64_from_string $pos-c)
+                       (f64_from_string $neg-s)
+                       (f64_from_string $neg-c))))))))
+
+; Plain STV rules first derive their negative branch from the current base
+; rates of the rule's antecedent and consequent patterns (PeTTaChainer's
+; ImplicationCTVFormula):
+;
+;   neg strength   = NegativeBranchStrength(ante-s, cons-s, rule-s)
+;   neg confidence = 0.25 * min(ante-c, cons-c, rule-c)
+(exec-template
+  (exec 4
+        (, (wait-premises $g (stv ($rule-s $rule-c) (brpat $ante $cons)) pnil ($premise-s $premise-c) $proof-id $evset)
+           (base-rate $ante ($ante-s $ante-c))
+           (base-rate $cons ($cons-s $cons-c)))
+        (O (- (wait-premises $g (stv ($rule-s $rule-c) (brpat $ante $cons)) pnil ($premise-s $premise-c) $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $rule-s)
+                       (pln_negative_branch_strength_f64
+                         (f64_from_string $ante-s)
+                         (f64_from_string $cons-s)
+                         (f64_from_string $rule-s))))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $premise-c)
+                       (f64_from_string $rule-s)
                        (f64_from_string $rule-c)
-                       (f64_from_string $premise-c))))))))
+                       (pln_negative_branch_strength_f64
+                         (f64_from_string $ante-s)
+                         (f64_from_string $cons-s)
+                         (f64_from_string $rule-s))
+                       (product_f64
+                         (f64_from_string 0.25)
+                         (min_f64
+                           (f64_from_string $ante-c)
+                           (f64_from_string $cons-c)
+                           (f64_from_string $rule-c))))))))))
 
 (exec-template
   (exec 4

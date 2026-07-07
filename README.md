@@ -7,6 +7,7 @@ Repository layout:
   - `default_seed.mm2`: default seed goal/facts for the shipped demos
   - `parts/`: ordered runtime phases assembled by `scripts/build-runtime.sh`
     - `00_frontier.mm2`: goal satisfaction, rule lowering, and scheduling
+    - `05_baserate.mm2`: base-rate maintenance for derived rule CTVs
     - `10_premises.mm2`: premise frontier traversal, premise STV aggregation, and proof emission
     - `30_merge.mm2`: proof merge and canonical fact revision
     - `90_loop.mm2`: `exec-template` activation loop
@@ -62,8 +63,23 @@ so the run scripts first assemble the ordered parts into `outputs/*_runtime.mm2`
 It no longer allocates temporary `exec-template`s per proof attempt or per merge goal.
 Proofs still revise the canonical fact one at a time. It no longer has
 separate single-premise and multi-premise execution paths. All rules flow through one generic
-`ruleN -> pendingN -> wait-premises` frontier, with plain `rule` lowered into a
-single-premise `ruleN` shape at runtime.
+`ruleN -> pendingN -> wait-premises` frontier.
+
+Rule truth values are structured PeTTaChainer-style contextual TVs:
+
+- `(ruleN $g (ctv ($s+ $c+) ($s- $c-)) $premises)`: explicit CTV rule
+- `(ruleN $g (stv ($s $c) (brpat $ante $cons)) $premises)`: plain STV rule whose
+  negative branch is derived at fire time from the base rates of the `brpat`
+  patterns (maintained by `05_baserate.mm2` and MORK's `fold-base-rate` sink)
+- `(adapterN $g $premises)`: identity rule for compound queries; the premise
+  aggregate is used directly
+
+Truth-value propagation matches PeTTaChainer's formulas (tv_formulas.metta):
+premise lists fold with `AndFormula` (product strength, idealized product
+confidence) and rule application is `CTVModusPonensFormula` (idealized
+second-order modus ponens), implemented as MORK pure ops
+(`pln_and_confidence_f64`, `pln_mp_strength_f64`, `pln_mp_confidence_f64`,
+`pln_negative_branch_strength_f64`).
 
 Current script defaults:
 

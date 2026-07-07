@@ -18,11 +18,8 @@ mkdir -p "$(dirname "$output")"
     printf '\n'
   fi
 
-  cat runtime/parts/00_frontier.mm2
-  printf '\n'
-  cat runtime/parts/10_premises.mm2
-  printf '\n'
-  cat runtime/parts/30_merge.mm2
-  printf '\n'
-  cat runtime/parts/90_loop.mm2
+  for part in runtime/parts/*.mm2; do
+    cat "$part"
+    printf '\n'
+  done
 } > "$output"

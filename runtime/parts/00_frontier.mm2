@@ -10,8 +10,15 @@
 
 ; Unified rules use ruleN for both single- and multi-premise rules.
 ; Premises are encoded as (pcons prem1 (pcons prem2 ... pnil)).
-; The scheduler key is derived from rule confidence rather than stored as a
-; separate authored rule field:
+; The rule truth value is structured as ($kind ($s $c) $extra):
+;
+;   (ctv ($s+ $c+) ($s- $c-))         explicit contextual TV
+;   (stv ($s $c) (brpat $ante $cons)) plain STV; the negative branch is
+;                                     derived at fire time from the base
+;                                     rates keyed by the brpat patterns
+;
+; The scheduler key is derived from the positive-branch confidence rather
+; than stored as a separate authored rule field:
 ;
 ;   uncertainty = 1.0 - confidence
 ;   key = hex(big_endian_f64(uncertainty))
@@ -22,9 +29,9 @@
 (exec-template
   (exec 1
         (, (, (Goal $g))
-           (ruleN $g $rule-s $rule-c $premises))
+           (ruleN $g ($kind ($rule-s $rule-c) $extra) $premises))
         (O (- (, (Goal $g)))
-           (pure (pendingN $priority $g ($rule-s $rule-c) $premises)
+           (pure (pendingN $priority $g ($kind ($rule-s $rule-c) $extra) $premises)
                  $priority
                  (encode_hex
                    (sub_f64 (f64_from_string 1.0)
