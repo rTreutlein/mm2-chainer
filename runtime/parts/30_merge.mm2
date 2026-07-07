@@ -11,14 +11,18 @@
 ; Batch-revise every open proof for each goal.  The revise-proofs sink groups
 ; inputs by goal, removes consumed open proofs and old canonical facts, writes
 ; proved records, and emits one revised canonical fact per goal.
-(exec-template
-  (exec C
-        (, (open-proof $g $stv $proof-id $evset))
-        (O (revise-proofs $g $proof-id $stv $evset))))
-
+;
+; The revision-aware exec must run before the proofs-only one (C before D):
+; it consumes the open proofs of goals that already have a canonical fact so
+; the proofs-only exec cannot write a second fact for the same goal.
 (exec-template
   (exec C
         (, (open-proof $g $stv $proof-id $evset)
            (fact $g $old-stv)
            (fact-evidence $g $old-stv $old-evset))
         (O (revise-proofs $g $proof-id $stv $evset $old-stv $old-evset))))
+
+(exec-template
+  (exec D
+        (, (open-proof $g $stv $proof-id $evset))
+        (O (revise-proofs $g $proof-id $stv $evset))))

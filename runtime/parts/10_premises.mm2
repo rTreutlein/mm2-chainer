@@ -93,6 +93,11 @@
 
 ; The first matched premise seeds the aggregate directly.  Later premises fold
 ; with PeTTa-compatible AndFormula confidence propagation.
+;
+; Evidence items identify the premise source only (like PeTTaChainer proof
+; names), never its truth value: a re-derivation from the same source must
+; overlap the fact's accumulated evidence so the merge stays idempotent
+; instead of revising the same evidence in at a new value.
 (exec-template
   (exec 4
         (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset)
@@ -104,7 +109,7 @@
                 $rest
                 ($prem-s $prem-c)
                 $proof-id
-                (pcons (fact-ev $prem ($prem-s $prem-c)) $evset))))))
+                (pcons (fact-ev $prem) $evset))))))
 
 (exec-template
   (exec 4
@@ -117,7 +122,7 @@
                    $rest
                    $next-agg-stv
                    $proof-id
-                   (pcons (fact-ev $prem ($prem-s $prem-c)) $evset))
+                   (pcons (fact-ev $prem) $evset))
                  $next-agg-stv
                  (tuple
                    (f64_to_string
@@ -130,3 +135,81 @@
                        (f64_from_string $agg-c)
                        (f64_from_string $prem-s)
                        (f64_from_string $prem-c))))))))
+
+; Inverse rules (kind inv) apply PeTTa's CTVInversionFormula at fire time:
+; the original rule's positive branch is inverted through the base rates of
+; its antecedent ($ante) and consequent ($cons), and the inverted CTV is
+; pushed through modus ponens with the consequent witness ($premise TV).
+; The negative inverted branch reuses the same ops with complemented
+; consequent-rate/strength arguments.
+;
+; Inversion can be rejected (no base-rate evidence yet, or marginals outside
+; the Frechet bounds), so the attempt does not consume the wait record: it
+; emits an (inv-checked ($flag $s $c) ...) verdict each round. An accepted
+; verdict consumes both and opens the proof; a rejected verdict is dropped
+; and the attempt retries as the base rates evolve.
+(exec-template
+  (exec 4
+        (, (wait-premises $g (inv ($pos-s $pos-c) (brpat $ante $cons)) pnil ($premise-s $premise-c) $proof-id $evset)
+           (base-rate $ante ($ante-s $ante-c))
+           (base-rate $cons ($cons-s $cons-c)))
+        (O (pure (inv-checked $verdict $g $proof-id $evset)
+                 $verdict
+                 (tuple
+                   (f64_to_string
+                     (pln_inversion_valid_f64
+                       (f64_from_string $ante-s)
+                       (f64_from_string $ante-c)
+                       (f64_from_string $cons-s)
+                       (f64_from_string $cons-c)
+                       (f64_from_string $pos-s)))
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (f64_from_string $premise-s)
+                       (pln_inv_strength_f64
+                         (f64_from_string $ante-s)
+                         (f64_from_string $cons-s)
+                         (f64_from_string $pos-s))
+                       (pln_inv_strength_f64
+                         (f64_from_string $ante-s)
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $cons-s))
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $pos-s)))))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $premise-c)
+                       (pln_inv_strength_f64
+                         (f64_from_string $ante-s)
+                         (f64_from_string $cons-s)
+                         (f64_from_string $pos-s))
+                       (pln_inv_confidence_f64
+                         (f64_from_string $ante-s)
+                         (f64_from_string $ante-c)
+                         (f64_from_string $cons-s)
+                         (f64_from_string $cons-c)
+                         (f64_from_string $pos-s)
+                         (f64_from_string $pos-c))
+                       (pln_inv_strength_f64
+                         (f64_from_string $ante-s)
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $cons-s))
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $pos-s)))
+                       (pln_inv_confidence_f64
+                         (f64_from_string $ante-s)
+                         (f64_from_string $ante-c)
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $cons-s))
+                         (f64_from_string $cons-c)
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $pos-s))
+                         (f64_from_string $pos-c)))))))))
+
+(exec-template
+  (exec 5
+        (, (inv-checked (1.0 $proof-s $proof-c) $g $proof-id $evset)
+           (wait-premises $g (inv $pos (brpat $ante $cons)) pnil $agg $proof-id $evset))
+        (O (- (inv-checked (1.0 $proof-s $proof-c) $g $proof-id $evset))
+           (- (wait-premises $g (inv $pos (brpat $ante $cons)) pnil $agg $proof-id $evset))
+           (+ (open-proof $g ($proof-s $proof-c) $proof-id $evset)))))
+
+(exec-template
+  (exec 5
+        (, (inv-checked (0.0 $proof-s $proof-c) $g $proof-id $evset))
+        (O (- (inv-checked (0.0 $proof-s $proof-c) $g $proof-id $evset)))))

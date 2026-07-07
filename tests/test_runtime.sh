@@ -231,7 +231,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 0.999700089898053))"
-  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (pcons (B) pnil)) (pcons (fact-ev (B) (1.0 0.9998000399670116)) pnil))"
+  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (pcons (B) pnil)) (pcons (fact-ev (B)) pnil))"
 }
 
 # Port of the first open-query result case from
@@ -254,8 +254,8 @@ EOF
 
   assert_contains "$out" "(fact (Animal ann) (1.0 0.8999189847918191))"
   assert_contains "$out" "(fact (Animal max) (1.0 0.8999189847918191))"
-  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann) (1.0 1.0)) pnil))"
-  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max) (1.0 1.0)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
+  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max)) pnil))"
 }
 
 # Port of the independentKb behavior from
@@ -282,7 +282,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 0.9996001597861454))"
-  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 0.9998000399670116)) pnil)))"
+  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil)))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
@@ -308,9 +308,9 @@ EOF
   mork run "$rules" --steps 80 --aux-path "$runtime" "$out_mid" >/dev/null
   mork run "$rules" --steps 300 --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) identity (Pet ann) pnil (0.8 0.9999000095990804) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Own (i ann)) (0.8 0.9999000095990804)) pnil))"
+  assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) identity (Pet ann) pnil (0.8 0.9999000095990804) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Own (i ann))) pnil))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401))"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Pet ann) (0.7 0.9999000097657136)) (pcons (fact-ev (Own (i ann)) (0.8 0.9999000095990804)) pnil)))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Pet ann)) (pcons (fact-ev (Own (i ann))) pnil)))"
 }
 
 run_reference_three_premise_test() {
@@ -335,7 +335,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 0.9995002496253119))"
-  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D) (1.0 1.0)) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 0.9998000399670116)) pnil))))"
+  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D)) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil))))"
 }
 
 run_reference_nary_conjunction_test() {
@@ -359,7 +359,7 @@ EOF
   grep -E '^\(adapterN ' "$compiler_out" > "$rules"
 
   local seed_exprs=()
-  mapfile -t seed_exprs < <(grep -E '^\((fact |, \(Goal )' "$compiler_out")
+  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
   mork run "$rules" --steps 80 --aux-path "$runtime" "$out" >/dev/null
@@ -394,7 +394,7 @@ EOF
   grep -E '^\((ruleN|adapterN|base-rate|base-rate-def) ' "$compiler_out" > "$rules"
 
   local seed_exprs=()
-  mapfile -t seed_exprs < <(grep -E '^\((fact |, \(Goal )' "$compiler_out")
+  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
   mork run "$rules" --steps 120 --aux-path "$runtime" "$out" >/dev/null
@@ -402,6 +402,41 @@ EOF
   assert_contains "$compiler_out" "(fact (A x) (1.0 0.9))"
   assert_contains "$compiler_out" "(, (Goal (B x)))"
   assert_contains "$out" "(fact (B x) (0.6 0.8999998649685302))"
+}
+
+# Port of PeTTaChainer/pettachainer/metta/tests/test_implication_inversion.metta.
+# The inverse of P->Q proves (P alice) from the (Q alice) witness. The
+# inverted CTV depends on the base rates of P and Q at fire time; the Q base
+# rate must include the derived (Q bob) (PeTTa's base-rate folds are chaining
+# queries, mirrored here by the compiler's materialization goal), and until it
+# does the inversion is rejected as inconsistent and retried.
+run_reference_implication_inversion_test() {
+  local compiler_src="outputs/test_reference_inversion_source.metta"
+  local compiler_out="outputs/test_reference_inversion_compiled.mm2"
+  local runtime="outputs/test_reference_inversion_runtime.mm2"
+  local rules="outputs/test_reference_inversion_rules.mm2"
+  local out="outputs/test_reference_inversion.mm2"
+
+  cat > "$compiler_src" <<EOF
+!(import! &self $ROOT_DIR/compiler/petta_mm2_backend)
+!(mm2-compile-add (: r (Implication (Premises (P \$x)) (Conclusions (Q \$x))) (CTV (STV 0.8 0.9) (STV 0.1 0.9))))
+!(mm2-compile-add (: qa (Q alice) (STV 0.9 0.8)))
+!(mm2-compile-add (: pb (P bob) (STV 0.7 0.8)))
+!(mm2-compile-query-goal (: \$prf (P alice) \$tv))
+EOF
+
+  petta "$compiler_src" > "$compiler_out"
+
+  grep -E '^\((ruleN|adapterN|base-rate|base-rate-def) ' "$compiler_out" > "$rules"
+
+  local seed_exprs=()
+  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
+  build_runtime_from_core "$runtime" "${seed_exprs[@]}"
+
+  mork run "$rules" --steps 400 --aux-path "$runtime" "$out" >/dev/null
+
+  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) pnil))"
+  assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledN (P alice) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
 }
 
 run_open_multiple_proofs_demo_test() {
@@ -412,8 +447,8 @@ run_open_multiple_proofs_demo_test() {
   mork run demos/open_multiple_proofs.mm2 --steps 150 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.9249999999499686 0.888888888335445))"
-  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann) (1.0 1.0)) pnil))"
-  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann) (1.0 1.0)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann)) pnil))"
 
   local animal_ann_proofs
   animal_ann_proofs="$(grep -c '^(proved (Animal ann) ' "$out")"
@@ -460,6 +495,7 @@ run_reference_binding_test
 run_reference_three_premise_test
 run_reference_nary_conjunction_test
 run_reference_stv_implication_test
+run_reference_implication_inversion_test
 run_open_multiple_proofs_demo_test
 run_head_source_sink_equivalence_test
 

@@ -3,15 +3,25 @@
 ; Lowers PeTTaChainer-style statements into mm2-chainer runtime IR:
 ;
 ;   (: a A (STV s c))                          -> (fact A (s c))
+;                                                 + (fact-evidence A ...) so later
+;                                                 proofs revise instead of duplicate
 ;   (: r (Implication (Premises p...)
 ;         (Conclusions q)) (CTV (STV ..) ..))  -> (ruleN q (ctv (..) (..)) prems)
 ;   (: r (Implication ...) (STV s c))          -> (ruleN q (stv (s c) (brpat a q')) prems)
 ;                                                 + base-rate-def / base-rate seeds
 ;   query (: $prf T $tv)                       -> (, (Goal T)) [+ adapterN for And]
 ;
-; Plain STV rules derive their negative branch at runtime from the base rates
-; of the antecedent and consequent patterns, so the rule lowering also emits
-; the base-rate definitions and no-evidence seeds those folds start from.
+; Single-premise implications additionally compile an inverse rule (PeTTa's
+; CTVInversionFormula path) unless the proof name is (no_inverse $x):
+;
+;   (ruleN a (inv (s+ c+) (brpat a' q')) (pcons q pnil))
+;
+; plus base-rate support for both patterns and an open materialization goal
+; for the conclusion pattern. The goal mirrors PeTTaChainer's base-rate
+; FoldAll premises, which are chaining queries: derived conclusion instances
+; must reach the fact store so the base rates the inversion reads at fire
+; time include them.
+;
 ; Base-rate patterns are copy_term'd so goal unification inside the runtime
 ; never instantiates them.
 
@@ -29,33 +39,54 @@
 (= (mm2-compile-add (: $name $type (STV $s $c)))
    (if (=? $type (Implication $_p $_c))
        (empty)
-       (fact $type ($s $c))))
+       (superpose (
+         (fact $type ($s $c))
+         (fact-evidence $type ($s $c) (pcons (fact-ev $type) pnil))))))
 
+; Only CTV rules compile an inverse for now. An STV rule's derived CTV and
+; its inverse both read the conclusion's base rate, and PeTTa's base-rate
+; folds carry a recursion guard (a rule's own fold never includes conclusions
+; derived via that same rule) that the mm2 runtime does not model yet; with
+; inversion's materialization goal the STV rule would keep re-firing against
+; its own derived conclusions.
 (= (mm2-compile-add (: $name (Implication (Premises $p) (Conclusions $q)) $tv))
-   (mm2-implication $tv (pcons $p pnil) $p $q))
+   (superpose (
+     (mm2-implication-forward $tv (pcons $p pnil) $p $q)
+     (if (or (=? $name (no_inverse $_)) (not (=? $tv (CTV $_pos $_neg))))
+         (empty)
+         (mm2-implication-inverse $tv $p $q)))))
 
 (= (mm2-compile-add (: $name (Implication (Premises $p1 $p2) (Conclusions $q)) $tv))
-   (mm2-implication $tv (pcons $p1 (pcons $p2 pnil)) (And $p1 $p2) $q))
+   (mm2-implication-forward $tv (pcons $p1 (pcons $p2 pnil)) (And $p1 $p2) $q))
 
 (= (mm2-compile-add (: $name (Implication (Premises $p1 $p2 $p3) (Conclusions $q)) $tv))
-   (mm2-implication $tv (pcons $p1 (pcons $p2 (pcons $p3 pnil))) (And $p1 $p2 $p3) $q))
+   (mm2-implication-forward $tv (pcons $p1 (pcons $p2 (pcons $p3 pnil))) (And $p1 $p2 $p3) $q))
 
-(= (mm2-implication (CTV (STV $pos-s $pos-c) (STV $neg-s $neg-c)) $premises $ante $concl)
+(= (mm2-implication-forward (CTV (STV $pos-s $pos-c) (STV $neg-s $neg-c)) $premises $ante $concl)
    (ruleN $concl (ctv ($pos-s $pos-c) ($neg-s $neg-c)) $premises))
 
-(= (mm2-implication (STV $s $c) $premises $ante $concl)
-   (let* (($ante-q (copy_term $ante))
-          ($concl-q (copy_term $concl))
-          ($ante-def-q (copy_term $ante))
-          ($ante-def-m (copy_term $ante))
-          ($concl-def-q (copy_term $concl))
-          ($concl-def-m (copy_term $concl)))
-     (superpose (
-       (ruleN $concl (stv ($s $c) (brpat $ante-q $concl-q)) $premises)
-       (base-rate-def $ante-def-q $ante-def-m)
-       (base-rate (copy_term $ante) (0.0 0.0))
-       (base-rate-def $concl-def-q $concl-def-m)
-       (base-rate (copy_term $concl) (0.0 0.0))))))
+(= (mm2-implication-forward (STV $s $c) $premises $ante $concl)
+   (superpose (
+     (ruleN $concl (stv ($s $c) (brpat (copy_term $ante) (copy_term $concl))) $premises)
+     (mm2-base-rate-support $ante)
+     (mm2-base-rate-support $concl))))
+
+; CTVInversionFormula only reads the rule's positive branch, so CTV and STV
+; rules share one inverse shape.
+(= (mm2-rule-pos (CTV (STV $pos-s $pos-c) $_neg)) ($pos-s $pos-c))
+(= (mm2-rule-pos (STV $s $c)) ($s $c))
+
+(= (mm2-implication-inverse $tv $ante $concl)
+   (superpose (
+     (ruleN $ante (inv (mm2-rule-pos $tv) (brpat (copy_term $ante) (copy_term $concl))) (pcons $concl pnil))
+     (mm2-base-rate-support $ante)
+     (mm2-base-rate-support $concl)
+     (, (Goal (copy_term $concl))))))
+
+(= (mm2-base-rate-support $pat)
+   (superpose (
+     (base-rate-def (copy_term $pat) (copy_term $pat))
+     (base-rate (copy_term $pat) (0.0 0.0)))))
 
 ; --- query lowering -----------------------------------------------------
 

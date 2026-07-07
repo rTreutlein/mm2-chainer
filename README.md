@@ -71,8 +71,18 @@ Rule truth values are structured PeTTaChainer-style contextual TVs:
 - `(ruleN $g (stv ($s $c) (brpat $ante $cons)) $premises)`: plain STV rule whose
   negative branch is derived at fire time from the base rates of the `brpat`
   patterns (maintained by `05_baserate.mm2` and MORK's `fold-base-rate` sink)
+- `(ruleN $a (inv ($s+ $c+) (brpat $ante $cons)) $premises)`: inverse of an
+  implication (PeTTa's `CTVInversionFormula`); the original rule's positive
+  branch is inverted through the fire-time base rates, and the attempt retries
+  without consuming its premises while the inversion is rejected (no base-rate
+  evidence yet, or marginals outside the Frechet bounds)
 - `(adapterN $g $premises)`: identity rule for compound queries; the premise
   aggregate is used directly
+
+Proof evidence items name their source only (`(fact-ev $prem)`), like
+PeTTaChainer proof names: a re-derivation from the same source overlaps the
+fact's accumulated evidence and the merge keeps the higher-confidence value
+instead of revising the same evidence in twice.
 
 Truth-value propagation matches PeTTaChainer's formulas (tv_formulas.metta):
 premise lists fold with `AndFormula` (product strength, idealized product

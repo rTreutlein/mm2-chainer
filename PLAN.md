@@ -36,6 +36,49 @@ tests, and all demo scripts complete. Values verified against
 `scripts/pln_ref.py` (a Python mirror of the PeTTa/MORK formulas — extend it
 when computing expected values for future ports).
 
+# Follow-up port: `test_implication_inversion.metta` (DONE 2026-07-07)
+
+Ported as `run_reference_implication_inversion_test` (13 tests total now).
+The pieces:
+
+- MORK pure ops `pln_inv_strength_f64`, `pln_inv_confidence_f64`,
+  `pln_inversion_valid_f64` (CTVInversionFormula; the negative inverted
+  branch reuses the same ops with complemented `sb`/`sb_a` arguments —
+  `ideal-var` is symmetric in `s` vs `1-s`).
+- Runtime `inv` rule kind: the fire attempt does not consume the wait record;
+  it emits an `(inv-checked ($flag $s $c) ...)` verdict each round. Accepted
+  verdicts (flag 1.0) consume both and open the proof; rejected ones are
+  dropped and the attempt retries as base rates evolve. This reproduces
+  PeTTa's fire-time semantics: the inversion in the test is *inconsistent*
+  (Frechet bounds) until the derived `(Q bob)` reaches the Q base rate.
+- Compiler emits, per single-premise **CTV** implication (unless the proof
+  name is `(no_inverse $x)`): the inverse `ruleN`, base-rate support for both
+  patterns, and an open materialization goal `(, (Goal <cons-pattern>))` —
+  PeTTa's base-rate folds are chaining queries, so derived conclusion
+  instances must reach the fact store.
+- Two convergence bugs this surfaced, both fixed:
+  1. The proofs-only revise exec ran before the revision-aware one and wrote
+     duplicate `(fact $g ...)` atoms. Fix: revision-aware exec at priority C,
+     proofs-only at D. Seeded facts need a `(fact-evidence ...)` record to be
+     revisable — the compiler emits one per fact add.
+  2. Evidence items carried TVs, so re-derivations from the same source
+     looked like fresh evidence and revision ran away. Evidence is now source
+     identity only: `(fact-ev $prem)`; overlapping evidence keeps the
+     higher-confidence value (idempotent, converges).
+
+Known scope limits (documented divergences):
+- **STV rules do not compile inverses yet.** Their derived CTV reads the
+  conclusion base rate, and PeTTa's folds have a recursion guard (a rule's
+  own fold never includes conclusions derived via that same rule) that the
+  mm2 base-rate relation doesn't model. With materialization the STV rule
+  would re-fire against its own conclusions and drift from PeTTa's value.
+- Multi-premise implications do not compile inverses (PeTTa skolemizes; not
+  modeled).
+- The final `(fact ...)` values may refine past PeTTa's one-shot query answer
+  because mm2 keeps re-deriving as base rates evolve; port assertions should
+  pin `(proved ...)` records (immutable), not facts, for inversion-affected
+  goals.
+
 Natural next ports (in rough order of increasing machinery):
 1. `test_forward_backward_compose.metta` exact-TV rewrite: compile its CTV
    rules through the backend instead of hand-authoring `ruleN`.
@@ -44,8 +87,14 @@ Natural next ports (in rough order of increasing machinery):
 3. `test_implication_premise.metta`: implications as premises/conclusions —
    needs rules whose conclusion is an `Implication` pattern (total-implication
    queries), and negation handling (`Not`).
-4. Inversion (`test_implication_inversion.metta`): needs
-   `CTVInversionFormula` pure op + inverse-rule lowering.
+4. STV-rule inversion: needs the base-rate recursion guard story (per-rule
+   exclusion or one-shot fold semantics).
+
+If the thin backend absorbs a third piece of `compile.metta` logic (negation
+outputs, spec rules, total-implication queries), switch strategy: run
+PeTTaChainer's real `compile.metta` under `petta` and translate its compiled
+rule IR (`(premises |- conclusions)` with CPU formula premises) into mm2
+atoms instead of growing a parallel compiler.
 
 ## Key findings that drive the design
 
