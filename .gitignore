@@ -5,3 +5,4 @@ outputs/
 
 # Local MM2 scratch probes
 /test*.mm2
+__pycache__/

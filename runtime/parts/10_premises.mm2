@@ -123,6 +123,77 @@
                        (f64_from_string $prem-s)
                        (f64_from_string $prem-c))))))))
 
+; Projection rules: the compound head premise's TV is captured into the
+; rule-TV slot, then the remaining element premises run through the generic
+; premise machinery (seed + AndFormula fold) to produce the evidence TV.
+(exec-template
+  (exec 4
+        (, (wait-head $g (proj $op) $head $others $proof-id $evset)
+           (fact $head ($head-s $head-c)))
+        (O (- (wait-head $g (proj $op) $head $others $proof-id $evset))
+           (+ (wait-premises
+                $g
+                (proj $op ($head-s $head-c))
+                $others
+                no-stv
+                $proof-id
+                (pcons (fact-ev $head) $evset))))))
+
+; AndProjection: element strength = min(1, s_compound / s_evidence),
+; confidence = min(c_compound, c_evidence); (0 0) when the evidence
+; strength is zero.
+(exec-template
+  (exec 4
+        (, (wait-premises $g (proj and ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+        (O (- (wait-premises $g (proj and ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_and_proj_strength_f64
+                       (f64_from_string $sab)
+                       (f64_from_string $ev-s)))
+                   (f64_to_string
+                     (pln_and_proj_confidence_f64
+                       (f64_from_string $cab)
+                       (f64_from_string $ev-c)
+                       (f64_from_string $ev-s))))))))
+
+; OrProjection: element strength = clamp((s_compound - s_evidence) /
+; (1 - s_evidence), 0, 1); (0 0) when the evidence strength is one.
+(exec-template
+  (exec 4
+        (, (wait-premises $g (proj or ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+        (O (- (wait-premises $g (proj or ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_or_proj_strength_f64
+                       (f64_from_string $sab)
+                       (f64_from_string $ev-s)))
+                   (f64_to_string
+                     (pln_or_proj_confidence_f64
+                       (f64_from_string $cab)
+                       (f64_from_string $ev-c)
+                       (f64_from_string $ev-s))))))))
+
+; AndMarginalProjection: single-premise projection with the marginal count
+; heuristic: strength = s_compound, confidence from the count
+; s_compound * count(c_compound) pushed back through count-confidence.
+(exec-template
+  (exec 4
+        (, (wait-premises $g (proj marg ($sab $cab)) pnil no-stv $proof-id $evset))
+        (O (- (wait-premises $g (proj marg ($sab $cab)) pnil no-stv $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string (f64_from_string $sab))
+                   (f64_to_string
+                     (pln_marginal_proj_confidence_f64
+                       (f64_from_string $sab)
+                       (f64_from_string $cab))))))))
+
 ; Inverse rules (kind inv) apply PeTTa's CTVInversionFormula at fire time:
 ; the original rule's positive branch is inverted through the base rates of
 ; its antecedent ($ante) and consequent ($cons), and the inverted CTV is

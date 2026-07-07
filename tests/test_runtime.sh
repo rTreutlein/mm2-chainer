@@ -133,11 +133,20 @@ runtime_template_count() {
   grep -h '^(exec-template' runtime/parts/*.mm2 | wc -l
 }
 
+# Every seeded exec costs one step whether or not it fires, and the Z loop
+# re-seeds all templates each round — so one round costs one step per
+# template. Budgets are expressed as (rounds, extra-steps) and scale with the
+# template count so adding runtime execs does not silently shift what stage
+# of the derivation each snapshot test observes.
+steps_budget() {
+  echo $(( $1 * $(runtime_template_count) + $2 ))
+}
+
 run_reduced_test() {
   local runtime="outputs/test_reduced_runtime.mm2"
   local out="outputs/test_reduced.mm2"
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
-  mork run rules/reduced_rules.mm2 --steps 260 --aux-path "$runtime" "$out" >/dev/null
+  mork run rules/reduced_rules.mm2 --steps "$(steps_budget 15 5)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal x) (0.6897720572471554 0.753099382982331))"
   assert_contains "$out" "(fact (Mammal x) (0.9 0.5999999996754302))"
@@ -167,7 +176,7 @@ run_full_test() {
   local runtime="outputs/test_full_runtime.mm2"
   local out="outputs/test_full.mm2"
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
-  mork run rules/full_rules.mm2 --steps 25 --aux-path "$runtime" "$out" >/dev/null
+  mork run rules/full_rules.mm2 --steps "$(steps_budget 1 13)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(wait-premise (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (Paddle x) pnil no-stv (scheduledN (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (pcons (Paddle x) pnil)) pnil)"
   assert_no_line_regex "$out" '^\(pendingN \$'
@@ -202,7 +211,7 @@ EOF
   build_runtime_from_core "$runtime" \
     '(, (Goal (Animal x)))'
 
-  mork run "$rules" --steps 35 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 2 1)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (Creature x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (Creature x) pnil)) pnil)"
   assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (LowPrem33 x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (LowPrem33 x) pnil)) pnil)"
@@ -226,8 +235,8 @@ EOF
     '(, (Goal (Goal)))' \
     '(fact (A) (1.0 1.0))'
 
-  mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 150 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 2 6)" --aux-path "$runtime" "$out_short" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 8 14)" --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 0.999700089898053))"
@@ -250,7 +259,7 @@ EOF
     '(fact (Dog max) (1.0 1.0))' \
     '(fact (Dog ann) (1.0 1.0))'
 
-  mork run "$rules" --steps 55 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 3 4)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (1.0 0.8999189847918191))"
   assert_contains "$out" "(fact (Animal max) (1.0 0.8999189847918191))"
@@ -277,8 +286,8 @@ EOF
     '(fact (X) (1.0 1.0))' \
     '(fact (B) (1.0 1.0))'
 
-  mork run "$rules" --steps 40 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 170 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 2 6)" --aux-path "$runtime" "$out_short" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 10 0)" --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 0.9996001597861454))"
@@ -305,8 +314,8 @@ EOF
     '(fact (Have (i ann)) (1.0 1.0))' \
     '(fact (Dog ann) (1.0 1.0))'
 
-  mork run "$rules" --steps 80 --aux-path "$runtime" "$out_mid" >/dev/null
-  mork run "$rules" --steps 300 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 5 0)" --aux-path "$runtime" "$out_mid" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) identity (Pet ann) pnil (0.8 0.9999000095990804) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Own (i ann))) pnil))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401))"
@@ -330,8 +339,8 @@ EOF
     '(fact (B) (1.0 1.0))' \
     '(fact (D) (1.0 1.0))'
 
-  mork run "$rules" --steps 50 --aux-path "$runtime" "$out_short" >/dev/null
-  mork run "$rules" --steps 220 --aux-path "$runtime" "$out_long" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 2 16)" --aux-path "$runtime" "$out_short" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 12 16)" --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 0.9995002496253119))"
@@ -362,7 +371,7 @@ EOF
   mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
-  mork run "$rules" --steps 80 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 4 12)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$compiler_out" "(fact A (1.0 1.0))"
   assert_contains "$compiler_out" "(fact B (1.0 1.0))"
@@ -397,7 +406,7 @@ EOF
   mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
-  mork run "$rules" --steps 120 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 7 1)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$compiler_out" "(fact (A x) (1.0 0.9))"
   assert_contains "$compiler_out" "(, (Goal (B x)))"
@@ -433,7 +442,7 @@ EOF
   mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
-  mork run "$rules" --steps 400 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 23 9)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) pnil))"
   assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledN (P alice) (inv (0.8 0.9) (brpat (P \$a) (Q \$b))) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
@@ -458,7 +467,7 @@ EOF
     '(, (Goal (B i)))' \
     '(fact (A i) (1.0 1.0))'
 
-  mork run "$rules" --steps 120 --aux-path "$runtime" "$out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 7 1)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
   assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
@@ -483,7 +492,7 @@ run_open_multiple_proofs_demo_test() {
   local out="outputs/test_open_multiple_proofs.mm2"
 
   build_runtime_from_core "$runtime"
-  mork run demos/open_multiple_proofs.mm2 --steps 150 --aux-path "$runtime" "$out" >/dev/null
+  mork run demos/open_multiple_proofs.mm2 --steps "$(steps_budget 8 14)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.9249999999499686 0.888888888335445))"
   assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
@@ -517,8 +526,8 @@ EOF
     '(fact (Dog ann) (1.0 1.0))' \
     '(fact (Cat ann) (1.0 1.0))'
 
-  mork run "$rules" --steps 300 --aux-path "$source_runtime" "$source_out" >/dev/null
-  mork run "$rules" --steps 300 --aux-path "$sink_runtime" "$sink_out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$source_runtime" "$source_out" >/dev/null
+  mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$sink_runtime" "$sink_out" >/dev/null
 
   assert_semantic_outputs_equal "$source_out" "$sink_out" "head_source_sink"
   assert_contains "$source_out" "(fact (Combo ann) (0.5179999999719824 0.8494800133141294))"

@@ -37,6 +37,26 @@
                    (sub_f64 (f64_from_string 1.0)
                             (f64_from_string $rule-c)))))))
 
+; Projection rules (kind (proj and|or|marg)) extract one element of a compound
+; (And ...) / (Or ...) fact.  The first premise is the compound itself; its TV
+; must stay separate from the evidence fold of the remaining element premises,
+; so it is captured first through a wait-head record before the generic
+; premise machinery folds the rest.  Like adapters they carry no rule TV, so
+; they schedule directly instead of going through the pendingN priority queue.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g (proj $op) (pcons $head $others)))
+        (O (- (, (Goal $g)))
+           (+ (wait-head
+                $g
+                (proj $op)
+                $head
+                $others
+                (scheduledN $g (proj $op) (pcons $head $others))
+                pnil))
+           (+ (, (Goal $head))))))
+
 ; Adapter rules derive a compound goal directly from its premise list.  They use
 ; the premise aggregate TV as the proof TV instead of applying an extra rule TV.
 (exec-template

@@ -12,10 +12,10 @@
 ; Statements compile through PeTTaChainer's real compiler (compileadd /
 ; mm2compileQuery in compile.metta) and its IR is translated to mm2 atoms by
 ; compiler/mm2_ir_translate.metta; unrecognized IR surfaces as
-; (notsupported-ir ...) markers in the output — the coverage gap list. Every
-; compiled goal term is wrapped as ($kb $term) so multiple named KBs share
-; the one &mork space without cross-talk, mirroring PeTTaChainer's named-KB
-; scoping.
+; (notsupported-ir ...) markers in the output — the coverage gap list. Goal
+; terms are scoped by the IR's own kb triple (($kb $ctx $vars) $term) — see
+; mm2_ir_translate.metta — so named KBs and query assumption contexts share
+; the one &mork space without cross-talk.
 ;
 ; Known divergences from PeTTaChainer's query:
 ; - mm2 proof identifiers ((scheduledN ...) tokens) differ structurally from
@@ -44,43 +44,14 @@
 ; PeTTa-style step budget so small budgets still cover whole rounds.
 (= (mm2-steps-per-round) 20)
 
-; --- kb scoping -----------------------------------------------------------
-; Wrap each goal-level term as ($kb $term). All runtime relations are generic
-; over goal terms, so wrapping at the compile boundary scopes facts, rules,
-; base rates, and goals to their KB with no runtime changes.
-
-(= (mm2-wrap-premises $kb pnil) pnil)
-(= (mm2-wrap-premises $kb (pcons $p $rest))
-   (pcons ($kb $p) (mm2-wrap-premises $kb $rest)))
-
-(= (mm2-wrap-rule-tv $kb (ctv $pos $neg)) (ctv $pos $neg))
-(= (mm2-wrap-rule-tv $kb (stv $pos (brpat $ante $cons)))
-   (stv $pos (brpat ($kb $ante) ($kb $cons))))
-(= (mm2-wrap-rule-tv $kb (inv $pos (brpat $ante $cons)))
-   (inv $pos (brpat ($kb $ante) ($kb $cons))))
-
-(= (mm2-wrap-atom $kb (fact $t $tv)) (fact ($kb $t) $tv))
-(= (mm2-wrap-atom $kb (fact-evidence $t $tv (pcons (fact-ev $e) pnil)))
-   (fact-evidence ($kb $t) $tv (pcons (fact-ev ($kb $e)) pnil)))
-(= (mm2-wrap-atom $kb (ruleN $c $rule-tv $premises))
-   (ruleN ($kb $c) (mm2-wrap-rule-tv $kb $rule-tv) (mm2-wrap-premises $kb $premises)))
-(= (mm2-wrap-atom $kb (adapterN $c $premises))
-   (adapterN ($kb $c) (mm2-wrap-premises $kb $premises)))
-(= (mm2-wrap-atom $kb (base-rate-def $q $m)) (base-rate-def ($kb $q) ($kb $m)))
-(= (mm2-wrap-atom $kb (base-rate $q $tv)) (base-rate ($kb $q) $tv))
-(= (mm2-wrap-atom $kb (, (Goal $t))) (, (Goal ($kb $t))))
-(= (mm2-wrap-atom $kb (notsupported-ir $x)) (notsupported-ir $kb $x))
-
 ; --- compileadd / query ----------------------------------------------------
-
-; add-atom stores its argument unevaluated, so the wrap is forced via let
-; before the add. (notsupported-ir ...) markers are both stored (wrapped, for
-; postmortem inspection of the space) and returned so they print in the test
-; transcript.
+; The translator scopes every goal-level term with the IR's own kb triple, so
+; the atoms are added verbatim. (notsupported-ir ...) markers are both stored
+; (for postmortem inspection of the space) and returned so they print in the
+; test transcript.
 (= (mm2-add-compiled $kb ()) ())
 (= (mm2-add-compiled $kb (cons $atom $rest))
-   (let* (($wrapped (mm2-wrap-atom $kb $atom))
-          ($_add (add-atom &mork $wrapped)))
+   (let $_add (add-atom &mork $atom)
      (case $atom
        (((notsupported-ir $x)
          (let $_log (mm2-log-line (notsupported-ir $x))
@@ -106,10 +77,22 @@
 (= (mm2-compileadd $kb $stmt)
    (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
 
-(= (mm2-query-readback $kb $type)
-   (collapse
-     (match &mork (fact ($kb $type) ($s $c))
-       (: mm2-merged $type (STV $s $c)))))
+; Query answers are the facts matching each compiled query's own scoped goal
+; term — usually the kb's MAIN context, or the fresh query context some
+; queries allocate. Assumption-context facts never surface because their
+; contexts are not any compiled goal's scope.
+(= (mm2-readback-query $cq)
+   (case $cq
+     (((compiled-query $goal-item $adds)
+       (let (subgoal ($shape $type) $tv) (mm2-ir-item $goal-item)
+         (collapse
+           (match &mork (fact ($shape $type) ($s $c))
+             (: mm2-merged $type (STV $s $c))))))
+      ($other ()))))
+
+(= (mm2-readback-queries ()) ())
+(= (mm2-readback-queries (cons $cq $rest))
+   (mm2-ir-append (mm2-readback-query $cq) (mm2-readback-queries $rest)))
 
 (= (mm2-run-compiled-queries $kb ()) ())
 (= (mm2-run-compiled-queries $kb (cons $cq $rest))
@@ -117,9 +100,10 @@
                   (mm2-run-compiled-queries $kb $rest)))
 
 (= (mm2-query $steps $kb (: $prf $type $tv))
-   (let* (($notsup (mm2-run-compiled-queries $kb (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
+   (let* (($cqs (collapse (mm2compileQuery $kb (: $prf $type $tv))))
+          ($notsup (mm2-run-compiled-queries $kb $cqs))
           ($_run (mm2-exec &mork (* $steps (mm2-steps-per-round)))))
-     (mm2-ir-append $notsup (mm2-query-readback $kb $type))))
+     (mm2-ir-append $notsup (mm2-readback-queries $cqs))))
 
 ; --- test comparison --------------------------------------------------------
 ; Compare (type, tv) sets; proof tokens intentionally differ from PeTTa.

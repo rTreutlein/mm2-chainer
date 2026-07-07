@@ -15,6 +15,9 @@
 ;   [subgoals] AndFormula* (MP $agg (CTV ..))                     -> ruleN ctv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV ..) Inversion MP          -> ruleN inv
+;   [compound other*] AndFormula* (AndProjection ..)              -> ruleN (proj and)
+;   [compound other]  (OrProjection ..)                           -> ruleN (proj or)
+;   [compound] (AndMarginalProjection ..)                         -> ruleN (proj marg)
 ;
 ; Anything else translates to a loud (notsupported-ir ...) atom: the corpus
 ; report collects those as the coverage gap list.
@@ -31,13 +34,24 @@
 (= (mm2-ir-append () $ys) $ys)
 (= (mm2-ir-append (cons $x $xs) $ys) (cons $x (mm2-ir-append $xs $ys)))
 
+; --- kb scoping --------------------------------------------------------------
+; Goal-level terms are scoped by the IR's own kb field: ($kb-triple $term).
+; compile.metta scopes every item with a kb triple ($kb $ctx $vars) — MAIN/Nil
+; for ordinary statements (kbctx), a numbered assumption context for query
+; premises. Rule items share *free* ctx/vars variables between premises and
+; conclusion, so rules are context-generic while facts stay context-specific;
+; assumption facts therefore only feed derivations inside their own context.
+; Plain kb symbols (base-rate fold args) scope like kbctx does.
+
+(= (mm2-ir-scope-kb $kb) (if (is-expr $kb) $kb ($kb MAIN Nil)))
+
 ; --- premise/conclusion item classification --------------------------------
 
 (= (mm2-ir-item $item)
    (case $item
-     (((: $shape $prf $ptype $tv) (subgoal $ptype $tv))
+     (((: $shape $prf $ptype $tv) (subgoal ($shape $ptype) $tv))
       ((CPU $formula $args $out) (cpu $formula $args $out))
-      (($ptype $shape $prf $tv) (subgoal $ptype $tv))
+      (($ptype $shape $prf $tv) (subgoal ($shape $ptype) $tv))
       ($other (unknown $other)))))
 
 ; Split the premise items into an ordered pcons list of subgoal types and the
@@ -61,11 +75,14 @@
 ; --- rule-kind classification of the cpu tail -------------------------------
 
 (= (mm2-ir-fold-pattern (cpu FoldAllCompiled ($kbid $pat extract-tv $zero $acc $finish $resmode) $out))
-   $pat)
+   (let $skb (mm2-ir-scope-kb $kbid) ($skb $pat)))
 
 (= (mm2-ir-classify $tail)
    (case $tail
      ((() identity)
+      ((cons (cpu AndProjection ($tvin $ev) $out) ()) (proj-kind and))
+      ((cons (cpu OrProjection ($tvin $ev) $out) ()) (proj-kind or))
+      ((cons (cpu AndMarginalProjection ($tvin) $out) ()) (proj-kind marg))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
       ((cons $fold-a
@@ -96,6 +113,9 @@
 (= (mm2-ir-emit-rule $ctype $ptypes identity)
    (adapterN $ctype $ptypes))
 
+(= (mm2-ir-emit-rule $ctype $ptypes (proj-kind $op))
+   (ruleN $ctype (proj $op) $ptypes))
+
 (= (mm2-ir-emit-rule $ctype $ptypes (ctv-kind $pos $neg))
    (ruleN $ctype (ctv $pos $neg) $ptypes))
 
@@ -117,17 +137,25 @@
 (= (mm2-ir-emit-rule $ctype $ptypes (unsupported-tail $tail))
    (notsupported-ir (rule-tail $ctype $tail)))
 
+(= (mm2-ir-emit-fact $g ($s $c))
+   (superpose (
+     (fact $g ($s $c))
+     (fact-evidence $g ($s $c) (pcons (fact-ev $g) pnil)))))
+
+; Facts arrive in compileadd form (: shape prf type tv) or query form
+; (type shape prf tv) — the latter are the assumption facts total-implication
+; queries add into their fresh contexts.
 (= (mm2-translate-stmt $stmt)
    (case $stmt
      (((: $shape $prf $type (STV $s $c))
-       (superpose (
-         (fact $type ($s $c))
-         (fact-evidence $type ($s $c) (pcons (fact-ev $type) pnil)))))
+       (mm2-ir-emit-fact ($shape $type) ($s $c)))
       ((rules ($prems |- $ccl))
        (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
               ((subgoal $ctype $ctv) (mm2-ir-item $ccl))
               ($kind (mm2-ir-classify (mm2-ir-drop-and $cpus))))
          (mm2-ir-emit-rule $ctype $ptypes $kind)))
+      (($type $shape $prf (STV $s $c))
+       (mm2-ir-emit-fact ($shape $type) ($s $c)))
       ($other (notsupported-ir (stmt $other))))))
 
 (= (mm2-translate-all ()) ())
@@ -138,6 +166,9 @@
 ; --- query translation --------------------------------------------------------
 ; (compiled-query ($type $shape $prf $tv) $adds) -> goal atom + translated adds.
 
-(= (mm2-translate-query (compiled-query $goal-item $adds))
-   (let (subgoal $type $tv) (mm2-ir-item $goal-item)
-     (cons (, (Goal $type)) (mm2-translate-all $adds))))
+(= (mm2-translate-query $cq)
+   (case $cq
+     (((compiled-query $goal-item $adds)
+       (let (subgoal $g $tv) (mm2-ir-item $goal-item)
+         (cons (, (Goal $g)) (mm2-translate-all $adds))))
+      ($other (cons (notsupported-ir (query $other)) ())))))

@@ -169,6 +169,29 @@ def ctv_inversion(atv, btv, ctv):
     )
 
 
+def and_projection(tv_ab, tv_a):
+    """AndProjection: element TV of a compound And given the other elements'
+    evidence TV (tv_formulas.metta)."""
+    sab, cab = tv_ab
+    sa, ca = tv_a
+    if sa == 0.0:
+        return (0.0, 0.0)
+    return (min(1.0, sab / sa), min(cab, ca))
+
+
+def or_projection(tv_ab, tv_a):
+    sab, cab = tv_ab
+    sa, ca = tv_a
+    if sa == 1.0:
+        return (0.0, 0.0)
+    return (min(1.0, max(0.0, (sab - sa) / (1.0 - sa))), min(cab, ca))
+
+
+def and_marginal_projection(tv_ab):
+    sab, cab = tv_ab
+    return (sab, count_confidence(sab * confidence_to_count(cab)))
+
+
 def revise(old, new):
     """revise_stv from MORK sinks.rs (merge two proofs of one fact)."""
     old_s, old_c = old
