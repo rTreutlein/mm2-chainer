@@ -1,19 +1,6 @@
 ; Multi-premise rules open one concrete frontier premise at a time. Shared
 ; variables are instantiated by earlier matches before later premises are opened.
 ; STVs are carried as packed pairs: (strength confidence).
-
-(exec-template
-  (exec 3
-        (I (head 32 (pendingN $priority $g $rule-stv $premises)))
-        (O (- (pendingN $priority $g $rule-stv $premises))
-           (+ (wait-premises
-                $g
-                $rule-stv
-                $premises
-                no-stv
-                (scheduledN $g $premises)
-                pnil)))))
-
 ; Rule application is PeTTa's CTVModusPonensFormula: the aggregated premise
 ; TV is pushed through the rule's contextual TV (positive and negative
 ; branches) with idealized second-order confidence propagation.

@@ -16,6 +16,7 @@ Files whose tests are entirely out of scope (forward chainer, distribution /
 particle values) are skipped.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -163,7 +164,8 @@ def convert_file(path):
                 continue
             unsupported += 1
             out.append("; UNSUPPORTED test form: " + show(expr)[:160])
-            out.append("!" + show(["mm2-test-unsupported", show(expr)[:60]]))
+            snippet = re.sub(r"[^A-Za-z0-9_ /.$-]", " ", show(expr))[:80].strip()
+            out.append(f'!(mm2-test-unsupported "{snippet}")')
             continue
         prefix = "!" if kind == "bang" else ""
         out.append(prefix + show(rename_calls(expr)))

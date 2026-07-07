@@ -111,11 +111,11 @@ build_runtime_from_core_with_sink_head() {
                 $rule-stv
                 $premises
                 no-stv
-                (scheduledN $g $premises)
+                (scheduledN $g $rule-stv $premises)
                 pnil)))))
 RUNTIME
     printf '\n'
-    sed '1,15d' runtime/parts/10_premises.mm2
+    cat runtime/parts/10_premises.mm2
     printf '\n'
     cat runtime/parts/30_merge.mm2
     printf '\n'
@@ -169,7 +169,7 @@ run_full_test() {
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/full_rules.mm2 --steps 25 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (Paddle x) pnil no-stv (scheduledN (Bat x) (pcons (Paddle x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (Paddle x) pnil no-stv (scheduledN (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (pcons (Paddle x) pnil)) pnil)"
   assert_no_line_regex "$out" '^\(pendingN \$'
 
   local runtime_templates
@@ -204,9 +204,9 @@ EOF
 
   mork run "$rules" --steps 35 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (Creature x) pnil no-stv (scheduledN (Animal x) (pcons (Creature x) pnil)) pnil)"
-  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (LowPrem33 x) pnil no-stv (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)) pnil)"
-  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (Mammal x) pnil no-stv (scheduledN (Animal x) (pcons (Mammal x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (Creature x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (Creature x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (LowPrem33 x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (LowPrem33 x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (Mammal x) pnil no-stv (scheduledN (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (pcons (Mammal x) pnil)) pnil)"
 }
 
 # Port of the single-premise composition behavior from
@@ -231,7 +231,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 0.999700089898053))"
-  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (pcons (B) pnil)) (pcons (fact-ev (B)) pnil))"
+  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil)) (pcons (fact-ev (B)) pnil))"
 }
 
 # Port of the first open-query result case from
@@ -254,8 +254,8 @@ EOF
 
   assert_contains "$out" "(fact (Animal ann) (1.0 0.8999189847918191))"
   assert_contains "$out" "(fact (Animal max) (1.0 0.8999189847918191))"
-  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
-  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
+  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max)) pnil))"
 }
 
 # Port of the independentKb behavior from
@@ -282,7 +282,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 0.9996001597861454))"
-  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil)))"
+  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil)))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
@@ -335,7 +335,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 0.9995002496253119))"
-  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D)) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil))))"
+  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D)) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil))))"
 }
 
 run_reference_nary_conjunction_test() {
@@ -435,8 +435,38 @@ EOF
 
   mork run "$rules" --steps 400 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) pnil))"
-  assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledN (P alice) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
+  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) pnil))"
+  assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledN (P alice) (inv (0.8 0.9) (brpat (P \$a) (Q \$b))) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
+}
+
+# Two rules proving the same goal from the same premises must produce two
+# distinct proofs (the proof token includes the rule TV). Shaped after
+# PeTTaChainer's test_lifting_merge diffImplKb; exact pooled-value parity is
+# tracked separately (proof-store pooling), so only proof multiplicity and
+# the current overlap-dominance merge are pinned here.
+run_same_premise_rules_test() {
+  local runtime="outputs/test_same_premise_runtime.mm2"
+  local rules="outputs/test_same_premise_rules.mm2"
+  local out="outputs/test_same_premise.mm2"
+
+  cat > "$rules" <<'EOF'
+(ruleN (B $x) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A $x) pnil))
+(ruleN (B $x) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A $x) pnil))
+EOF
+
+  build_runtime_from_core "$runtime" \
+    '(, (Goal (B i)))' \
+    '(fact (A i) (1.0 1.0))'
+
+  mork run "$rules" --steps 120 --aux-path "$runtime" "$out" >/dev/null
+
+  assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
+  assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
+  assert_contains "$out" "(fact (B i) (0.6 0.8999999998784551))"
+
+  local proofs
+  proofs="$(grep -c '^(proved (B i) ' "$out")"
+  assert_eq "$proofs" "2" "same-premise distinct proof count"
 }
 
 # PeTTaChainer-style tests running in-process against the mm2 runtime via
@@ -456,8 +486,8 @@ run_open_multiple_proofs_demo_test() {
   mork run demos/open_multiple_proofs.mm2 --steps 150 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.9249999999499686 0.888888888335445))"
-  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
-  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann)) pnil))"
 
   local animal_ann_proofs
   animal_ann_proofs="$(grep -c '^(proved (Animal ann) ' "$out")"
@@ -505,6 +535,7 @@ run_reference_three_premise_test
 run_reference_nary_conjunction_test
 run_reference_stv_implication_test
 run_reference_implication_inversion_test
+run_same_premise_rules_test
 run_ffi_harness_test
 run_open_multiple_proofs_demo_test
 run_head_source_sink_equivalence_test

@@ -3,6 +3,6 @@
 !(mm2-init)
 !(mm2-compileadd memberConceptKb (: m1 (Member tom Human) (STV 1.0 0.9)))
 ; UNSUPPORTED test form: (test (known-concept-node? memberConceptKb Human) true)
-!(mm2-test-unsupported (test (known-concept-node? memberConceptKb Human) true))
+!(mm2-test-unsupported "test  known-concept-node  memberConceptKb Human  true")
 ; UNSUPPORTED test form: (test (known-concept-node? memberConceptKb tom) false)
-!(mm2-test-unsupported (test (known-concept-node? memberConceptKb tom) false))
+!(mm2-test-unsupported "test  known-concept-node  memberConceptKb tom  false")

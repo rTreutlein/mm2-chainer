@@ -1,0 +1,13 @@
+; The proof token includes the rule TV so two rules that prove the same goal
+; from the same premises produce distinct proofs instead of colliding.
+(exec-template
+  (exec 3
+        (I (head 32 (pendingN $priority $g $rule-stv $premises)))
+        (O (- (pendingN $priority $g $rule-stv $premises))
+           (+ (wait-premises
+                $g
+                $rule-stv
+                $premises
+                no-stv
+                (scheduledN $g $rule-stv $premises)
+                pnil)))))

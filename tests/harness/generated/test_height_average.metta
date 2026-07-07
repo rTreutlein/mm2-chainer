@@ -11,10 +11,10 @@
 !(mm2-compileadd kb (: hd23 (HeightDist g2 frank (ParticleFromNormal 175.0 1.0)) (STV 1.0 1.0)))
 !(mm2-compileadd kb (: avgHeightDistRule (Implication (Premises (Group $g) (AverageDist (HeightDist $g $person $hdist) $hdist -> $avgDist)) (Conclusions (AvgHeightDist $g $avgDist))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 ; UNSUPPORTED test form: (test (let (: $prf (AvgHeightDist g1 $avgDist) $tv) (query 20 kb (: $prf (AvgHeightDist g1 $avgDist) $tv)) (let (STV $s $c) (DistGreaterThanFormula $avgDist 170
-!(mm2-test-unsupported (test (let (: $prf (AvgHeightDist g1 $avgDist) $tv) (query 2)
+!(mm2-test-unsupported "test  let    $prf  AvgHeightDist g1 $avgDist  $tv   query 20 kb    $prf  AvgHei")
 ; UNSUPPORTED test form: (test (let (: $prf (AvgHeightDist g1 $avgDist) $tv) (query 20 kb (: $prf (AvgHeightDist g1 $avgDist) $tv)) (let (STV $s $c) (DistGreaterThanFormula $avgDist 169
-!(mm2-test-unsupported (test (let (: $prf (AvgHeightDist g1 $avgDist) $tv) (query 2)
+!(mm2-test-unsupported "test  let    $prf  AvgHeightDist g1 $avgDist  $tv   query 20 kb    $prf  AvgHei")
 ; UNSUPPORTED test form: (test (let (: $prf (AvgHeightDist g2 $avgDist) $tv) (query 20 kb (: $prf (AvgHeightDist g2 $avgDist) $tv)) (let (STV $s $c) (DistGreaterThanFormula $avgDist 165
-!(mm2-test-unsupported (test (let (: $prf (AvgHeightDist g2 $avgDist) $tv) (query 2)
+!(mm2-test-unsupported "test  let    $prf  AvgHeightDist g2 $avgDist  $tv   query 20 kb    $prf  AvgHei")
 ; UNSUPPORTED test form: (test (let (: $prf (AvgHeightDist g1 $avgDist) $tv) (query 20 kb (: $prf (AvgHeightDist g1 $avgDist) $tv)) (let (STV $s $c) (DistGreaterThanFormula $avgDist 169
-!(mm2-test-unsupported (test (let (: $prf (AvgHeightDist g1 $avgDist) $tv) (query 2)
+!(mm2-test-unsupported "test  let    $prf  AvgHeightDist g1 $avgDist  $tv   query 20 kb    $prf  AvgHei")
