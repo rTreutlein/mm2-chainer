@@ -111,7 +111,7 @@ build_runtime_from_core_with_sink_head() {
                 $g
                 $rule-stv
                 $premises
-                (1.0 1.0)
+                no-stv
                 (scheduledN $g $premises)
                 pnil)))))
 RUNTIME
@@ -170,7 +170,7 @@ run_full_test() {
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/full_rules.mm2 --steps 20 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Paddle x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Paddle x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Paddle x) pnil no-stv (scheduledN (Bat x) (pcons (Paddle x) pnil)) pnil)"
   assert_no_line_regex "$out" '^\(pendingN \$'
 
   local runtime_templates
@@ -205,9 +205,9 @@ EOF
 
   mork run "$rules" --steps 30 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (Creature x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Creature x) pnil)) pnil)"
-  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (LowPrem33 x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)) pnil)"
-  assert_contains "$out" "(wait-premise (Animal x) (0.9 0.9) (Mammal x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Mammal x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (Creature x) pnil no-stv (scheduledN (Animal x) (pcons (Creature x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (LowPrem33 x) pnil no-stv (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (0.9 0.9) (Mammal x) pnil no-stv (scheduledN (Animal x) (pcons (Mammal x) pnil)) pnil)"
 }
 
 # Port of the single-premise composition behavior from
@@ -282,8 +282,8 @@ EOF
   mork run "$rules" --steps 150 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
-  assert_contains "$out_long" "(fact (C) (1.0 1.0))"
-  assert_contains "$out_long" "(proved (C) (1.0 1.0) (scheduledN (C) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 1.0)) pnil)))"
+  assert_contains "$out_long" "(fact (C) (1.0 0.9998000399670116))"
+  assert_contains "$out_long" "(proved (C) (1.0 0.9998000399670116) (scheduledN (C) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 1.0)) pnil)))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
@@ -310,8 +310,8 @@ EOF
   mork run "$rules" --steps 260 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) (1.0 1.0) (Pet ann) pnil (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Own (i ann)) (0.8 1.0)) pnil))"
-  assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.7 1.0))"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.7 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Pet ann) (0.7 1.0)) (pcons (fact-ev (Own (i ann)) (0.8 1.0)) pnil)))"
+  assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136438214375))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136438214375) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Pet ann) (0.7 1.0)) (pcons (fact-ev (Own (i ann)) (0.8 1.0)) pnil)))"
 }
 
 run_reference_three_premise_test() {
@@ -335,8 +335,42 @@ EOF
   mork run "$rules" --steps 190 --aux-path "$runtime" "$out_long" >/dev/null
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
-  assert_contains "$out_long" "(fact (Goal3) (1.0 1.0))"
-  assert_contains "$out_long" "(proved (Goal3) (1.0 1.0) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D) (1.0 1.0)) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 1.0)) pnil))))"
+  assert_contains "$out_long" "(fact (Goal3) (1.0 0.999700089898053))"
+  assert_contains "$out_long" "(proved (Goal3) (1.0 0.999700089898053) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D) (1.0 1.0)) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 1.0)) pnil))))"
+}
+
+run_reference_nary_conjunction_test() {
+  local compiler_src="outputs/test_reference_nary_conjunction_source.metta"
+  local compiler_out="outputs/test_reference_nary_conjunction_compiled.mm2"
+  local runtime="outputs/test_reference_nary_conjunction_runtime.mm2"
+  local rules="outputs/test_reference_nary_conjunction_rules.mm2"
+  local out="outputs/test_reference_nary_conjunction.mm2"
+
+  cat > "$compiler_src" <<EOF
+!(import! &self $ROOT_DIR/compiler/petta_mm2_backend)
+!(mm2-compile-add (: a A (STV 1.0 1.0)))
+!(mm2-compile-add (: b B (STV 1.0 1.0)))
+!(mm2-compile-add (: c C (STV 1.0 1.0)))
+!(mm2-compile-query-goal (: \$prf (And A B C) \$tv))
+!(mm2-compile-query-rule (: \$prf (And A B C) \$tv))
+EOF
+
+  petta "$compiler_src" > "$compiler_out"
+
+  grep -E '^\(adapterN ' "$compiler_out" > "$rules"
+
+  local seed_exprs=()
+  mapfile -t seed_exprs < <(grep -E '^\((fact |, \(Goal )' "$compiler_out")
+  build_runtime_from_core "$runtime" "${seed_exprs[@]}"
+
+  mork run "$rules" --steps 80 --aux-path "$runtime" "$out" >/dev/null
+
+  assert_contains "$compiler_out" "(fact A (1.0 1.0))"
+  assert_contains "$compiler_out" "(fact B (1.0 1.0))"
+  assert_contains "$compiler_out" "(fact C (1.0 1.0))"
+  assert_contains "$compiler_out" "(, (Goal (And A B C)))"
+  assert_contains "$compiler_out" "(adapterN (And A B C) (pcons A (pcons B (pcons C pnil))))"
+  assert_contains "$out" "(fact (And A B C) (1.0 0.999700089898053))"
 }
 
 run_open_multiple_proofs_demo_test() {
@@ -382,7 +416,7 @@ EOF
   mork run "$rules" --steps 260 --aux-path "$sink_runtime" "$sink_out" >/dev/null
 
   assert_semantic_outputs_equal "$source_out" "$sink_out" "head_source_sink"
-  assert_contains "$source_out" "(fact (Combo ann) (0.5599999999999999 0.63))"
+  assert_contains "$source_out" "(fact (Combo ann) (0.518 0.6747807912236695))"
 }
 
 run_reduced_test
@@ -393,6 +427,7 @@ run_reference_open_query_test
 run_reference_independent_test
 run_reference_binding_test
 run_reference_three_premise_test
+run_reference_nary_conjunction_test
 run_open_multiple_proofs_demo_test
 run_head_source_sink_equivalence_test
 

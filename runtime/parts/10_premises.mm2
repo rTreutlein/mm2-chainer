@@ -10,7 +10,7 @@
                 $g
                 $rule-stv
                 $premises
-                (1.0 1.0)
+                no-stv
                 (scheduledN $g $premises)
                 pnil)))))
 
@@ -32,22 +32,40 @@
 
 (exec-template
   (exec 4
+        (, (wait-premises $g identity pnil $agg-stv $proof-id $evset))
+        (O (- (wait-premises $g identity pnil $agg-stv $proof-id $evset))
+           (+ (open-proof $g $agg-stv $proof-id $evset)))))
+
+(exec-template
+  (exec 4
         (, (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id $evset))
         (O (- (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id $evset))
            (+ (wait-premise $g $rule-stv $prem $rest $agg-stv $proof-id $evset))
            (+ (, (Goal $prem))))))
 
-; Matching the current frontier premise updates the running premise STV.  The
-; computed aggregate STV is used directly in the pure output expression, so no
-; separate aggregate-STV helper fact is required.
+; The first matched premise seeds the aggregate directly.  Later premises fold
+; with PeTTa-compatible AndFormula confidence propagation.
 (exec-template
   (exec 4
-        (, (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id $evset)
+        (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset)
            (fact $prem ($prem-s $prem-c)))
-        (O (- (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id $evset))
+        (O (- (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset))
+           (+ (wait-premises
+                $g
+                $rule-stv
+                $rest
+                ($prem-s $prem-c)
+                $proof-id
+                (pcons (fact-ev $prem ($prem-s $prem-c)) $evset))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset))
            (pure (wait-premises
                    $g
-                   ($rule-s $rule-c)
+                   $rule-stv
                    $rest
                    $next-agg-stv
                    $proof-id
@@ -55,10 +73,12 @@
                  $next-agg-stv
                  (tuple
                    (f64_to_string
-                     (min_f64
+                     (product_f64
                        (f64_from_string $agg-s)
                        (f64_from_string $prem-s)))
                    (f64_to_string
-                     (min_f64
+                     (pln_and_confidence_f64
+                       (f64_from_string $agg-s)
                        (f64_from_string $agg-c)
+                       (f64_from_string $prem-s)
                        (f64_from_string $prem-c))))))))

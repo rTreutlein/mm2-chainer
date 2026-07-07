@@ -29,3 +29,18 @@
                  (encode_hex
                    (sub_f64 (f64_from_string 1.0)
                             (f64_from_string $rule-c)))))))
+
+; Adapter rules derive a compound goal directly from its premise list.  They use
+; the premise aggregate TV as the proof TV instead of applying an extra rule TV.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (adapterN $g $premises))
+        (O (- (, (Goal $g)))
+           (+ (wait-premises
+                $g
+                identity
+                $premises
+                no-stv
+                (adapterN $g $premises)
+                pnil)))))
