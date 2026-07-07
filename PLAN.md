@@ -79,22 +79,56 @@ Known scope limits (documented divergences):
   pin `(proved ...)` records (immutable), not facts, for inversion-affected
   goals.
 
-Natural next ports (in rough order of increasing machinery):
-1. `test_forward_backward_compose.metta` exact-TV rewrite: compile its CTV
-   rules through the backend instead of hand-authoring `ruleN`.
-2. `test_backward_open_query_results.metta` openAndFair case end-to-end via
-   the compiler (facts + CTV rules + And query -> adapterN).
-3. `test_implication_premise.metta`: implications as premises/conclusions —
-   needs rules whose conclusion is an `Implication` pattern (total-implication
-   queries), and negation handling (`Not`).
-4. STV-rule inversion: needs the base-rate recursion guard story (per-rule
-   exclusion or one-shot fold semantics).
+# In-process FFI harness (DONE 2026-07-07)
 
-If the thin backend absorbs a third piece of `compile.metta` logic (negation
-outputs, spec rules, total-implication queries), switch strategy: run
-PeTTaChainer's real `compile.metta` under `petta` and translate its compiled
-rule IR (`(premises |- conclusions)` with CPU formula premises) into mm2
-atoms instead of growing a parallel compiler.
+`compiler/mm2_chainer.metta` runs PeTTaChainer-style test files near-verbatim
+against the mm2 runtime **in one petta process**, via PeTTa's mork_ffi
+(`&mork` space + `mm2-exec`, which calls MORK's `space.metta_calculus`):
+
+```metta
+!(import! &self .../compiler/mm2_chainer)
+!(mm2-init)
+!(mm2-compileadd kb (: a (A x) (STV 1.0 0.9)))
+!(mm2-test (mm2-query 20 kb (: $prf (B x) $tv))
+           ((: $_ (B x) (STV 0.6 0.8999998649685302))))
+```
+
+- Statements compile through the thin backend; every goal term is wrapped as
+  `($kb $term)` so named KBs share the space without cross-talk (verified).
+- `mm2-test` compares (type, tv) sets — mm2 proof tokens differ from PeTTa
+  proof terms by design. Verdicts: `pass` (exact) / `close` (within 1e-3
+  relative — the inversion refinement drift) / `FAIL`.
+- Converted tests live in `tests/harness/converted_tests.metta`; run with
+  `scripts/run-harness-tests.sh` (wired into the suite, currently
+  3 pass / 1 close / 0 fail).
+- Setup facts: petta wrapper LD_PRELOADs
+  `PeTTa/mork_ffi/target/release/libmork_ffi.so`, which path-depends on our
+  `../../MORK` — rebuild with `cargo build -p mork_ffi --release` in
+  `PeTTa/mork_ffi` after MORK changes (done 2026-07-07). petta `add-atom`
+  stores arguments *unevaluated*: force computed atoms through `let` first.
+  MeTTa variables round-trip into MM2 atoms correctly, including shared vars.
+
+## Next: convert the corpus + port the real compiler
+
+1. **Convert PeTTaChainer's test corpus** into `tests/harness/` (mechanical:
+   `compileadd`->`mm2-compileadd`, `(test (query N kb pat) exp)` ->
+   `(mm2-test (mm2-query N kb pat) (exp...))`, expected always as a list,
+   skipping forward-chainer/Python/distribution tests). Run for a
+   pass/close/FAIL gap list; each FAIL is either a missing statement shape in
+   the thin backend or a real runtime gap.
+2. **Port the real compiler by IR translation, not rewrite**: PeTTaChainer's
+   `mm2compile`/`mm2compileQuery` (compile.metta:877-988) already emit a
+   compiled IR — `(rules ($premises |- $conclusion))` with `(CPU Formula args
+   out)` premise items — whose current consumer is the MeTTa chainer
+   (compiled_query_runtime.metta), *not* MM2. Replace `mm2-compile-add` in the
+   harness with: run `mm2compile`, translate IR to mm2 atoms (subgoal premises
+   -> pcons list; recognized CPU chains -> ctv/stv/inv rule kinds + brpat;
+   unrecognized -> loud `notsupported-ir` marker feeding the gap list).
+3. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
+   caches base rates per (kb, pattern) at first use (base_rate_cache in
+   compiled_query_runtime.metta) so all rule firings in a query see one
+   value; mm2 recomputes every round and merged facts keep refining.
+4. STV-rule inversion still needs the fold recursion guard (see above).
 
 ## Key findings that drive the design
 

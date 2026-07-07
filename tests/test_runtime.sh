@@ -439,6 +439,15 @@ EOF
   assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledN (P alice) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
 }
 
+# PeTTaChainer-style tests running in-process against the mm2 runtime via
+# petta + mork_ffi (compiler/mm2_chainer.metta). The `close` verdict is the
+# inversion refinement drift documented in PLAN.md.
+run_ffi_harness_test() {
+  local summary
+  summary="$(bash scripts/run-harness-tests.sh | tail -1)"
+  assert_eq "$summary" "HARNESS: 3 pass, 1 close, 0 fail" "ffi harness verdict counts"
+}
+
 run_open_multiple_proofs_demo_test() {
   local runtime="outputs/test_open_multiple_proofs_runtime.mm2"
   local out="outputs/test_open_multiple_proofs.mm2"
@@ -496,6 +505,7 @@ run_reference_three_premise_test
 run_reference_nary_conjunction_test
 run_reference_stv_implication_test
 run_reference_implication_inversion_test
+run_ffi_harness_test
 run_open_multiple_proofs_demo_test
 run_head_source_sink_equivalence_test
 
