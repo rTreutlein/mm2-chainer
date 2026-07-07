@@ -176,7 +176,7 @@ run_full_test() {
   local runtime="outputs/test_full_runtime.mm2"
   local out="outputs/test_full.mm2"
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
-  mork run rules/full_rules.mm2 --steps "$(steps_budget 1 13)" --aux-path "$runtime" "$out" >/dev/null
+  mork run rules/full_rules.mm2 --steps "$(steps_budget 3 0)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(wait-premise (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (Paddle x) pnil no-stv (scheduledN (Bat x) (ctv (1.0 1.0) (0.0 1.0)) (pcons (Paddle x) pnil)) pnil)"
   assert_no_line_regex "$out" '^\(pendingN \$'

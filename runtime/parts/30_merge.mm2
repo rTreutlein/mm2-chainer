@@ -15,12 +15,15 @@
 ; The revision-aware exec must run before the proofs-only one (C before D):
 ; it consumes the open proofs of goals that already have a canonical fact so
 ; the proofs-only exec cannot write a second fact for the same goal.
+; The old fact is destructured to a packed pair so contextual (ctvpair ...)
+; facts (which carry no fact-evidence and are never revised) cannot reach
+; the sink.
 (exec-template
   (exec C
         (, (open-proof $g $stv $proof-id $evset)
-           (fact $g $old-stv)
-           (fact-evidence $g $old-stv $old-evset))
-        (O (revise-proofs $g $proof-id $stv $evset $old-stv $old-evset))))
+           (fact $g ($old-s $old-c))
+           (fact-evidence $g ($old-s $old-c) $old-evset))
+        (O (revise-proofs $g $proof-id $stv $evset ($old-s $old-c) $old-evset))))
 
 (exec-template
   (exec D

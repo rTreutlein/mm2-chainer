@@ -17,5 +17,14 @@
   (exec 2
         (, (base-rate-def $patQ $patM)
            (base-rate $patQ $old)
-           (fact $patM $stv))
-        (O (fold-base-rate $patQ $old $stv))))
+           (fact $patM ($fact-s $fact-c)))
+        (O (fold-base-rate $patQ $old ($fact-s $fact-c)))))
+
+; Contextual (ctvpair ...) facts contribute their positive branch
+; (tv_formulas.metta: BaseRateAcc on a CTV).
+(exec-template
+  (exec 2
+        (, (base-rate-def $patQ $patM)
+           (base-rate $patQ $old)
+           (fact $patM (ctvpair $pos $neg)))
+        (O (fold-base-rate $patQ $old $pos))))

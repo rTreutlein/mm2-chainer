@@ -194,6 +194,59 @@
                        (f64_from_string $sab)
                        (f64_from_string $cab))))))))
 
+; Total-implication rules (kind (proj ctvpair)) conclude a contextual TV
+; assembled structurally from their two premises: the positive-context
+; conclusion's TV is captured as the head, the negative-context conclusion's
+; TV arrives as the premise aggregate. The pair bypasses open-proof --
+; revision machinery is (s c)-only, and ctvpair facts are one-shot query
+; conclusions.
+(exec-template
+  (exec 4
+        (, (wait-premises $g (proj ctvpair ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
+        (O (- (wait-premises $g (proj ctvpair ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
+           (+ (fact $g (ctvpair ($ps $pc) ($ns $nc))))
+           (+ (proved $g (ctvpair ($ps $pc) ($ns $nc)) $proof-id $evset)))))
+
+; A ctvpair-valued fact used as a premise contributes its positive branch
+; (tv_formulas.metta: CTVModusPonensFormula on a CTV premise aggregate).
+(exec-template
+  (exec 4
+        (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset)
+           (fact $prem (ctvpair ($ps $pc) $neg)))
+        (O (- (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset))
+           (+ (wait-premises
+                $g
+                $rule-stv
+                $rest
+                ($ps $pc)
+                $proof-id
+                (pcons (fact-ev $prem) $evset))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset)
+           (fact $prem (ctvpair ($ps $pc) $neg)))
+        (O (- (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset))
+           (pure (wait-premises
+                   $g
+                   $rule-stv
+                   $rest
+                   $next-agg-stv
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $next-agg-stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $ps)))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $agg-c)
+                       (f64_from_string $ps)
+                       (f64_from_string $pc))))))))
+
 ; NotFormula: single-premise negation adapter, (s c) -> (1-s c).
 (exec-template
   (exec 4

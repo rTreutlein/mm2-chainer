@@ -102,6 +102,18 @@
                  (mm2-ir-materialize? $rule-tv)))
       ($other (unsupported-tail $other)))))
 
+; Total-implication rules assemble their conclusion TV structurally as
+; (CTV $pos-tv $neg-tv) from the two context conclusions' TVs -- there is no
+; CPU item, so they classify as identity; the CTV-shaped conclusion TV (a
+; bound expression, never a free result var) distinguishes them from adapter
+; chains.
+(= (mm2-ir-refine-kind $kind $ctv)
+   (if (and (== $kind identity) (is-expr $ctv))
+     (case $ctv
+       (((CTV $pos $neg) (proj-kind ctvpair))
+        ($other $kind)))
+     $kind))
+
 (= (mm2-ir-rule-pos (CTV (STV $ps $pc) $neg)) ($ps $pc))
 (= (mm2-ir-rule-pos (STV $s $c)) ($s $c))
 
@@ -143,6 +155,22 @@
      (fact $g ($s $c))
      (fact-evidence $g ($s $c) (pcons (fact-ev $g) pnil)))))
 
+; Rules with an implication-typed premise need that premise's
+; total-implication query scaffold (assumption contexts + ctvpair rule) in
+; the store -- PeTTa compiles it lazily when the chainer reaches the subgoal;
+; mm2 expands it eagerly at add time. The marker is resolved by the harness
+; (mm2-add-compiled), which guards against duplicate scaffolds.
+(= (mm2-ir-implication-query $p)
+   (case $p
+     (((($kb $ctx $vars) (Implication $ps $cs))
+       (needs-implication-query $kb (Implication $ps $cs)))
+      ($other (empty)))))
+
+(= (mm2-ir-implication-queries pnil) (empty))
+(= (mm2-ir-implication-queries (pcons $p $rest))
+   (superpose ((mm2-ir-implication-query $p)
+               (mm2-ir-implication-queries $rest))))
+
 ; Facts arrive in compileadd form (: shape prf type tv) or query form
 ; (type shape prf tv) — the latter are the assumption facts total-implication
 ; queries add into their fresh contexts.
@@ -153,8 +181,11 @@
       ((rules ($prems |- $ccl))
        (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
               ((subgoal $ctype $ctv) (mm2-ir-item $ccl))
-              ($kind (mm2-ir-classify (mm2-ir-drop-and $cpus))))
-         (mm2-ir-emit-rule $ctype $ptypes $kind)))
+              ($kind (mm2-ir-refine-kind
+                       (mm2-ir-classify (mm2-ir-drop-and $cpus))
+                       $ctv)))
+         (superpose ((mm2-ir-emit-rule $ctype $ptypes $kind)
+                     (mm2-ir-implication-queries $ptypes)))))
       (($type $shape $prf (STV $s $c))
        (mm2-ir-emit-fact ($shape $type) ($s $c)))
       ($other (notsupported-ir (stmt $other))))))

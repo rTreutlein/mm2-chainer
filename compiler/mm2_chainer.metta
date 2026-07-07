@@ -56,7 +56,23 @@
        (((notsupported-ir $x)
          (let $_log (mm2-log-line (notsupported-ir $x))
            (cons (notsupported-ir $x) (mm2-add-compiled $kb $rest))))
+        ((needs-implication-query $qkb $type)
+         (mm2-ir-append (mm2-ensure-implication-query $qkb $type)
+                        (mm2-add-compiled $kb $rest)))
         ($other (mm2-add-compiled $kb $rest))))))
+
+; Eagerly compile the total-implication query scaffold for an
+; implication-typed rule premise (PeTTa does this lazily at chain time). The
+; (ti-compiled ...) guard atom keeps one scaffold per (kb, type) -- each
+; compile would otherwise allocate fresh assumption contexts, and recursive
+; implication premises would never terminate.
+(= (mm2-ensure-implication-query $kb $type)
+   (let $seen (collapse (match &mork (ti-compiled $kb $type) found))
+     (if (== $seen ())
+       (let $_guard (add-atom &mork (ti-compiled $kb $type))
+         (mm2-run-compiled-queries $kb
+           (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
+       ())))
 
 ; petta collects all bang results and prints them only at exit, so a timeout
 ; kill of a runaway query would lose every verdict produced before it. Test
@@ -85,9 +101,13 @@
    (case $cq
      (((compiled-query $goal-item $adds)
        (let (subgoal ($shape $type) $tv) (mm2-ir-item $goal-item)
-         (collapse
-           (match &mork (fact ($shape $type) ($s $c))
-             (: mm2-merged $type (STV $s $c))))))
+         (mm2-ir-append
+           (collapse
+             (match &mork (fact ($shape $type) ($s $c))
+               (: mm2-merged $type (STV $s $c))))
+           (collapse
+             (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+               (: mm2-merged $type (CTV (STV $ps $pc) (STV $ns $nc))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -127,6 +147,8 @@
 
 (= (mm2-tv-close (STV $s1 $c1) (STV $s2 $c2))
    (and (mm2-rel-close $s1 $s2) (mm2-rel-close $c1 $c2)))
+(= (mm2-tv-close (CTV $p1 $n1) (CTV $p2 $n2))
+   (and (mm2-tv-close $p1 $p2) (mm2-tv-close $n1 $n2)))
 
 ; Non-result entries (notsupported-ir markers) are skipped for comparison;
 ; they surface in the transcript instead.
