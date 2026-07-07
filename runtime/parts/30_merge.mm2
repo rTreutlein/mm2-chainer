@@ -4,20 +4,21 @@
 ; If an open-query wait regenerates an already merged proof, drop the open token.
 (exec-template
   (exec B
-        (, (open-proof $g $stv $proof-id)
-           (proved $g $stv $proof-id))
-        (O (- (open-proof $g $stv $proof-id)))))
+        (, (open-proof $g $stv $proof-id $evset)
+           (proved $g $stv $proof-id $evset))
+        (O (- (open-proof $g $stv $proof-id $evset)))))
 
 ; Batch-revise every open proof for each goal.  The revise-proofs sink groups
 ; inputs by goal, removes consumed open proofs and old canonical facts, writes
 ; proved records, and emits one revised canonical fact per goal.
 (exec-template
   (exec C
-        (, (open-proof $g $stv $proof-id))
-        (O (revise-proofs $g $proof-id $stv))))
+        (, (open-proof $g $stv $proof-id $evset))
+        (O (revise-proofs $g $proof-id $stv $evset))))
 
 (exec-template
   (exec C
-        (, (open-proof $g $stv $proof-id)
-           (fact $g $old-stv))
-        (O (revise-proofs $g $proof-id $stv $old-stv))))
+        (, (open-proof $g $stv $proof-id $evset)
+           (fact $g $old-stv)
+           (fact-evidence $g $old-stv $old-evset))
+        (O (revise-proofs $g $proof-id $stv $evset $old-stv $old-evset))))

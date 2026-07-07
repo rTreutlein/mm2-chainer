@@ -11,13 +11,14 @@
                 $rule-stv
                 $premises
                 (1.0 1.0)
-                (scheduledN $g $premises))))))
+                (scheduledN $g $premises)
+                pnil)))))
 
 (exec-template
   (exec 4
-        (, (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id))
-        (O (- (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id))
-           (pure (open-proof $g $proof-stv $proof-id)
+        (, (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id $evset))
+        (O (- (wait-premises $g ($rule-s $rule-c) pnil ($premise-s $premise-c) $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple
                    (f64_to_string
@@ -31,9 +32,9 @@
 
 (exec-template
   (exec 4
-        (, (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id))
-        (O (- (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id))
-           (+ (wait-premise $g $rule-stv $prem $rest $agg-stv $proof-id))
+        (, (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id $evset))
+        (O (- (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id $evset))
+           (+ (wait-premise $g $rule-stv $prem $rest $agg-stv $proof-id $evset))
            (+ (, (Goal $prem))))))
 
 ; Matching the current frontier premise updates the running premise STV.  The
@@ -41,15 +42,16 @@
 ; separate aggregate-STV helper fact is required.
 (exec-template
   (exec 4
-        (, (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id)
+        (, (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id $evset)
            (fact $prem ($prem-s $prem-c)))
-        (O (- (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id))
+        (O (- (wait-premise $g ($rule-s $rule-c) $prem $rest ($agg-s $agg-c) $proof-id $evset))
            (pure (wait-premises
                    $g
                    ($rule-s $rule-c)
                    $rest
                    $next-agg-stv
-                   $proof-id)
+                   $proof-id
+                   (pcons (fact-ev $prem ($prem-s $prem-c)) $evset))
                  $next-agg-stv
                  (tuple
                    (f64_to_string

@@ -112,7 +112,8 @@ build_runtime_from_core_with_sink_head() {
                 $rule-stv
                 $premises
                 (1.0 1.0)
-                (scheduledN $g $premises))))))
+                (scheduledN $g $premises)
+                pnil)))))
 RUNTIME
     printf '\n'
     sed '1,15d' runtime/parts/10_premises.mm2
@@ -169,7 +170,7 @@ run_full_test() {
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/full_rules.mm2 --steps 20 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Paddle x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Paddle x) pnil)))"
+  assert_contains "$out" "(wait-premise (Bat x) (1.0 1.0) (Paddle x) pnil (1.0 1.0) (scheduledN (Bat x) (pcons (Paddle x) pnil)) pnil)"
   assert_no_line_regex "$out" '^\(pendingN \$'
 
   local runtime_templates
@@ -204,9 +205,9 @@ EOF
 
   mork run "$rules" --steps 30 --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (Creature x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Creature x) pnil)))"
-  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (LowPrem33 x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)))"
-  assert_contains "$out" "(wait-premise (Animal x) (0.9 0.9) (Mammal x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Mammal x) pnil)))"
+  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (Creature x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Creature x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (0.4 0.4) (LowPrem33 x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (LowPrem33 x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (0.9 0.9) (Mammal x) pnil (1.0 1.0) (scheduledN (Animal x) (pcons (Mammal x) pnil)) pnil)"
 }
 
 # Port of the single-premise composition behavior from
@@ -231,7 +232,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 1.0))"
-  assert_contains "$out_long" "(proved (Goal) (1.0 1.0) (scheduledN (Goal) (pcons (B) pnil)))"
+  assert_contains "$out_long" "(proved (Goal) (1.0 1.0) (scheduledN (Goal) (pcons (B) pnil)) (pcons (fact-ev (B) (1.0 1.0)) pnil))"
 }
 
 # Port of the first open-query result case from
@@ -254,8 +255,8 @@ EOF
 
   assert_contains "$out" "(fact (Animal ann) (1.0 0.9))"
   assert_contains "$out" "(fact (Animal max) (1.0 0.9))"
-  assert_contains "$out" "(proved (Animal ann) (1.0 0.9) (scheduledN (Animal ann) (pcons (Dog ann) pnil)))"
-  assert_contains "$out" "(proved (Animal max) (1.0 0.9) (scheduledN (Animal max) (pcons (Dog max) pnil)))"
+  assert_contains "$out" "(proved (Animal ann) (1.0 0.9) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann) (1.0 1.0)) pnil))"
+  assert_contains "$out" "(proved (Animal max) (1.0 0.9) (scheduledN (Animal max) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max) (1.0 1.0)) pnil))"
 }
 
 # Port of the independentKb behavior from
@@ -282,7 +283,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 1.0))"
-  assert_contains "$out_long" "(proved (C) (1.0 1.0) (scheduledN (C) (pcons (A) (pcons (B) pnil))))"
+  assert_contains "$out_long" "(proved (C) (1.0 1.0) (scheduledN (C) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 1.0)) pnil)))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
@@ -308,9 +309,9 @@ EOF
   mork run "$rules" --steps 70 --aux-path "$runtime" "$out_mid" >/dev/null
   mork run "$rules" --steps 260 --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) (1.0 1.0) (Pet ann) pnil (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+  assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) (1.0 1.0) (Pet ann) pnil (0.8 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Own (i ann)) (0.8 1.0)) pnil))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.7 1.0))"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.7 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.7 1.0) (scheduledN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Pet ann) (0.7 1.0)) (pcons (fact-ev (Own (i ann)) (0.8 1.0)) pnil)))"
 }
 
 run_reference_three_premise_test() {
@@ -335,7 +336,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 1.0))"
-  assert_contains "$out_long" "(proved (Goal3) (1.0 1.0) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))))"
+  assert_contains "$out_long" "(proved (Goal3) (1.0 1.0) (scheduledN (Goal3) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D) (1.0 1.0)) (pcons (fact-ev (B) (1.0 1.0)) (pcons (fact-ev (A) (1.0 1.0)) pnil))))"
 }
 
 run_open_multiple_proofs_demo_test() {
@@ -346,8 +347,8 @@ run_open_multiple_proofs_demo_test() {
   mork run demos/open_multiple_proofs.mm2 --steps 130 --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.925 0.888888888888889))"
-  assert_contains "$out" "(proved (Animal ann) (0.9 0.8) (scheduledN (Animal ann) (pcons (Dog ann) pnil)))"
-  assert_contains "$out" "(proved (Animal ann) (0.95 0.8) (scheduledN (Animal ann) (pcons (Cat ann) pnil)))"
+  assert_contains "$out" "(proved (Animal ann) (0.9 0.8) (scheduledN (Animal ann) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann) (1.0 1.0)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (0.95 0.8) (scheduledN (Animal ann) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann) (1.0 1.0)) pnil))"
 
   local animal_ann_proofs
   animal_ann_proofs="$(grep -c '^(proved (Animal ann) ' "$out")"
