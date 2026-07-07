@@ -82,8 +82,26 @@
    (let* (($wrapped (mm2-wrap-atom $kb $atom))
           ($_add (add-atom &mork $wrapped)))
      (case $atom
-       (((notsupported-ir $x) (cons (notsupported-ir $x) (mm2-add-compiled $kb $rest)))
+       (((notsupported-ir $x)
+         (let $_log (mm2-log-line (notsupported-ir $x))
+           (cons (notsupported-ir $x) (mm2-add-compiled $kb $rest))))
         ($other (mm2-add-compiled $kb $rest))))))
+
+; petta collects all bang results and prints them only at exit, so a timeout
+; kill of a runaway query would lose every verdict produced before it. Test
+; verdicts and notsupported markers are therefore also appended durably to a
+; side log as they happen; the corpus runner counts from that log.
+(= (mm2-verdict-log)
+   "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/outputs/harness_verdicts.log")
+
+(= (mm2-log-line $term)
+   (let* (($path (mm2-verdict-log))
+          ($_s (callPredicate (Predicate (swrite $term $str))))
+          ($_o (callPredicate (Predicate (quote (open $path append $stream)))))
+          ($_w (callPredicate (Predicate (quote (write $stream $str)))))
+          ($_n (callPredicate (Predicate (quote (nl $stream)))))
+          ($_c (callPredicate (Predicate (quote (close $stream))))))
+     logged))
 
 (= (mm2-compileadd $kb $stmt)
    (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
@@ -159,10 +177,13 @@
 (= (mm2-test $results $expected)
    (let* (($got (mm2-result-keys $results))
           ($want (mm2-result-keys $expected))
-          ($missing (mm2-missing-keys $want $got)))
-     (if (== $missing ())
-       (mm2-test-pass $want)
-       (let $far (mm2-far-keys $missing $got)
-         (if (== $far ())
-           (mm2-test-close (inexact $missing) (got $got))
-           (mm2-test-FAIL (missing $far) (got $got)))))))
+          ($missing (mm2-missing-keys $want $got))
+          ($verdict
+            (if (== $missing ())
+              (mm2-test-pass $want)
+              (let $far (mm2-far-keys $missing $got)
+                (if (== $far ())
+                  (mm2-test-close (inexact $missing) (got $got))
+                  (mm2-test-FAIL (missing $far) (got $got))))))
+          ($_log (mm2-log-line $verdict)))
+     $verdict))
