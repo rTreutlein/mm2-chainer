@@ -226,12 +226,38 @@ Commit 49782b9 (mm2-chainer) + 3b7e80d (MORK):
   — suspect inverse-rule interference via revision; the directional
   bi-forward/bi-backward tests pass).
 
+## Translator unification guards (DONE 2026-07-07, after 2nd corpus rerun)
+
+Root cause behind test_var_head and suspect for other silent wrongness:
+**translator case patterns unify with free IR variables and instantiate
+them.** Three fixes:
+
+- `(Implication $ps $cs)` bound a var-headed premise's `$r` to Implication
+  (rule mangled into a bogus scaffold). Now matches `($head $ps $cs)` and
+  checks `(not (is-var $head))` first.
+- `(STV $s $c)` bound free-tv ctxatoms (identity-query assumption atoms from
+  mm2compileQuery's context branch) into wildcard facts with unbound s/c.
+  Facts now go through mm2-ir-fact-stmt with is-var checks; free/non-STV TVs
+  produce loud markers.
+- `mm2-ir-fold-pattern` was partial: a weighted-universe fold left an
+  unreduced helper call inside the rule atom and the rule vanished with no
+  marker. Now total: only extract-tv/BaseRateAcc/base-rate folds map to the
+  base-rate relation; other folds -> unsupported-tail markers.
+
+Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
+
 ## Open investigation notes (2026-07-07)
 
-- **test_var_head** (2 fails, `(Symmetric $r), ($r $x $y) -> ($r $y $x)`):
-  MORK unification handles var-headed data fine (verified with a minimal
-  exec probe) — the failure is elsewhere in the schedule/premise chain;
-  trace with a live single-file run.
+- **test_var_head** (2 fails): the consequent pattern has a variable head,
+  so PeTTa compiles its base rate as a **weighted-universe fold**
+  (`FoldAllCompiled (kb (Inheritance $x $c) (extract-inheritance-tv ...)
+  ... WeightedBaseRateAcc (weighted-base-rate-in-universe kb) result-tv)`):
+  fold over Inheritance facts, per-row mass m*mc*c from
+  inheritance-subject-prior-tv, result STV(wsum/msum, min(1, msum))
+  (tv_formulas.metta:117-125). Needs a new MORK sink with a per-row prior
+  join — tracked as its own task; the classifier marks these tails
+  unsupported for now. Same machinery family as member/inheritance tests
+  and probably parts of specializing_rule/uniform_prior.
 - **test_math** now segfaults mork_ffi (SIGSEGV, was TIMEOUT) near the end
   of the file; verdicts before it survive. Compute-heavy recursion suspect.
 - **test_best_first_runtime** fails are agenda-order semantics: expected
