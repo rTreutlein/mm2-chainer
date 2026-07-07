@@ -9,9 +9,13 @@
 ;   !(mm2-test (mm2-query 20 kb (: $prf (B x) $tv))
 ;              ((: $_ (B x) (STV 0.6 0.8999998649685302))))
 ;
-; Statements compile through compiler/petta_mm2_backend.metta. Every compiled
-; goal term is wrapped as ($kb $term) so multiple named KBs share the one
-; &mork space without cross-talk, mirroring PeTTaChainer's named-KB scoping.
+; Statements compile through PeTTaChainer's real compiler (compileadd /
+; mm2compileQuery in compile.metta) and its IR is translated to mm2 atoms by
+; compiler/mm2_ir_translate.metta; unrecognized IR surfaces as
+; (notsupported-ir ...) markers in the output — the coverage gap list. Every
+; compiled goal term is wrapped as ($kb $term) so multiple named KBs share
+; the one &mork space without cross-talk, mirroring PeTTaChainer's named-KB
+; scoping.
 ;
 ; Known divergences from PeTTaChainer's query:
 ; - mm2 proof identifiers ((scheduledN ...) tokens) differ structurally from
@@ -20,7 +24,9 @@
 ; - PeTTa's query step budget counts chainer expansions; mm2 steps count exec
 ;   firings. mm2-query scales the budget by mm2-steps-per-round.
 
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/petta_chainer)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/petta_mm2_backend)
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_ir_translate)
 
 ; --- runtime loading ------------------------------------------------------
 
@@ -63,36 +69,39 @@
 (= (mm2-wrap-atom $kb (base-rate-def $q $m)) (base-rate-def ($kb $q) ($kb $m)))
 (= (mm2-wrap-atom $kb (base-rate $q $tv)) (base-rate ($kb $q) $tv))
 (= (mm2-wrap-atom $kb (, (Goal $t))) (, (Goal ($kb $t))))
+(= (mm2-wrap-atom $kb (notsupported-ir $x)) (notsupported-ir $kb $x))
 
 ; --- compileadd / query ----------------------------------------------------
 
 ; add-atom stores its argument unevaluated, so the wrap is forced via let
-; before the add.
+; before the add. (notsupported-ir ...) markers are both stored (wrapped, for
+; postmortem inspection of the space) and returned so they print in the test
+; transcript.
 (= (mm2-add-compiled $kb ()) ())
 (= (mm2-add-compiled $kb (cons $atom $rest))
    (let* (($wrapped (mm2-wrap-atom $kb $atom))
-          ($_add (add-atom &mork $wrapped))
-          ($_rest (mm2-add-compiled $kb $rest)))
-     ()))
+          ($_add (add-atom &mork $wrapped)))
+     (case $atom
+       (((notsupported-ir $x) (cons (notsupported-ir $x) (mm2-add-compiled $kb $rest)))
+        ($other (mm2-add-compiled $kb $rest))))))
 
 (= (mm2-compileadd $kb $stmt)
-   (mm2-add-compiled $kb (collapse (mm2-compile-add $stmt))))
-
-; Atomic queries have no adapter rules; this fallback keeps the collapse of
-; mm2-compile-query-rule well-defined for them (the And clauses in
-; petta_mm2_backend still contribute their adapters).
-(= (mm2-compile-query-rule (: $proof $type $tv)) (empty))
+   (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
 
 (= (mm2-query-readback $kb $type)
    (collapse
      (match &mork (fact ($kb $type) ($s $c))
        (: mm2-merged $type (STV $s $c)))))
 
+(= (mm2-run-compiled-queries $kb ()) ())
+(= (mm2-run-compiled-queries $kb (cons $cq $rest))
+   (mm2-ir-append (mm2-add-compiled $kb (mm2-translate-query $cq))
+                  (mm2-run-compiled-queries $kb $rest)))
+
 (= (mm2-query $steps $kb (: $prf $type $tv))
-   (let* (($_goal (mm2-add-compiled $kb (collapse (mm2-compile-query-goal (: $prf $type $tv)))))
-          ($_rules (mm2-add-compiled $kb (collapse (mm2-compile-query-rule (: $prf $type $tv)))))
+   (let* (($notsup (mm2-run-compiled-queries $kb (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
           ($_run (mm2-exec &mork (* $steps (mm2-steps-per-round)))))
-     (mm2-query-readback $kb $type)))
+     (mm2-ir-append $notsup (mm2-query-readback $kb $type))))
 
 ; --- test comparison --------------------------------------------------------
 ; Compare (type, tv) sets; proof tokens intentionally differ from PeTTa.
@@ -117,9 +126,13 @@
 (= (mm2-tv-close (STV $s1 $c1) (STV $s2 $c2))
    (and (mm2-rel-close $s1 $s2) (mm2-rel-close $c1 $c2)))
 
-(= (mm2-result-keys ()) ())
-(= (mm2-result-keys (cons (: $prf $type $tv) $rest))
-   (cons ($type $tv) (mm2-result-keys $rest)))
+; Non-result entries (notsupported-ir markers) are skipped for comparison;
+; they surface in the transcript instead.
+(= (mm2-result-keys $list)
+   (case $list
+     ((() ())
+      ((cons (: $prf $type $tv) $rest) (cons ($type $tv) (mm2-result-keys $rest)))
+      ((cons $other $rest) (mm2-result-keys $rest)))))
 
 (= (mm2-contains-key () $key) false)
 (= (mm2-contains-key (cons $x $rest) $key)

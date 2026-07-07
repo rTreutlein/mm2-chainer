@@ -1,0 +1,8 @@
+; generated from PeTTaChainer tests/test_inheritance_query_proof.metta by convert_petta_tests.py
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
+!(mm2-init)
+!(mm2-compileadd inheritanceQueryKb (: i1 (Inheritance a Bird) (STV 1.0 0.9)))
+!(mm2-compileadd inheritanceQueryKb (: i2 (Inheritance a Flier) (STV 1.0 0.9)))
+!(mm2-compileadd inheritanceQueryKb (: i3 (Inheritance b Bird) (STV 1.0 0.9)))
+!(mm2-compileadd inheritanceQueryKb (: i4 (Inheritance b Flier) (STV 1.0 0.9)))
+!(mm2-test (mm2-query 80 inheritanceQueryKb (: $prf (Inheritance Bird Flier) $tv)) ((: (merge/revision (inheritance-query (total-implication (merge/revision ((inheritance-implication i2) ((inverted (inheritance-implication i1) with cpu (foldall-proof i1 i3)) (ctx proof 0))) ((inheritance-implication i4) ((inverted (inheritance-implication i3) with cpu (foldall-proof i1 i3)) (ctx proof 0)))) (merge/revision ((inheritance-implication i2) ((inverted (inheritance-implication i1) with cpu (foldall-proof i1 i3)) (ctx proof 1))) ((inheritance-implication i4) ((inverted (inheritance-implication i3) with cpu (foldall-proof i1 i3)) (ctx proof 1)))))) (inheritance-query (total-implication ((inheritance-implication i2) ((inverted (inheritance-implication i1) with cpu (foldall-proof i1 i3)) (ctx proof 0))) (merge/revision ((inheritance-implication i2) ((inverted (inheritance-implication i1) with cpu (foldall-proof i1 i3)) (ctx proof 1))) ((inheritance-implication i4) ((inverted (inheritance-implication i3) with cpu (foldall-proof i1 i3)) (ctx proof 1))))))) (Inheritance Bird Flier) (STV 0.9999999166665949 0.0012502032753877429))))

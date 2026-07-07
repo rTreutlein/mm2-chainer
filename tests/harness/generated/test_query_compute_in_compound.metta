@@ -1,0 +1,12 @@
+; generated from PeTTaChainer tests/test_query_compute_in_compound.metta by convert_petta_tests.py
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
+!(mm2-init)
+; UNSUPPORTED test form: (test (== (length (compile-query-adds (: (kbctx queryComputeKb) $prf (And (P $x) (Compute + ($x 1) $y) (P $y)) $tv))) 1) true)
+!(mm2-test-unsupported (test (== (length (compile-query-adds (: (kbctx queryCompute)
+!(mm2-compileadd queryComputeKb (: p1 (P 1) (STV 1.0 1.0)))
+!(mm2-compileadd queryComputeKb (: p2 (P 2) (STV 1.0 1.0)))
+!(mm2-compileadd queryComputeKb (: p3 (P 3) (STV 1.0 1.0)))
+!(mm2-test (mm2-query 50 queryComputeKb (: $prf (And (P $x) (Compute + ($x 1) $y) (P $y)) $tv)) ((: (query-compound (conjunction p1 cpu p2)) (And (P 1) (Compute + (1 1) 2) (P 2)) (STV 1.0 0.9996001597861454)) (: (query-compound (conjunction p2 cpu p3)) (And (P 2) (Compute + (2 1) 3) (P 3)) (STV 1.0 0.9996001597861454))))
+!(mm2-compileadd queryNotCompoundKb (: tallAlice (Tall alice) (STV 0.9 0.5)))
+!(mm2-compileadd queryNotCompoundKb (: femaleAlice (Female alice) (STV 0.9 0.5)))
+!(mm2-test (mm2-query 20 queryNotCompoundKb (: $prf (And (Not (Tall alice)) (Female alice)) $tv)) ((: (query-compound (conjunction (negated tallAlice) femaleAlice)) (And (Not (Tall alice)) (Female alice)) (STV 0.08999999999999998 0.526008182066309))))

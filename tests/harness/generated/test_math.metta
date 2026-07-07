@@ -1,0 +1,11 @@
+; generated from PeTTaChainer tests/test_math.metta by convert_petta_tests.py
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
+!(mm2-init)
+!(mm2-compileadd mathkb (: ax-k (Provable (→ $𝜑 (→ $𝜓 $𝜑))) (STV 1.0 1.0)))
+!(mm2-compileadd mathkb (: ax-id (Provable (→ a a)) (STV 1.0 1.0)))
+!(mm2-compileadd mathkb (: mp (Implication (Premises (Provable (→ $p $q)) (Provable $p)) (Conclusions (Provable $q))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
+!(mm2-compileadd mathkb (: given-imp (Provable (→ (PropP) (PropQ))) (STV 1.0 1.0)))
+!(mm2-compileadd mathkb (: given-p (Provable (PropP)) (STV 1.0 1.0)))
+!(mm2-test (mm2-query 10 mathkb (: ax-k (Provable (→ $𝜑 (→ $𝜓 $𝜑))) $tv)) ((: ax-k (Provable (→ $𝜑 (→ $𝜓 $𝜑))) (STV 1.0 1.0))))
+!(mm2-test (mm2-query 1 mathkb (: ax-id (Provable (→ a a)) $tv)) ((: ax-id (Provable (→ a a)) (STV 1.0 1.0))))
+!(mm2-test (mm2-query 20 mathkb (: $prf (Provable (PropQ)) $tv)) ((: (mp (conjunction given-imp given-p)) (Provable (PropQ)) (STV 1.0 0.999700089898053))))
