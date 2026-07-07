@@ -83,6 +83,7 @@
       ((cons (cpu AndProjection ($tvin $ev) $out) ()) (proj-kind and))
       ((cons (cpu OrProjection ($tvin $ev) $out) ()) (proj-kind or))
       ((cons (cpu AndMarginalProjection ($tvin) $out) ()) (proj-kind marg))
+      ((cons (cpu NotFormula ($tvin) $out) ()) (proj-kind not))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
       ((cons $fold-a

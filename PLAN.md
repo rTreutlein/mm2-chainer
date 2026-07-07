@@ -166,11 +166,51 @@ by total-implication queries; the translator's fact clause only accepts the
 5-tuple `(: ...)` form. Easy fix, unlocks implication-premise/compose
 queries.
 
+## Projection rules + IR-driven kb scoping (DONE 2026-07-07)
+
+Commit 49782b9 (mm2-chainer) + 3b7e80d (MORK):
+
+- **Projection rule kind** `(ruleN $g (proj and|or|marg) (pcons $compound
+  $others))` covers the And/Or element-projection adapter chains (was 162 of
+  244 unsupported markers). The compound head premise's TV is captured into
+  the rule-TV slot via a `wait-head` record (new exec at priority 1 + 4);
+  the other elements run through the generic premise fold; three fire execs
+  apply AndProjection / OrProjection / AndMarginalProjection (new MORK pure
+  ops `pln_{and,or}_proj_{strength,confidence}_f64`,
+  `pln_marginal_proj_confidence_f64`). OrProjection with 3+ elements stays
+  unsupported (its evidence folds with OrFormula, not the premise
+  machinery's AndFormula).
+- **KB scoping now comes from the IR itself** (this replaced the harness's
+  `($kb $term)` wrap layer entirely): compile.metta scopes every item with
+  a kb triple — `($kb MAIN Nil)` for ordinary statements (kbctx), a
+  numbered assumption context for query premises — and rule items share
+  free ctx/vars vars between premises and conclusion. Translating terms as
+  `($kb-triple $term)` makes rules context-generic and facts
+  context-specific, so total-implication assumption contexts are isolated
+  for free. Query readback follows each compiled query's own goal scope
+  (some queries allocate a fresh context instead of MAIN).
+- **Query-form (4-tuple) assumption facts** `($type $shape $prf (STV ..))`
+  now translate as facts (they're the assumption facts total-implication
+  queries add into their contexts).
+- **Test suite step budgets** are now `steps_budget rounds extra` (scales
+  with the exec-template count) because every seeded exec costs one step
+  whether or not it fires — adding runtime execs used to shift what stage
+  snapshot tests observed. Two snapshots recalibrated (full: 1+13,
+  binding mid: 5+0).
+- test_frontier_pooling now runs its projections (values appear instead of
+  unsupported markers) but the *pooling* TVs still diverge: PeTTa pools
+  same-source projections back into the source TV, mm2 revises the andproj
+  and margproj proofs together (that's the task-#15 proof-store pooling
+  work, not a projection bug). Independent-fact conjunctions pass exactly.
+
 ## Next
 
-1. **Triage order from the corpus report**: (a) And/Or projection adapter
-   rule kind (162 markers), (b) query-form assumption facts (unlocks
-   total-implication queries), (c) NotFormula chains, (d) remaining MP
+1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
+   rule kind~~ done, (b) ~~query-form assumption facts~~ done (full
+   total-implication queries still need a CTV-assembling rule kind: the
+   final rule's conclusion TV is `(CTV $pos-tv $neg-tv)` built structurally
+   from the two context conclusions' TVs — no CPU formula — and facts can
+   then carry CTV values), (c) NotFormula chains, (d) remaining MP
    arrangements, then weighted/grouped folds and member machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,

@@ -194,6 +194,18 @@
                        (f64_from_string $sab)
                        (f64_from_string $cab))))))))
 
+; NotFormula: single-premise negation adapter, (s c) -> (1-s c).
+(exec-template
+  (exec 4
+        (, (wait-premises $g (proj not ($s $c)) pnil no-stv $proof-id $evset))
+        (O (- (wait-premises $g (proj not ($s $c)) pnil no-stv $proof-id $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (sub_f64 (f64_from_string 1.0) (f64_from_string $s)))
+                   (f64_to_string (f64_from_string $c)))))))
+
 ; Inverse rules (kind inv) apply PeTTa's CTVInversionFormula at fire time:
 ; the original rule's positive branch is inverted through the base rates of
 ; its antecedent ($ante) and consequent ($cons), and the inverted CTV is

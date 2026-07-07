@@ -192,6 +192,11 @@ def and_marginal_projection(tv_ab):
     return (sab, count_confidence(sab * confidence_to_count(cab)))
 
 
+def not_formula(tv):
+    s, c = tv
+    return (1.0 - s, c)
+
+
 def revise(old, new):
     """revise_stv from MORK sinks.rs (merge two proofs of one fact)."""
     old_s, old_c = old

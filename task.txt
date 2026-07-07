@@ -1,0 +1,300 @@
+Use only lowercase `rTreutlein/mm2-chainer` for this. I did not run the repos; this is a static code plan from the current pushed files.
+
+## Chosen PeTTaChainer-only test
+
+Port this test first:
+
+`PeTTaChainer/pettachainer/metta/tests/test_nary_conjuction.metta`
+
+It is tiny:
+
+```metta
+!(compileadd kb (: a A (STV 1.0 1.0)))
+!(compileadd kb (: b B (STV 1.0 1.0)))
+!(compileadd kb (: c C (STV 1.0 1.0)))
+
+!(test (query 10 kb (: $prf (And A B C) $tv))
+       (: (conjunction a b c) (And A B C) (STV 1.0 0.999700089898053)))
+```
+
+This is a good next target because it avoids the Python interface, forward chaining, and distributional values, but it still forces two core missing pieces: compiler/query lowering for compound goals, and PeTTa-compatible n-ary conjunction truth-value aggregation.
+
+## Why it currently does not fit mm2-chainer
+
+`mm2-chainer` currently has a compact runtime split into `00_frontier`, `10_premises`, `30_merge`, and `90_loop`. The README says `00_frontier.mm2` handles goal satisfaction, rule lowering, and scheduling; `10_premises.mm2` handles premise traversal and STV aggregation; `30_merge.mm2` handles proof merge/revision.
+
+The scheduler only starts from explicit `ruleN` facts matching a goal:
+
+```mm2
+(, (, (Goal $g))
+   (ruleN $g $rule-s $rule-c $premises))
+```
+
+and then creates `pendingN`.
+
+The current premise aggregation is deliberately simplified: when a premise fact is found, the next aggregate STV is computed with `min_f64` for both strength and confidence. That is not PeTTaChainer’s `AndFormula`.
+
+PeTTaChainer’s `AndFormula` uses product strength and idealized confidence propagation, with helpers such as `ideal-var`, `ideal-prod-confidence`, and `ideal-conf-from-var`.
+
+So this PeTTa test reveals the real gap cleanly: mm2-chainer can traverse premise lists, but it lacks a compiler-produced compound-query adapter and uses the wrong truth-value fold.
+
+## Minimal elegant solution
+
+Add one reusable PeTTa-style STV conjunction primitive, then use it everywhere premise STVs are folded. Do not add bespoke special cases for `And A B C`.
+
+### 1. Add a PeTTa-compatible conjunction confidence primitive to MORK
+
+In MORK `revise-proofs`, add one pure numeric function in `kernel/src/pure.rs`, next to the existing registered numeric pure functions. MORK already registers many `f64_*` pure functions such as `product_f64`, `min_f64`, `f64_from_string`, and `f64_to_string`, so this fits the current mechanism.
+
+Add:
+
+```rust
+pln_and_confidence_f64(s1: f64, c1: f64, s2: f64, c2: f64) -> f64
+```
+
+Implement it from PeTTaChainer’s `AndFormula` helpers:
+
+```rust
+const EVIDENCE_CONFIDENCE_K: f64 = 800.0;
+const CERTAINTY_COUNT: f64 = 8_000_000.0; // needed to match PeTTa's c=1.0 behavior
+
+fn confidence_to_count(c: f64) -> f64 {
+    if c >= 1.0 {
+        CERTAINTY_COUNT
+    } else if c <= 0.0 {
+        0.0
+    } else {
+        EVIDENCE_CONFIDENCE_K * c / (1.0 - c)
+    }
+}
+
+fn ideal_clip(s: f64) -> f64 {
+    s.max(0.000001).min(0.999999)
+}
+
+fn ideal_var(s: f64, c: f64) -> f64 {
+    let cs = ideal_clip(s);
+    cs * (1.0 - cs) / (confidence_to_count(c) + 1.0)
+}
+
+fn ideal_conf_from_var(s: f64, var: f64) -> f64 {
+    if var <= 0.0 {
+        return 0.9999;
+    }
+    let cs = ideal_clip(s);
+    let maxvar = cs * (1.0 - cs);
+    let v = var.min(maxvar);
+    let n = maxvar / v - 1.0;
+    (n / (n + EVIDENCE_CONFIDENCE_K)).max(0.000001)
+}
+
+fn pln_and_confidence(s1: f64, c1: f64, s2: f64, c2: f64) -> f64 {
+    if c1 <= 0.0 || c2 <= 0.0 {
+        return 0.0;
+    }
+    let sb = s1 * s2;
+    let v1 = ideal_var(s1, c1);
+    let v2 = ideal_var(s2, c2);
+    let vars_b = v1 * v2 + v1 * s2 * s2 + s1 * s1 * v2;
+    ideal_conf_from_var(sb, vars_b)
+}
+```
+
+The `CERTAINTY_COUNT = 8_000_000.0` value is needed to reproduce the PeTTa expected constants for exact facts: two exact inputs produce `0.9998000399670116`, three exact inputs produce `0.999700089898053`.
+
+### 2. Change `wait-premises` to use a “no aggregate yet” sentinel
+
+Do not start premise aggregation at `(1.0 1.0)`. PeTTa’s compiler starts with the first premise TV and only applies `AndFormula` to later premises. This avoids degrading single-premise rules.
+
+Change the initial scheduler output in `runtime/parts/10_premises.mm2` from:
+
+```mm2
+(wait-premises $g $rule-stv $premises (1.0 1.0) ...)
+```
+
+to:
+
+```mm2
+(wait-premises $g $rule-stv $premises no-stv ...)
+```
+
+Then split the premise-match rule into two cases:
+
+```mm2
+; First premise: just adopt the premise STV.
+(exec-template
+  (exec 4
+        (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id)
+           (fact $prem $prem-stv))
+        (O (- (wait-premise $g $rule-stv $prem $rest no-stv $proof-id))
+           (+ (wait-premises $g $rule-stv $rest $prem-stv $proof-id)))))
+```
+
+and:
+
+```mm2
+; Later premises: fold using PeTTa AndFormula semantics.
+(exec-template
+  (exec 4
+        (, (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id))
+           (pure (wait-premises
+                   $g
+                   $rule-stv
+                   $rest
+                   $next-agg-stv
+                   $proof-id)
+                 $next-agg-stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $prem-s)))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $agg-c)
+                       (f64_from_string $prem-s)
+                       (f64_from_string $prem-c))))))))
+```
+
+This is the main elegant runtime change: the same premise fold now supports n-ary conjunction queries, multi-premise implications, and later PeTTa-style compiler output.
+
+### 3. Add an identity adapter for compiler-generated compound queries
+
+Do not special-case `(And ...)` directly inside the runtime. Add one generic adapter form:
+
+```mm2
+(adapterN $goal $premises)
+```
+
+It means: “derive `$goal` from these premises, and use the premise aggregate STV directly.”
+
+Add a scheduler rule parallel to `ruleN`:
+
+```mm2
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (adapterN $g $premises))
+        (O (- (, (Goal $g)))
+           (+ (wait-premises
+                $g
+                identity
+                $premises
+                no-stv
+                (adapterN $g $premises))))))
+```
+
+Add a final case for identity rules:
+
+```mm2
+(exec-template
+  (exec 4
+        (, (wait-premises $g identity pnil $agg-stv $proof-id))
+        (O (- (wait-premises $g identity pnil $agg-stv $proof-id))
+           (+ (open-proof $g $agg-stv $proof-id)))))
+```
+
+Leave the existing `ruleN` final proof case separate for now. This prevents a fake perfect rule `(1.0 1.0)` from adding an extra truth-value propagation step to compound queries.
+
+### 4. Add a thin compiler backend instead of hand-authoring `adapterN`
+
+Reuse/adapt PeTTaChainer’s compiler logic rather than creating a second compiler from scratch.
+
+For this first test, the backend only needs:
+
+```metta
+(: a A (STV 1.0 1.0))        -> (fact A (1.0 1.0))
+(: b B (STV 1.0 1.0))        -> (fact B (1.0 1.0))
+(: c C (STV 1.0 1.0))        -> (fact C (1.0 1.0))
+
+query (: $prf (And A B C) $tv)
+  -> (, (Goal (And A B C)))
+  -> (adapterN (And A B C) (pcons A (pcons B (pcons C pnil))))
+```
+
+PeTTaChainer already has the relevant compiler concepts: compound query temp-rule construction and query lowering live near `compound-query-temp-stmt`, `default-query-assumption-tv`, and `mm2compileQuery`. Reuse those pieces as the source of the adapter behavior rather than inventing a new query compiler.
+
+Concrete file recommendation:
+
+```text
+mm2-chainer/
+  compiler/
+    petta_mm2_backend.metta
+```
+
+Keep this backend deliberately small:
+
+* support facts with `STV`
+* support compound `And` query lowering to `adapterN`
+* support `Implication` lowering to `ruleN` only after the first test passes
+* ignore Python, forward chaining, distributions, base-rate folds, inversion, and proof pretty-print parity for now
+
+### 5. Add the regression test to `tests/test_runtime.sh`
+
+Add a new test function:
+
+```bash
+run_reference_nary_conjunction_test() {
+  local runtime="outputs/test_reference_nary_conjunction_runtime.mm2"
+  local rules="outputs/test_reference_nary_conjunction_rules.mm2"
+  local out="outputs/test_reference_nary_conjunction.mm2"
+
+  cat > "$rules" <<'EOF'
+; compiler output for PeTTaChainer test_nary_conjuction.metta
+(adapterN (And A B C) (pcons A (pcons B (pcons C pnil))))
+EOF
+
+  build_runtime_from_core "$runtime" \
+    '(, (Goal (And A B C)))' \
+    '(fact A (1.0 1.0))' \
+    '(fact B (1.0 1.0))' \
+    '(fact C (1.0 1.0))'
+
+  mork run "$rules" --steps 80 --aux-path "$runtime" "$out" >/dev/null
+
+  assert_contains "$out" "(fact (And A B C) (1.0 0.999700089898053))"
+}
+```
+
+Then add it to the test list before the final `echo`.
+
+Once the compiler backend exists, replace the hand-written `adapterN` fixture with generated compiler output. The hand-written fixture is useful as a temporary runtime test, but the acceptance version should prove that PeTTa-style input lowers into mm2-chainer runtime IR.
+
+## Expected follow-up after this passes
+
+After this test passes, the same mechanism can be extended cleanly:
+
+1. `Implication` compile output:
+
+   ```metta
+   (: r
+      (Implication (Premises A B) (Conclusions C))
+      (STV 0.9 0.9))
+   ```
+
+   becomes:
+
+   ```mm2
+   (ruleN C 0.9 0.9 (pcons A (pcons B pnil)))
+   ```
+
+2. `CTV` implications can initially use only the positive branch:
+
+   ```metta
+   (CTV (STV $s $c) $_neg)
+   ```
+
+   becomes:
+
+   ```mm2
+   (ruleN $conclusion $s $c $premises)
+   ```
+
+   This matches many positive-rule tests without implementing inversion/base-rate logic yet.
+
+3. Existing manually lowered reference tests can gradually be rewritten to compile from PeTTa-style source instead of direct `ruleN`.
+
+The key is not to add one runtime rule per PeTTa test. Add `pln_and_confidence_f64`, the `no-stv` aggregate state, and `adapterN`; then let the adapted compiler emit the same small runtime IR.
