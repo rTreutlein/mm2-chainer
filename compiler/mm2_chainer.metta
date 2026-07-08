@@ -168,18 +168,60 @@
          $type))
       ($other $type))))
 
+; Query-local total implication can derive several proof-specific CTVs in the
+; assumption contexts while MORK stores their revised ctvpair fact at the goal.
+; Read them back as proof results without changing the runtime merge semantics.
+(= (mm2-readback-total-implication-proofs $goal-type $pos-shape $pos-type $neg-shape $neg-type)
+   (collapse
+     (match &mork
+       (proved ($pos-shape $pos-type) ($ps $pc) $pos-proof-id $pos-evset)
+       (match &mork
+         (proved ($neg-shape $neg-type) ($ns $nc) $neg-proof-id $neg-evset)
+         (: mm2-proved $goal-type (CTV (STV $ps $pc) (STV $ns $nc)))))))
+
+(= (mm2-readback-total-implication-premises $goal-type $prems)
+   (case (mm2-ir-collect $prems)
+     (((collected (pcons ($pos-shape $pos-type)
+                   (pcons ($neg-shape $neg-type) pnil))
+                  ())
+       (mm2-readback-total-implication-proofs $goal-type $pos-shape $pos-type $neg-shape $neg-type))
+      ($other ()))))
+
+(= (mm2-readback-total-implication-rule $goal-type $goal-shape $prems $ccl)
+   (case (mm2-ir-item $ccl)
+     (((subgoal ($goal-shape2 $goal-type2) (CTV $pos-tv $neg-tv) (total-implication $pos-prf $neg-prf))
+       (if (and (=alpha $goal-type $goal-type2)
+                (=alpha $goal-shape $goal-shape2))
+         (mm2-readback-total-implication-premises $goal-type $prems)
+         ()))
+      ($other ()))))
+
+(= (mm2-readback-total-implication-adds $goal-type $goal-shape $adds)
+   (case $adds
+     (((cons (rules ($prems |- $ccl)) $rest)
+       (mm2-readback-total-implication-rule $goal-type $goal-shape $prems $ccl))
+      ($other ()))))
+
+(= (mm2-readback-total-implication $goal-item $adds)
+   (case (mm2-ir-item $goal-item)
+     (((subgoal ($goal-shape $goal-type) (CTV $pos-tv $neg-tv) (total-implication $pos-prf $neg-prf))
+       (mm2-readback-total-implication-adds $goal-type $goal-shape $adds))
+      ($other ()))))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
        (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
          (let $readback-type (mm2-readback-type $shape $type $prf $tv)
            (mm2-ir-append
-             (collapse
-               (match &mork (fact ($shape $type) ($s $c))
-                 (: mm2-merged $readback-type (STV $s $c))))
-             (collapse
-               (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-                 (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))
+             (mm2-readback-total-implication $goal-item $adds)
+             (mm2-ir-append
+               (collapse
+                 (match &mork (fact ($shape $type) ($s $c))
+                   (: mm2-merged $readback-type (STV $s $c))))
+               (collapse
+                 (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+                   (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
