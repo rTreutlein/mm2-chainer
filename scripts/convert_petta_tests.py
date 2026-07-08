@@ -253,6 +253,9 @@ def convert_test(expr):
     add_atom = chainer_add_atom_test(queryish)
     if add_atom is not None:
         return ["mm2-test-equal", add_atom, rename_calls(expected)]
+    helper_value = backward_helper_value_test(queryish)
+    if helper_value is not None:
+        return ["mm2-test-equal", helper_value, rename_calls(expected)]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
@@ -341,6 +344,16 @@ def compiler_space_match_test(queryish):
 
 def chainer_add_atom_test(queryish):
     if head(queryish) == "collapse" and len(queryish) == 2 and contains_head(queryish[1], "chainer-add-atom"):
+        return rename_calls(queryish)
+    return None
+
+
+def backward_helper_value_test(queryish):
+    if head(queryish) == "let*":
+        return rename_calls(queryish)
+    if head(queryish) == "proof-term-children-mode":
+        return rename_calls(queryish)
+    if head(queryish) == "once" and contains_head(queryish, "proof-term-evidence-list-mode"):
         return rename_calls(queryish)
     return None
 
