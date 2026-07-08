@@ -1,0 +1,11 @@
+; FoldAll query aggregates.
+;
+; The translator emits separate copies for the query result and the matching
+; fact pattern: the result keeps its pattern variables unbound, while $pat
+; binds against canonical facts. The sum sink groups all matching values and
+; substitutes the computed total into the result goal.
+(exec-template
+  (exec 2
+        (, (foldall-sum $g $total $pat $value)
+           (fact $pat ($s $c)))
+        (O (sum (open-proof $g (1.0 1.0) foldall-sum pnil) $total $value))))

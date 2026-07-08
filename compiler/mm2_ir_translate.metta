@@ -87,6 +87,14 @@
        (let $skb (mm2-ir-scope-kb $kbid) (brfold ($skb $pat))))
       ($other unsupported-fold))))
 
+(= (mm2-ir-foldall-sum $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled ($kbid $pat (extract-value $pat2 $value) 0 lambda_17 identity unit-stv) $out)
+       (if (== $pat $pat2)
+         (let $skb (mm2-ir-scope-kb $kbid) (fold-sum ($skb $pat) $value $out))
+         unsupported-foldall))
+      ($other unsupported-foldall))))
+
 (= (mm2-ir-stv-kind $pos $fa $fb $tail)
    (case ($fa $fb)
      ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
@@ -120,6 +128,10 @@
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
        (ctvn-kind ($ps $pc) ($ns $nc)))
+      ((cons $fold ())
+       (case (mm2-ir-foldall-sum $fold)
+         (((fold-sum $pat $value $out) (fold-sum-kind $pat $value $out))
+          ($other (unsupported-tail $tail)))))
       ((cons $fold-a
          (cons $fold-b
            (cons (cpu ImplicationCTVFormula ($atv $btv (STV $s $c)) $ctv)
@@ -184,6 +196,17 @@
 
 (= (mm2-ir-emit-rule $ctype $ptypes (ctvn-kind $pos $neg))
    (ruleN $ctype (ctvn $pos $neg) $ptypes))
+
+(= (mm2-ir-emit-rule $ctype pnil (fold-sum-kind $pat $value $out))
+   (let $result-copy (copy_term $ctype)
+     (case $result-copy
+       ((($scope (FoldAll $qpat $qvalue $zero $fun -> $out-copy))
+         (let (fold-source $pat-copy $value-copy) (copy_term (fold-source $pat $value))
+           (foldall-sum $result-copy $out-copy $pat-copy $value-copy)))
+        ($other (notsupported-ir (foldall-result-copy $ctype)))))))
+
+(= (mm2-ir-emit-rule $ctype $ptypes (fold-sum-kind $pat $value $out))
+   (notsupported-ir (foldall-with-premises $ctype $ptypes)))
 
 (= (mm2-ir-emit-rule $ctype $ptypes (stv-kind $pos $pa $pb))
    (superpose (
