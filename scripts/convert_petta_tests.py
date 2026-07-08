@@ -229,6 +229,13 @@ def convert_test(expr):
             rename_calls(queryish[2]),
             rename_calls(expected),
         ]
+    if head(queryish) == "merge-proof-atoms" and len(queryish) == 3:
+        return [
+            "mm2-test-merge-proof-atoms",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(expected),
+        ]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:

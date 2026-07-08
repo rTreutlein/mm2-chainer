@@ -142,6 +142,40 @@
 (= (mm2-test-evidence-sets-overlap? $set-a $set-b $expected)
    (mm2-test-equal (mm2-evidence-sets-overlap? $set-a $set-b) $expected))
 
+(= (mm2-proof-atom-proof ($_type $_kb $proof $_tv)) $proof)
+
+(= (mm2-projection-proof-key $proof)
+   (case $proof
+     (((marginal-proj $idx $base) (projection-key $idx $base))
+      (((proj $idx $base) $_evidence) (projection-key $idx $base))
+      ($other no-projection-key))))
+
+(= (mm2-strict-projection-proof? $proof)
+   (case $proof
+     ((((proj $_idx $_base) $_evidence) true)
+      ($other false))))
+
+(= (mm2-projection-dominates? $a $b)
+   (let $key (mm2-projection-proof-key $a)
+     (and (not (== $key no-projection-key))
+          (and (== $key (mm2-projection-proof-key $b))
+               (and (mm2-strict-projection-proof? $a)
+                    (not (mm2-strict-projection-proof? $b)))))))
+
+(= (mm2-merge-proof-atoms $a $b)
+   (if (== $a $b)
+     $a
+     (let $pa (mm2-proof-atom-proof $a)
+       (let $pb (mm2-proof-atom-proof $b)
+         (if (mm2-projection-dominates? $pa $pb)
+           $a
+           (if (mm2-projection-dominates? $pb $pa)
+             $b
+             mm2-merge-proof-atoms-unsupported))))))
+
+(= (mm2-test-merge-proof-atoms $a $b $expected)
+   (mm2-test-equal (mm2-merge-proof-atoms $a $b) $expected))
+
 ; Remove exact atoms produced by a MORK match. Calling remove-atom with a
 ; variable pattern would remove nothing, so cleanup first materializes the
 ; matching atoms and then removes those exact terms.

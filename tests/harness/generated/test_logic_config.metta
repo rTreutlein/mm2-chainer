@@ -7,8 +7,7 @@
 !(mm2-test-query 20 plnProjectionNeedsEvidenceKb (: $prf (B) $tv) ((: (marginal-proj 1 ab) (B) (STV 1.0 0.9))))
 !(mm2-compileadd plnMarginalProjectionKb (: ab (And (A) (B)) (STV 0.25 0.9)))
 !(mm2-test-query 20 plnMarginalProjectionKb (: $prf (B) $tv) ((: (marginal-proj 1 ab) (B) (STV 0.25 0.6923076923076924))))
-; UNSUPPORTED test form: (test (merge-proof-atoms ((B) (projectionDominanceKb MAIN Nil) ((proj 1 ab) a) (STV 1.0 0.9)) ((B) (projectionDominanceKb MAIN Nil) (marginal-proj 1 ab) (STV 1.
-!(mm2-test-unsupported "test  merge-proof-atoms   B   projectionDominanceKb MAIN Nil    proj 1 ab  a")
+!(mm2-test-merge-proof-atoms ((B) (projectionDominanceKb MAIN Nil) ((proj 1 ab) a) (STV 1.0 0.9)) ((B) (projectionDominanceKb MAIN Nil) (marginal-proj 1 ab) (STV 1.0 0.9)) ((B) (projectionDominanceKb MAIN Nil) ((proj 1 ab) a) (STV 1.0 0.9)))
 !(mm2-compileadd plnProjectionKb (: ab (And (A) (B)) (STV 1.0 0.9)))
 !(mm2-compileadd plnProjectionKb (: a (A) (STV 1.0 1.0)))
 !(mm2-test-query 20 plnProjectionKb (: $prf (B) $tv) ((: (marginal-proj 1 ab) (B) (STV 1.0 0.9))))
