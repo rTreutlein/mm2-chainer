@@ -637,6 +637,11 @@ Latest corpus snapshot after this adjustment:
    This removes repeated readback rows caused by combining direct canonical
    fact readback with factoring/lifting readback paths, while preserving one
    representative result row and all non-result markers.
+   Factored two-premise `And` readback also has a child-proof residual path:
+   when one side is shared, it revises the proved TVs of the other side after
+   deduplicating by `(tv, evidence)` records rather than TV alone.  This keeps
+   open-query groups like openAndFair from losing distinct equal-TV distractor
+   evidence before the lower-strength residual is revised in.
 22. **Total-implication branch readback**: total-implication queries now read
    back proof/proof, revised-positive/proof-negative, and
    proof-positive/revised-negative branch combinations. This matches PeTTa's

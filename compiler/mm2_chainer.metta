@@ -755,13 +755,36 @@
      (((STV $s $c) (cons (STV $s $c) (mm2-and-residual-tvs $shared $rest)))
       ($other (mm2-and-residual-tvs $shared $rest)))))
 
-(= (mm2-readback-factored-and-result $goal-type $shared $residuals)
-   (case (mm2-revise-tv-list (list_to_set $residuals))
+(= (mm2-readback-factored-and-result-from-tvs $goal-type $shared $residuals)
+   (case (mm2-revise-tv-list $residuals)
      (((STV $rs $rc)
        (case (AndFormula $shared (STV $rs $rc))
          (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
           ($other empty))))
       ($other empty))))
+
+(= (mm2-readback-factored-and-result $goal-type $shared $residuals)
+   (mm2-readback-factored-and-result-from-tvs
+     $goal-type
+     $shared
+     (list_to_set $residuals)))
+
+(= (mm2-proved-tv-records $shape $type)
+   (collapse
+     (match &mork
+       (proved ($shape $type) ($s $c) $proof-id $evset)
+       (proved-tv (STV $s $c) $evset))))
+
+(= (mm2-proved-record-tvs ()) ())
+(= (mm2-proved-record-tvs (cons (proved-tv $tv $_evset) $rest))
+   (cons $tv (mm2-proved-record-tvs $rest)))
+
+(= (mm2-readback-factored-and-child-result $goal-type $shape $residual-type $shared)
+   (mm2-readback-factored-and-result-from-tvs
+     $goal-type
+     $shared
+     (mm2-proved-record-tvs
+       (list_to_set (mm2-proved-tv-records $shape $residual-type)))))
 
 (= (mm2-readback-factored-and-with-shared $goal-type $shape $left $right $shared)
    (mm2-readback-factored-and-result
@@ -770,26 +793,44 @@
      (mm2-and-residual-tvs $shared (mm2-and-proof-tvs $shape $left $right))))
 
 (= (mm2-readback-factored-and-left $goal-type $shape $left $right)
-   (collapse
-     (match &mork
-       (fact ($shape $left) ($s $c))
-       (mm2-readback-factored-and-with-shared
-         $goal-type
-         $shape
-         $left
-         $right
-         (STV $s $c)))))
+   (mm2-ir-append
+     (collapse
+       (match &mork
+         (fact ($shape $left) ($s $c))
+         (mm2-readback-factored-and-child-result
+           $goal-type
+           $shape
+           $right
+           (STV $s $c))))
+     (collapse
+       (match &mork
+         (fact ($shape $left) ($s $c))
+         (mm2-readback-factored-and-with-shared
+           $goal-type
+           $shape
+           $left
+           $right
+           (STV $s $c))))))
 
 (= (mm2-readback-factored-and-right $goal-type $shape $left $right)
-   (collapse
-     (match &mork
-       (fact ($shape $right) ($s $c))
-       (mm2-readback-factored-and-with-shared
-         $goal-type
-         $shape
-         $left
-         $right
-         (STV $s $c)))))
+   (mm2-ir-append
+     (collapse
+       (match &mork
+         (fact ($shape $right) ($s $c))
+         (mm2-readback-factored-and-child-result
+           $goal-type
+           $shape
+           $left
+           (STV $s $c))))
+     (collapse
+       (match &mork
+         (fact ($shape $right) ($s $c))
+         (mm2-readback-factored-and-with-shared
+           $goal-type
+           $shape
+           $left
+           $right
+           (STV $s $c))))))
 
 (= (mm2-readback-factored-and $goal-type $shape)
    (case $goal-type
