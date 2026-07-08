@@ -242,6 +242,9 @@ def convert_test(expr):
             rename_calls(queryish[2]),
             rename_calls(expected),
         ]
+    rules_match = collapse_once_rules_match_test(queryish)
+    if rules_match is not None:
+        return ["mm2-test-equal", rules_match, rename_calls(expected)]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
@@ -295,6 +298,18 @@ def term_confidence_test(queryish, expected):
             rename_calls(expected),
         ]
     return None
+
+
+def collapse_once_rules_match_test(queryish):
+    if head(queryish) != "collapse" or len(queryish) != 2:
+        return None
+    once = queryish[1]
+    if head(once) != "once" or len(once) != 2:
+        return None
+    match = once[1]
+    if head(match) != "match" or len(match) != 4 or match[1] != "rules":
+        return None
+    return ["collapse", ["once", rename_calls(match)]]
 
 
 def materialized_match(queryish):
