@@ -67,11 +67,10 @@ The pieces:
      higher-confidence value (idempotent, converges).
 
 Known scope limits (documented divergences):
-- **STV rules do not compile inverses yet.** Their derived CTV reads the
-  conclusion base rate, and PeTTa's folds have a recursion guard (a rule's
-  own fold never includes conclusions derived via that same rule) that the
-  mm2 base-rate relation doesn't model. With materialization the STV rule
-  would re-fire against its own conclusions and drift from PeTTa's value.
+- **Single-premise STV rules now compile inverse materialization through
+  guarded base-rate folds.** The guarded folds use proof evidence to exclude
+  conclusions derived by the same rule while still admitting other rules'
+  materialized conclusions, matching PeTTa's recursion-guarded FoldAll shape.
 - Multi-premise implications do not compile inverses (PeTTa skolemizes; not
   modeled).
 - The final `(fact ...)` values may refine past PeTTa's one-shot query answer
@@ -571,8 +570,12 @@ Latest corpus snapshot after this adjustment:
    forward chainer: it advances MM2's existing open materialization goals for a
    bounded number of steps before running the follow-up query, preserving the
    positive budget-2 and negative budget-1 outcomes in that fixture.
-18. STV-rule inversion materialization still needs the fold recursion guard
-   (see above).
+18. **STV-rule inversion materialization guard**:
+   Single-premise STV inverses now use guarded base-rate keys and emit the
+   consequent materialization goal.  The focused harness assertion in
+   `tests/harness/converted_tests.metta` checks that the guarded consequent
+   fold includes another rule's `Q` conclusion while excluding conclusions
+   derived by the same STV rule.
 19. Converter gaps: no generated corpus tests are currently skipped; keep any
    future non-query harness additions explicit about whether they exercise
    MM2 runtime behavior or PeTTa helper/compiler state.

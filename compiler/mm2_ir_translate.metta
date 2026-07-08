@@ -31,11 +31,10 @@
 ; report collects those as the coverage gap list.
 ;
 ; Policy notes (documented divergences, see PLAN.md):
-; - inv rules from CTV implications also emit an open materialization goal
-;   for the consequent pattern (PeTTa's base-rate folds are chaining
-;   queries); inv rules from STV implications do not, because the forward
-;   STV rule would keep re-firing against its own derived conclusions
-;   (PeTTa's fold recursion guard is not modeled).
+; - inv rules emit an open materialization goal for the consequent pattern
+;   (PeTTa's base-rate folds are chaining queries).  STV-derived CTVs use
+;   guarded base-rate keys so a rule's own derived conclusions do not feed
+;   the folds used to derive that same rule's CTV.
 
 ; --- helpers ---------------------------------------------------------------
 
@@ -218,6 +217,29 @@
        (mm2-prior-base-rate-support $pat $kb $concept))
       ($other (notsupported-ir (fold-support $other))))))
 
+(= (mm2-guarded-base-rate-key $rule-id $pat)
+   (guarded-base-rate (copy_term $rule-id) (copy_term $pat)))
+
+(= (mm2-guarded-base-rate-support $pat $rule-id)
+   (let* (($key (mm2-guarded-base-rate-key $rule-id $pat))
+          ($match (copy_term $pat))
+          ($guard (copy_term $rule-id))
+          ($seed (copy_term $key)))
+     (superpose (
+       (base-rate-def-guarded $key $match $guard)
+       (base-rate $seed (0.0 0.0))
+       (mm2-base-rate-materialization-goal $pat)))))
+
+(= (mm2-ir-guarded-fold-key $rule-id $fold)
+   (case $fold
+     (((brfold $pat) (mm2-guarded-base-rate-key $rule-id $pat))
+      ($other (mm2-ir-fold-key $other)))))
+
+(= (mm2-ir-guarded-fold-support $rule-id $fold)
+   (case $fold
+     (((brfold $pat) (mm2-guarded-base-rate-support $pat $rule-id))
+      ($other (mm2-ir-fold-support $other)))))
+
 (= (mm2-ir-foldall-sum $cpu)
    (case $cpu
      (((cpu FoldAllCompiled ($kbid $pat (extract-value $pat2 $value) 0 lambda_17 identity unit-stv) $out)
@@ -283,10 +305,10 @@
      (stv-kind $pos $fa $fb)
      (unsupported-tail $tail)))
 
-(= (mm2-ir-inv-kind $pos $fa $fb $materialize $tail)
+(= (mm2-ir-inv-kind $pos $fa $fb $mode $tail)
    (if (and (mm2-ir-inv-fold-supported? $fa)
             (mm2-ir-inv-fold-supported? $fb))
-     (inv-kind $pos $fa $fb $materialize)
+     (inv-kind $pos $fa $fb $mode)
      (unsupported-tail $tail)))
 
 (= (mm2-ir-classify $tail)
@@ -390,7 +412,7 @@
        (mm2-ir-inv-kind (mm2-ir-rule-pos $rule-tv)
                         (mm2-ir-fold-pattern $fold-a)
                         (mm2-ir-fold-pattern $fold-b)
-                        (mm2-ir-materialize? $rule-tv)
+                        (mm2-ir-inv-mode $rule-tv)
                         $tail))
       ($other (unsupported-tail $other)))))
 
@@ -469,8 +491,8 @@
 (= (mm2-ir-rule-pos (CTV (STV $ps $pc) $neg)) ($ps $pc))
 (= (mm2-ir-rule-pos (STV $s $c)) ($s $c))
 
-(= (mm2-ir-materialize? (CTV $pos $neg)) yes)
-(= (mm2-ir-materialize? (STV $s $c)) no)
+(= (mm2-ir-inv-mode (CTV $pos $neg)) unguarded)
+(= (mm2-ir-inv-mode (STV $s $c)) guarded)
 
 ; --- statement translation ---------------------------------------------------
 ; Each translation superposes the mm2 atoms for one IR statement.
@@ -574,9 +596,17 @@
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-kind $pos $fa $fb))
    (superpose (
-     (ruleN $ctype $rid (stv $pos (brpat (mm2-ir-fold-key $fa) (mm2-ir-fold-key $fb))) $ptypes)
-     (mm2-ir-fold-support $fa)
-     (mm2-ir-fold-support $fb))))
+     (ruleN
+       $ctype
+       $rid
+       (stv
+         $pos
+         (brpat
+           (mm2-ir-guarded-fold-key $rid $fa)
+           (mm2-ir-guarded-fold-key $rid $fb)))
+       $ptypes)
+     (mm2-ir-guarded-fold-support $rid $fa)
+     (mm2-ir-guarded-fold-support $rid $fb))))
 
 (= (mm2-ir-inv-evidence-id $rid)
    (case $rid
@@ -596,19 +626,42 @@
       ((inverted (bi-backward $base) with $_pa $_pb) true)
       ($other false))))
 
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $fa $fb $materialize))
+(= (mm2-ir-inv-fold-key-for-mode unguarded $_rid $fold) (mm2-ir-fold-key $fold))
+(= (mm2-ir-inv-fold-key-for-mode guarded $rid $fold) (mm2-ir-guarded-fold-key $rid $fold))
+
+(= (mm2-ir-inv-fold-support-for-mode unguarded $_rid $fold) (mm2-ir-fold-support $fold))
+(= (mm2-ir-inv-fold-support-for-mode guarded $rid $fold) (mm2-ir-guarded-fold-support $rid $fold))
+
+(= (mm2-ir-forward-chain-goal-marker ($scope $type))
+   (forward-chain-goal $scope ($scope $type)))
+(= (mm2-ir-forward-chain-goal-marker $_other) (empty))
+
+(= (mm2-ir-open-forward-chain-goal $fb)
+   (let $g (copy_term (mm2-ir-fold-key $fb))
+     (superpose (
+       (, (Goal $g))
+       (mm2-ir-forward-chain-goal-marker $g)))))
+
+(= (mm2-ir-inv-materialization-goal unguarded $_rid $fb)
+   (mm2-ir-open-forward-chain-goal $fb))
+(= (mm2-ir-inv-materialization-goal guarded $_rid $fb)
+   (mm2-ir-open-forward-chain-goal $fb))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $fa $fb $mode))
    (if (mm2-ir-bidirectional-inverse? $rid)
      (empty)
      (superpose (
        (ruleN $ctype
               (mm2-ir-inv-evidence-id $rid)
-              (inv $pos (brpat (mm2-ir-fold-key $fa) (mm2-ir-fold-key $fb)))
+              (inv
+                $pos
+                (brpat
+                  (mm2-ir-inv-fold-key-for-mode $mode $rid $fa)
+                  (mm2-ir-inv-fold-key-for-mode $mode $rid $fb)))
               $ptypes)
-       (mm2-ir-fold-support $fa)
-       (mm2-ir-fold-support $fb)
-       (if (== $materialize yes)
-         (, (Goal (copy_term (mm2-ir-fold-key $fb))))
-         (empty))))))
+       (mm2-ir-inv-fold-support-for-mode $mode $rid $fa)
+       (mm2-ir-inv-fold-support-for-mode $mode $rid $fb)
+       (mm2-ir-inv-materialization-goal $mode $rid $fb)))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
    (notsupported-ir (rule-tail $ctype $tail)))

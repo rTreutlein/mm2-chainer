@@ -844,6 +844,44 @@
    (let $_cleanup (mm2-cleanup-query $cq)
      (mm2-cleanup-queries $rest)))
 
+(= (mm2-clear-runtime-queue)
+   (let* (($_goal (mm2-remove-matches (, (Goal $g))))
+          ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises)))
+          ($_pending-named (mm2-remove-matches (pendingN $priority2 $g $rule-stv2 $premises2 $pending-evset)))
+          ($_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset)))
+          ($_or-waits (mm2-remove-matches (wait-premises-or $g $or-final-kind $or-rest $or-agg $or-proof-id $or-evset)))
+          ($_pool-waits (mm2-remove-matches (wait-premises-pool $g $pool-rest $pool-state $pool-proof-id)))
+          ($_wait (mm2-remove-matches (wait-premise $g $rule-stv $prem $rest $agg $proof-id $evset)))
+          ($_or-wait (mm2-remove-matches (wait-premise-or $g $or-final-kind2 $or-prem $or-rest2 $or-agg2 $or-proof-id2 $or-evset2)))
+          ($_not-wait (mm2-remove-matches (wait-premise-not $g $not-rule-stv $not-prem $not-rest $not-proof-id $not-evset)))
+          ($_total-wait (mm2-remove-matches (wait-total-evidence $g $total-proof-id $total-prem $total-p1 $total-p2 $total-pat $total-evset)))
+          ($_total-active (mm2-remove-matches (total-evidence-active $g $total-active-proof $total-ante-stv $total-active-p1 $total-active-p2 $total-active-pat $total-active-evset)))
+          ($_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2)))
+          ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
+          ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
+          ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
+          ($_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset)))
+          ($_inv (mm2-remove-matches (inv-checked $verdict2 $g $proof-id $evset)))
+          ($_formula (mm2-remove-matches (formula-eval $formula-key $formula-pending)))
+          ($_fold-br (mm2-remove-matches (fold-base-rate $br-pat $br-old $br-stv)))
+          ($_fold-br-guarded (mm2-remove-matches (fold-base-rate $guarded-br-pat $guarded-br-old $guarded-br-stv $guarded-br-ev)))
+          ($_sum (mm2-remove-matches (sum $sum-out $sum-total $sum-value)))
+          ($_pair-counts (mm2-remove-matches (pair-counts $pair-out $pair-counts $pair-value)))
+          ($_or-stv (mm2-remove-matches (or-stv $or-g $or-rule-id $or-pos $or-neg $or-stv $or-proof-id $or-evset)))
+          ($_avg-active (mm2-remove-matches (avg-dist-active $avg-result-pid $avg-pat $avg-value)))
+          ($_dist-avg (mm2-remove-matches (dist-average $avg-pid $avg-pat2 $avg-x $avg-w)))
+          ($_dist-map-active (mm2-remove-matches (dist-map2-active $map-fun $map-lhs $map-rhs)))
+          ($_dist-map-contrib (mm2-remove-matches (dist-map2-contrib $map-pid $map-source $map-pair)))
+          ($_fsum (mm2-remove-matches (fsum $fsum-out $fsum-sum $fsum-mass $fsum-source)))
+          ($_total-mp (mm2-remove-matches (total-evidence-mp $te-g $te-proof-id $te-ante-stv $te-p1 $te-p2 $te-case $te-case-stv $te-case-proof $te-case-evset $te-ante-evset))))
+     cleared))
+
+(= (mm2-forward-chain-goals $scope)
+   (collapse
+     (match &mork
+       (forward-chain-goal $scope $g)
+       (, (Goal $g)))))
+
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
           ($cqs (collapse (mm2compileQuery $kb (: $prf $type $tv))))
@@ -893,10 +931,15 @@
 ; Harness approximation for PeTTa forward-chain tests: compileadd already
 ; emits open materialization goals for the relevant rule conclusions, so a
 ; bounded MM2 run advances those side effects before the follow-up query.
-(= (mm2-forward-chain-steps-per-round) 200)
+; A forward-chain round reopens only this KB's materialization goals, but MORK's
+; exec loop still services durable base-rate refresh templates globally.
+(= (mm2-forward-chain-steps-per-round) 225)
 
 (= (mm2-forward-chain $rounds $_kb)
-   (let $_run (mm2-exec &mork (* $rounds (mm2-forward-chain-steps-per-round)))
+   (let* (($scope (mm2-ir-scope-kb $_kb))
+          ($_clear (mm2-clear-runtime-queue))
+          ($_goals (mm2-add-compiled $_kb (mm2-forward-chain-goals $scope)))
+          ($_run (mm2-exec &mork (* $rounds (mm2-forward-chain-steps-per-round)))))
      ()))
 
 ; --- test comparison --------------------------------------------------------

@@ -8,6 +8,34 @@
 !(mm2-test-query 20 stvRuleKb (: $prf (B x) $tv)
                  ((: $_ (B x) (STV 0.6 0.8999998649685302))))
 
+; STV inverse materialization should populate the consequent base-rate fold
+; with other rules' conclusions while excluding conclusions derived by the
+; same STV rule whose CTV is being derived.
+!(let $_r
+   (mm2-compileadd stvGuardKb
+     (: r
+        (Implication (Premises (P $x)) (Conclusions (Q $x)))
+        (STV 0.8 0.9)))
+   (let $_s
+     (mm2-compileadd stvGuardKb
+       (: s
+          (Implication (Premises (R $x)) (Conclusions (Q $x)))
+          (CTV (STV 0.9 0.9) (STV 0.0 1.0))))
+     (let $_qa (mm2-compileadd stvGuardKb (: qa (Q alice) (STV 0.5 0.8)))
+       (let $_pb (mm2-compileadd stvGuardKb (: pb (P bob) (STV 0.3 0.8)))
+         (let $_rc (mm2-compileadd stvGuardKb (: rc (R carol) (STV 1.0 0.8)))
+           (let $_run (mm2-exec &mork 300)
+             (mm2-test-equal
+               (collapse
+                 (match &mork
+                   (base-rate
+                     (guarded-base-rate
+                       (r $rv)
+                       ((stvGuardKb MAIN Nil) (Q $x)))
+                     $stv)
+                   $stv))
+               ((0.7117645040873257 0.002120491681932299)))))))))
+
 ; test_nary_conjuction.metta
 !(mm2-compileadd nAryKb (: a A (STV 1.0 1.0)))
 !(mm2-compileadd nAryKb (: b B (STV 1.0 1.0)))

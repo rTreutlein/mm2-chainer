@@ -28,3 +28,21 @@
            (base-rate $patQ $old)
            (fact $patM (ctvpair $pos $neg)))
         (O (fold-base-rate $patQ $old $pos))))
+
+; STV-derived rule CTVs need PeTTa's recursion guard: when a rule computes the
+; base rate used to derive its own CTV, proofs carrying that rule's evidence do
+; not contribute to the fold.  These guarded views are keyed separately from the
+; ordinary base-rate relation so explicit CTV rules keep their unguarded folds.
+(exec-template
+  (exec 2
+        (, (base-rate-def-guarded $patQ $patM $rule-id)
+           (base-rate $patQ $old)
+           (proved $patM ($fact-s $fact-c) $proof-id $evset))
+        (O (fold-base-rate $patQ $old ($fact-s $fact-c) (without-rule $rule-id $evset)))))
+
+(exec-template
+  (exec 2
+        (, (base-rate-def-guarded $patQ $patM $rule-id)
+           (base-rate $patQ $old)
+           (proved $patM (ctvpair $pos $neg) $proof-id $evset))
+        (O (fold-base-rate $patQ $old $pos (without-rule $rule-id $evset)))))
