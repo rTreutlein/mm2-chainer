@@ -55,10 +55,10 @@
                          (sub_f64 (f64_from_string 1.0) (f64_from_string $s1))
                          (sub_f64 (f64_from_string 1.0) (f64_from_string $s2)))))
                    (f64_to_string
-                     (pln_and_confidence_f64
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $s1))
+                     (pln_or_confidence_f64
+                       (f64_from_string $s1)
                        (f64_from_string $c1)
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $s2))
+                       (f64_from_string $s2)
                        (f64_from_string $c2))))))))
 
 (exec-template

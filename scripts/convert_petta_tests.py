@@ -533,7 +533,7 @@ def apply_file_adaptations(path_name, out):
         rewrites = {
             "!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: (merge/revision (ruleStable baseFact) (ruleHighThenDrop (conjunction weakFact baseFact))) (SwitchGoal) (STV 1.0 0.7094641445679878))))": [
                 "!(mm2-test-query 0 kb (: $prf (SwitchGoal) $tv) ())",
-                "!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: mm2-merged (SwitchGoal) (STV 1 0.7094641445679877))))",
+                "!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: mm2-merged (SwitchGoal) (STV 1 0.7094641445679878))))",
             ],
             "!(mm2-test-query 0 kb (: $prf (SwitchGoal) $tv) ())": [],
             "!(mm2-test-query 4 kb (: $prf (SwitchGoal) $tv) ((: (ruleStable baseFact) (SwitchGoal) (STV 1.0 0.699950950923023))))": [],

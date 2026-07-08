@@ -453,7 +453,7 @@ Latest corpus snapshot after this adjustment:
 
 The generated mm2-intent rewrite for the first `test_best_first_runtime`
 SwitchGoal case had a stale broad-revision confidence.  The runtime currently
-returns `0.7094641445679877`, matching PeTTa's original broad query result to
+returns `0.7094641445679878`, matching PeTTa's original broad query result to
 printed precision, so the converter rewrite and generated test now pin that
 value.
 
@@ -481,6 +481,30 @@ high-confidence computed cache case.
 Latest corpus snapshot after this adjustment:
 
     totals: pass=184 close=7 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
+## Formula arithmetic order parity (DONE 2026-07-09)
+
+MORK's native PLN confidence helpers now mirror PeTTa's arithmetic grouping
+for product and MP variance propagation. The shared product-confidence helper
+uses PeTTa's explicit `V1*V2 + (V1*(s2*s2) + ((s1*s1)*V2))` grouping, and
+MP confidence uses the same nested sum order as `ideal-mp-confidence`.
+
+The direct OrFormula probe now calls a dedicated `pln_or_confidence_f64` op
+instead of reusing `pln_and_confidence_f64` on complemented strengths. That is
+mathematically equivalent, but not bit-equivalent to PeTTa because PeTTa
+computes Or variances from the original strengths and only passes complements
+to the product formula. While adding this op, MORK's `op!` quaternary wrapper
+was fixed to accept four arguments instead of rejecting anything other than
+three.
+
+This made `test_backward_dag_helpers`, `test_forward_backward_compose`,
+`test_idealized_confidence`, and `test_var_head` exact. The SwitchGoal
+generated expectation was updated to PeTTa's current `0.7094641445679878`
+value after the arithmetic correction.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=190 close=1 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
 ## Next
 
@@ -523,15 +547,15 @@ Latest corpus snapshot after this adjustment:
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
    coverage):
-   pass=184 close=7 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   pass=190 close=1 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
-   No supported failures or unsupported IR remain; remaining gaps are skipped
-   legacy/non-query harness forms.
+   No supported failures or unsupported IR remain; the only remaining close is
+   `test_lifting_merge`.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
-   expectation is covered as a close result by readback-level factoring of
-   raw two-premise And adapter proofs.
+   expectation is exact after readback-level factoring of raw two-premise And
+   adapter proofs with child residual evidence preserved.
 3. **Query materialization**:
    `query-materialize` is modeled at the harness/API layer with persistent
    `mm2-materialized` markers so non-materialized queries do not count as KB
