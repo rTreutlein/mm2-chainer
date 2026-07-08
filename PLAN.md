@@ -457,16 +457,17 @@ Latest corpus snapshot after this adjustment:
    scaling, Compute + query-compound lowering, repeated-inversion replacement
    through `revise-proofs`, FoldAll OrFormula MP lowering, total-implication
    proof-CTV readback, positive-test round-budget scaling,
-   MemberInheritanceFormula readback, prior-aware inheritance base rates, and
-   inheritance induction readback):
-   pass=95 close=13 fail=1 unsupported-ir=7 skipped=82 flagged-files=0,
-   wall time about 44 s.
-   Remaining failure: backward_open_query_results 1.
+   MemberInheritanceFormula readback, prior-aware inheritance base rates,
+   inheritance induction readback, and readback-level lifting merge for
+   two-premise And adapter queries):
+   pass=95 close=14 fail=0 unsupported-ir=7 skipped=82 flagged-files=0,
+   wall time about 43 s.
+   No supported failures remain; remaining gaps are unsupported converter/IR
+   coverage and skipped legacy/non-query harness forms.
 2. **Open-query fair expansion/result semantics**:
-   `test_backward_open_query_results` now completes, but openAndFairKb still
-   diverges: PeTTa expects the max-only lifted conjunction at the stronger TV,
-   while mm2 currently returns both ann/max lifted conjunctions at the lower
-   pooled TV.
+   `test_backward_open_query_results` now completes and the openAndFairKb
+   expectation is covered as a close result by readback-level factoring of
+   raw two-premise And adapter proofs.
 3. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
 4. Converter gaps: `!(test (let ...))` forms and non-query test forms

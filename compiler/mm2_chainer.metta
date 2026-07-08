@@ -445,6 +445,66 @@
              $b))))
       ($other ()))))
 
+; Readback-level lifting merge for open two-premise And adapter queries.  The
+; runtime still stores every raw adapter proof; PeTTaChainer merges same-output
+; proof groups before parent use by factoring shared premises out, revising the
+; residuals, and reapplying the shared TV once.
+(= (mm2-and-proof-tvs $shape $left $right)
+   (collapse
+     (match &mork
+       (proved ($shape (And $left $right)) ($s $c) $proof $ev)
+       (STV $s $c))))
+
+(= (mm2-and-residual-tvs $_shared ()) ())
+(= (mm2-and-residual-tvs $shared (cons $tv $rest))
+   (case (AndProjection $tv $shared)
+     (((STV $s $c) (cons (STV $s $c) (mm2-and-residual-tvs $shared $rest)))
+      ($other (mm2-and-residual-tvs $shared $rest)))))
+
+(= (mm2-readback-factored-and-result $goal-type $shared $residuals)
+   (case (mm2-revise-tv-list (list_to_set $residuals))
+     (((STV $rs $rc)
+       (case (AndFormula $shared (STV $rs $rc))
+         (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
+          ($other empty))))
+      ($other empty))))
+
+(= (mm2-readback-factored-and-with-shared $goal-type $shape $left $right $shared)
+   (mm2-readback-factored-and-result
+     $goal-type
+     $shared
+     (mm2-and-residual-tvs $shared (mm2-and-proof-tvs $shape $left $right))))
+
+(= (mm2-readback-factored-and-left $goal-type $shape $left $right)
+   (collapse
+     (match &mork
+       (fact ($shape $left) ($s $c))
+       (mm2-readback-factored-and-with-shared
+         $goal-type
+         $shape
+         $left
+         $right
+         (STV $s $c)))))
+
+(= (mm2-readback-factored-and-right $goal-type $shape $left $right)
+   (collapse
+     (match &mork
+       (fact ($shape $right) ($s $c))
+       (mm2-readback-factored-and-with-shared
+         $goal-type
+         $shape
+         $left
+         $right
+         (STV $s $c)))))
+
+(= (mm2-readback-factored-and $goal-type $shape)
+   (case $goal-type
+     (((And $left $right)
+       (mm2-ir-append
+         (mm2-readback-factored-and-left $goal-type $shape $left $right)
+         (mm2-readback-factored-and-right $goal-type $shape $left $right)))
+      ($other ()))))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
@@ -457,14 +517,16 @@
                (mm2-ir-append
                  (mm2-readback-member-inheritance $goal-item $adds)
                  (mm2-ir-append
-                   (mm2-readback-inheritance-induction $readback-type $shape)
+                   (mm2-readback-factored-and $readback-type $shape)
                    (mm2-ir-append
-                     (collapse
-                       (match &mork (fact ($shape $type) ($s $c))
-                         (: mm2-merged $readback-type (STV $s $c))))
-                     (collapse
-                       (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-                         (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))))))
+                     (mm2-readback-inheritance-induction $readback-type $shape)
+                     (mm2-ir-append
+                       (collapse
+                         (match &mork (fact ($shape $type) ($s $c))
+                           (: mm2-merged $readback-type (STV $s $c))))
+                       (collapse
+                         (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+                           (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
