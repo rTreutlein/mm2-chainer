@@ -461,6 +461,27 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=181 close=10 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Base-rate cache source-aware readback (DONE 2026-07-09)
+
+The harness cache helpers now store a lightweight `base-rate-cache-entry`
+marker for user-set and computed cache writes. Runtime rules still consume the
+maintained `(base-rate ...)` relation, but `mm2-cached-base-rate` reads these
+markers so cache assertions follow PeTTa's source semantics:
+
+- user entries return the explicit user value even if later facts arrive;
+- computed entries return the stronger of the stored snapshot and a direct-fact
+  recompute;
+- unmarked entries fall back to the maintained runtime relation, preserving the
+  original behavior for base rates discovered by ordinary query execution.
+
+This keeps `brKb2` from reading the self-fed live base-rate value after derived
+`P alice` materializes while preserving the query answer and the protected
+high-confidence computed cache case.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=184 close=7 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -502,7 +523,7 @@ Latest corpus snapshot after this adjustment:
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
    coverage):
-   pass=181 close=10 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   pass=184 close=7 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
@@ -518,12 +539,9 @@ Latest corpus snapshot after this adjustment:
    `test_query_materialize` file now covers empty pre-materialization checks,
    the materializing query result, and post-materialization B/Goal presence.
 4. **Base-rate cache readback**:
-   The harness exposes `mm2-cached-base-rate` over MM2's maintained
-   `base-rate` relation, treating the `(0.0 0.0)` support seed as
-   `no-cache-entry`. Generated `test_base_rate_cache` now covers all cache
-   assertions; the weak computed-cache refinement is a `close` result because
-   mm2's chunked wave execution can let the newly derived premise nudge the
-   maintained base rate before the assertion reads it.
+   Done: `mm2-cached-base-rate` now uses source-aware cache markers for
+   user-set and computed entries, while unmarked entries still fall back to the
+   maintained `base-rate` relation. Generated `test_base_rate_cache` is exact.
 5. **Member concept nodes**:
    `known-concept-node?` is covered for Member-only classes by checking scoped
    `(Member $obj $class)` facts. This matches the PeTTa regression that the

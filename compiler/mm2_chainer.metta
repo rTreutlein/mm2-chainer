@@ -363,8 +363,9 @@
        (min (mm2-term-confidence $prem)
             (mm2-premises-expected-confidence $rest))))))
 
-; Base-rate cache operations used by PeTTaChainer tests. These intentionally
-; target the MM2 runtime state, not PeTTa's separate &base_rate_cache space.
+; Base-rate cache operations used by PeTTaChainer tests. Runtime rules still
+; consume the maintained (base-rate ...) relation; cache reads use source
+; markers so user and computed entries expose PeTTa-style cache semantics.
 (= (mm2-scoped-base-rate-pattern $kb $pattern)
    (let $scope (mm2-ir-scope-kb $kb) ($scope $pattern)))
 
@@ -372,7 +373,8 @@
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
      (let $_br (mm2-remove-matches (base-rate $pat $tv))
        (let $_def (mm2-remove-matches (base-rate-def $pat $match))
-         ()))))
+         (let $_entry (mm2-remove-matches (base-rate-cache-entry $pat $source $stored-tv $mode))
+           ())))))
 
 (= (mm2-add-base-rate-support $kb $pattern)
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
@@ -383,12 +385,31 @@
             ($_seed (add-atom &mork (base-rate $seed (0.0 0.0)))))
        ())))
 
+(= (mm2-direct-fact-base-rate $pat)
+   (case (collapse
+           (match &mork
+             (proved $pat ($s $c) $prf (pcons (fact-ev $prf $pat) pnil))
+             (STV $s $c)))
+     ((() no-cache-entry)
+      ($stvs
+       (BaseRateTv
+         (mm2-base-rate-acc-from-stvs (BaseRateEvidence 0.0 0.0) $stvs))))))
+
+(= (mm2-computed-cached-base-rate $pat (STV $s $c))
+   (let $direct (mm2-direct-fact-base-rate $pat)
+     (case $direct
+       ((no-cache-entry (STV $s $c))
+        ((STV $_ds $dc) (if (> $dc $c) $direct (STV $s $c)))
+        ($other (STV $s $c))))))
+
 (= (mm2-set-base-rate $kb $pattern (STV $s $c))
    (let $_clear (mm2-remove-base-rate-state $kb $pattern)
      (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
-       (let $stored (copy_term $pat)
-        (let $_set (add-atom &mork (base-rate $stored ($s $c)))
-         ())))))
+       (let* (($stored (copy_term $pat))
+              ($cache-pat (copy_term $pat))
+              ($_set (add-atom &mork (base-rate $stored ($s $c))))
+              ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat user (STV $s $c) manual))))
+         ()))))
 
 (= (mm2-clear-base-rate $kb $pattern)
    (let $_clear (mm2-remove-base-rate-state $kb $pattern)
@@ -399,16 +420,29 @@
      (let $_support (mm2-add-base-rate-support $kb $pattern)
        (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
          (let $_old (mm2-remove-matches (base-rate $pat $tv))
-           (let $stored (copy_term $pat)
-            (let $_set (add-atom &mork (base-rate $stored ($s $c)))
-             ())))))))
+           (let* (($stored (copy_term $pat))
+                  ($cache-pat (copy_term $pat))
+                  ($_set (add-atom &mork (base-rate $stored ($s $c))))
+                  ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat computed (STV $s $c) $mode))))
+             ()))))))
+
+(= (mm2-live-cached-base-rate $pat)
+   (case (collapse (match &mork (base-rate $pat ($s $c)) (STV $s $c)))
+     ((() no-cache-entry)
+      ((cons (STV 0.0 0.0) $_rest) no-cache-entry)
+      ((cons $tv $_rest) $tv))))
 
 (= (mm2-cached-base-rate $kb $pattern)
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
-     (case (collapse (match &mork (base-rate $pat ($s $c)) (STV $s $c)))
-       ((() no-cache-entry)
-        ((cons (STV 0.0 0.0) $_rest) no-cache-entry)
-        ((cons $tv $_rest) $tv)))))
+     (case (collapse
+             (match &mork
+               (base-rate-cache-entry $pat $source $stored-tv $mode)
+               ($source $stored-tv $mode)))
+       ((() (mm2-live-cached-base-rate $pat))
+        ((cons (user $stored-tv $_mode) $_rest) $stored-tv)
+        ((cons (computed $stored-tv $_mode) $_rest)
+         (mm2-computed-cached-base-rate $pat $stored-tv))
+        ($other (mm2-live-cached-base-rate $pat))))))
 
 (= (mm2-test-cached-base-rate $kb $pattern $expected)
    (let* (($got (mm2-cached-base-rate $kb $pattern))
