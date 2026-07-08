@@ -37,5 +37,14 @@
 !(mm2-compileadd incumbentPriorityKb (: aToB (Implication (Premises (IncumbentA)) (Conclusions (IncumbentB))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-compileadd incumbentPriorityKb (: cToD (Implication (Premises (IncumbentC)) (Conclusions (IncumbentD))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
 !(mm2-test-query 7 incumbentPriorityKb (: $prf (IncumbentGoal) $tv) ((: (bToGoal directB) (IncumbentGoal) (STV 1.0 0.8918896597655677))))
-!(mm2-test-query 7 incumbentPriorityKb (: $prf (IncumbentGoal) $tv) ((: (merge/revision (bToGoal directB) (dToGoal (cToD directC))) (IncumbentGoal) (STV 1 0.9039912235037112))))
+; A repeated query in the same KB stops at the already-merged incumbent fact;
+; use a fresh KB to test the later broad-round revision result.
+!(mm2-compileadd incumbentRevisionKb (: directB (IncumbentB) (STV 1.0 0.9)))
+!(mm2-compileadd incumbentRevisionKb (: directA (IncumbentA) (STV 1.0 1.0)))
+!(mm2-compileadd incumbentRevisionKb (: directC (IncumbentC) (STV 1.0 1.0)))
+!(mm2-compileadd incumbentRevisionKb (: bToGoal (Implication (Premises (IncumbentB)) (Conclusions (IncumbentGoal))) (CTV (STV 1.0 0.99) (STV 0.0 1.0))))
+!(mm2-compileadd incumbentRevisionKb (: dToGoal (Implication (Premises (IncumbentD)) (Conclusions (IncumbentGoal))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
+!(mm2-compileadd incumbentRevisionKb (: aToB (Implication (Premises (IncumbentA)) (Conclusions (IncumbentB))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
+!(mm2-compileadd incumbentRevisionKb (: cToD (Implication (Premises (IncumbentC)) (Conclusions (IncumbentD))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
+!(mm2-test-query 14 incumbentRevisionKb (: $prf (IncumbentGoal) $tv) ((: (merge/revision (bToGoal directB) (dToGoal (cToD directC))) (IncumbentGoal) (STV 1 0.9039912235037112))))
 !(mm2-test-query 7 incumbentPriorityKb (: (merge/revision (bToGoal (aToB directA)) $_other) (IncumbentGoal) $tv) ())

@@ -271,8 +271,8 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
   proofs first under tiny budgets; mm2's wave execution derives/revises the
   observable result. The generated harness test now checks the same intent in
   mm2 terms: zero budget gives no answer, enough budget yields the revised
-  result, and dropped/weak standalone proof shapes are absent. Current file
-  verdict: 12 pass / 0 close / 0 fail.
+  result in a fresh KB, and dropped/weak standalone proof shapes are absent.
+  Current file verdict: 12 pass / 0 close / 0 fail.
 - **Lifting-merge pooling algorithm** (backward_proof_store.metta:265-425)
   is now understood: group proofs of one grounded output; shared = evidence
   intersection (fact-ev only); guards = all proofs implication-shaped +
@@ -392,6 +392,19 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=87 close=8 fail=14 unsupported-ir=35 skipped=82 flagged-files=0
 
+## Best-first incumbent state isolation (DONE 2026-07-08)
+
+The incumbent subcase now uses a fresh KB for the later revision assertion.
+That keeps the mm2-intent split explicit: budget 7 in the original KB observes
+the direct incumbent only, while budget 14 in the fresh KB observes the broad
+revision result. Re-querying the same KB is intentionally different because
+the existing canonical fact satisfies the frontier before deeper work is
+scheduled.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=88 close=8 fail=13 unsupported-ir=35 skipped=82 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -409,12 +422,12 @@ Latest corpus snapshot after this adjustment:
    Not+And compound lowering, preserved logic-config imports, FoldAll query
    aggregates, partial base-rate cache operations, CTV assumption facts, the
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
-   intent rewrite, query-materialization budget scaling, and backward
-   two-hop compose budget scaling, and Compute + query-compound lowering):
-   pass=87 close=8 fail=14 unsupported-ir=35 skipped=82 flagged-files=0,
+   intent rewrite, best-first incumbent state isolation,
+   query-materialization budget scaling, backward two-hop compose budget
+   scaling, and Compute + query-compound lowering):
+   pass=88 close=8 fail=13 unsupported-ir=35 skipped=82 flagged-files=0,
    wall time about 51 s.
    Remaining failures: backward_open_query_results 1, base_rate_cache 1,
-   best_first_runtime 1 (incumbent confidence expectation),
    forward_backward_compose 1 (OrFormula FoldAll), implication_premise 3,
    inheritance_query_proof 1, member_compat 1, specializing_rule 3,
    total_implication_aggregate 1, uniform_prior 1.
