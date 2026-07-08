@@ -310,9 +310,10 @@ instead of replacing it with a lower-confidence recomputation.
 The remaining supported divergence was repeated inversion over refining
 base-rate snapshots. The compiler now normalizes converted inversion rule
 evidence back to the source rule id, the scheduler gives inversion proofs a
-stable `(scheduledN ... (inv $pos) ...)` token that omits the base-rate
-pattern snapshot, and merge replaces the previous canonical inversion snapshot
-before `revise-proofs` can count old and new TVs as independent proofs.
+stable `(scheduledInvN $goal $pos $premises)` token that omits the base-rate
+pattern snapshot, and MORK's `revise-proofs` sink replaces previous
+same-evidence inversion snapshots before revision can count old and new TVs as
+independent proofs.
 
 `test_base_rate_cache` now passes all supported assertions, including the
 high-confidence cached antecedent case:
@@ -320,13 +321,12 @@ high-confidence cached antecedent case:
 entries in that generated file are unsupported cache-introspection forms, not
 wrong supported query results.
 
-Latest full corpus snapshot before this final repeated-inversion fix:
+Latest full corpus snapshot after this final repeated-inversion fix:
 
-    totals: pass=70 close=2 fail=41 unsupported=122 flagged-files=0
+    totals: pass=88 close=8 fail=13 unsupported-ir=35 skipped=82 flagged-files=0
 
-Fresh full-corpus totals are currently blocked by
-`test_backward_open_query_results` timing out in the corpus runner; targeted
-verification for this change is recorded below in the latest status section.
+`test_backward_open_query_results` no longer times out; it returns to the
+known single supported mismatch in the openAndFairKb case.
 
 ## CTV query assumption facts (DONE 2026-07-08)
 
@@ -435,19 +435,19 @@ Latest corpus snapshot after this adjustment:
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
    intent rewrite, best-first incumbent state isolation,
    query-materialization budget scaling, backward two-hop compose budget
-   scaling, and Compute + query-compound lowering):
+   scaling, Compute + query-compound lowering, and repeated-inversion
+   replacement through `revise-proofs`):
    pass=88 close=8 fail=13 unsupported-ir=35 skipped=82 flagged-files=0,
    wall time about 51 s.
-   Remaining failures: backward_open_query_results 1, base_rate_cache 1,
+   Remaining failures: backward_open_query_results 1,
    forward_backward_compose 1 (OrFormula FoldAll), implication_premise 3,
    inheritance_query_proof 1, member_compat 1, specializing_rule 3,
    total_implication_aggregate 1, uniform_prior 1.
-   Targeted check after the repeated-inversion fix: `test_base_rate_cache`
-   has no supported failures, so remove `base_rate_cache 1` from this list
-   when the full corpus runner is unblocked.
-2. **Open-query premise bounding / fair expansion**: currently
-   `test_backward_open_query_results` can time out before the corpus runner
-   reaches later files. This is the blocker for fresh full-corpus totals.
+2. **Open-query fair expansion/result semantics**:
+   `test_backward_open_query_results` now completes, but openAndFairKb still
+   diverges: PeTTa expects the max-only lifted conjunction at the stronger TV,
+   while mm2 currently returns both ann/max lifted conjunctions at the lower
+   pooled TV.
 3. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
 4. Converter gaps: `!(test (let ...))` forms and non-query test forms
@@ -460,10 +460,11 @@ Latest corpus snapshot after this adjustment:
    as deep as the budget allows. mm2's wave execution re-matches *all*
    premise pairs every round, so such KBs explode combinatorially (the
    scheduler's `head 32` bounds pendingN, but premise matching is
-   unbounded). Runaway queries currently hit the corpus runner's per-file
-   timeout; verdicts before them survive via the side log. A fix needs
-   bounded premise matching (head-style sink on wait-premise instantiation)
-   or PeTTa-style expansion accounting.
+   unbounded). The extra MM2 merge pass briefly made this case time out; after
+   moving repeated-inversion replacement into `revise-proofs`, it completes
+   again. If this regresses later, the likely fix is bounded premise matching
+   (head-style sink on wait-premise instantiation) or PeTTa-style expansion
+   accounting.
 6. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
