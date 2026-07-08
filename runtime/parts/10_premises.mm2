@@ -119,6 +119,43 @@
         (O (- (wait-premises $g identity pnil $agg-stv $proof-id $evset))
            (+ (open-proof $g $agg-stv $proof-id $evset)))))
 
+; Evidence-aware conjunction adapter.  It carries pool state for same-source
+; marginal projections so a query over several projections of one (And ...)
+; source counts that source once instead of multiplying/revising its marginals.
+(exec-template
+  (exec 4
+        (, (wait-premises-pool $g pnil (and-pool ($agg-s $agg-c) $evset $parts) $proof-id))
+        (O (- (wait-premises-pool $g pnil (and-pool ($agg-s $agg-c) $evset $parts) $proof-id))
+           (+ (open-proof $g ($agg-s $agg-c) $proof-id $evset)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises-pool $g (pcons $prem $rest) $agg-state $proof-id))
+        (O (- (wait-premises-pool $g (pcons $prem $rest) $agg-state $proof-id))
+           (+ (wait-premise-pool $g $prem $rest $agg-state $proof-id))
+           (+ (, (Goal $prem))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premise-pool $g $prem $rest $agg-state $proof-id)
+           (proved $prem ($prem-s $prem-c) $prem-proof-id $prem-evset))
+        (O (- (wait-premise-pool $g $prem $rest $agg-state $proof-id))
+           (pure (pool-step $g $rest $proof-id $pool-result)
+                 $pool-result
+                 (pln_and_pool_acc
+                   (' (pool-input $agg-state ($prem-s $prem-c) $prem-evset)))))))
+
+(exec-template
+  (exec 4
+        (, (pool-step $g $rest $proof-id (pool-advance $next-state)))
+        (O (- (pool-step $g $rest $proof-id (pool-advance $next-state)))
+           (+ (wait-premises-pool $g $rest $next-state $proof-id)))))
+
+(exec-template
+  (exec 4
+        (, (pool-step $g $rest $proof-id pool-blocked))
+        (O (- (pool-step $g $rest $proof-id pool-blocked)))))
+
 (exec-template
   (exec 4
         (, (wait-premises $g $rule-stv (pcons $prem $rest) $agg-stv $proof-id $evset))
@@ -186,6 +223,27 @@
                 no-stv
                 $proof-id
                 (pcons (fact-ev $head) $evset))))))
+
+(exec-template
+  (exec 4
+        (, (wait-head $g (proj $op $proj-id) $head $others $proof-id $evset)
+           (fact $head ($head-s $head-c)))
+        (O (- (wait-head $g (proj $op $proj-id) $head $others $proof-id $evset))
+           (+ (wait-premises
+                $g
+                (proj $op $proj-id ($head-s $head-c))
+                $others
+                no-stv
+                $proof-id
+                (pcons
+                  (projection-ev $proj-id $head ($head-s $head-c) $g)
+                  (pcons (fact-ev $head) $evset)))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises $g (proj $op $proj-id ($head-s $head-c)) pnil $agg-stv $proof-id $evset))
+        (O (- (wait-premises $g (proj $op $proj-id ($head-s $head-c)) pnil $agg-stv $proof-id $evset))
+           (+ (wait-premises $g (proj $op ($head-s $head-c)) pnil $agg-stv $proof-id $evset)))))
 
 ; AndProjection: element strength = min(1, s_compound / s_evidence),
 ; confidence = min(c_compound, c_evidence); (0 0) when the evidence

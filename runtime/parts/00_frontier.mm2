@@ -37,6 +37,25 @@
                    (sub_f64 (f64_from_string 1.0)
                             (f64_from_string $rule-c)))))))
 
+; Compiled rules preserve their source proof token as rule evidence. This keeps
+; byte-identical rules from collapsing and lets the merge sink distinguish
+; fact-only sharing from reusing the same uncertain rule.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g $rule-id ($kind ($rule-s $rule-c) $extra) $premises))
+        (O (- (, (Goal $g)))
+           (pure (pendingN
+                   $priority
+                   $g
+                   ($kind ($rule-s $rule-c) $extra)
+                   $premises
+                   (pcons (rule-ev $rule-id) pnil))
+                 $priority
+                 (encode_hex
+                   (sub_f64 (f64_from_string 1.0)
+                            (f64_from_string $rule-c)))))))
+
 ; Projection rules (kind (proj and|or|marg)) extract one element of a compound
 ; (And ...) / (Or ...) fact.  The first premise is the compound itself; its TV
 ; must stay separate from the evidence fold of the remaining element premises,
@@ -57,6 +76,20 @@
                 pnil))
            (+ (, (Goal $head))))))
 
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g (proj $op $proj-id) (pcons $head $others)))
+        (O (- (, (Goal $g)))
+           (+ (wait-head
+                $g
+                (proj $op $proj-id)
+                $head
+                $others
+                (scheduledN $g (proj $op $proj-id) (pcons $head $others))
+                pnil))
+           (+ (, (Goal $head))))))
+
 ; Adapter rules derive a compound goal directly from its premise list.  They use
 ; the premise aggregate TV as the proof TV instead of applying an extra rule TV.
 (exec-template
@@ -64,10 +97,8 @@
         (, (, (Goal $g))
            (adapterN $g $premises))
         (O (- (, (Goal $g)))
-           (+ (wait-premises
+           (+ (wait-premises-pool
                 $g
-                identity
                 $premises
                 no-stv
-                (adapterN $g $premises)
-                pnil)))))
+                (adapterN $g $premises))))))

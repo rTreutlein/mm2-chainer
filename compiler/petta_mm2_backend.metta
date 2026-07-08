@@ -3,8 +3,10 @@
 ; Lowers PeTTaChainer-style statements into mm2-chainer runtime IR:
 ;
 ;   (: a A (STV s c))                          -> (fact A (s c))
-;                                                 + (fact-evidence A ...) so later
-;                                                 proofs revise instead of duplicate
+;                                                 + fact-evidence/proved records
+;                                                 so later proofs revise and
+;                                                 evidence-aware adapters can
+;                                                 read source evidence
 ;   (: r (Implication (Premises p...)
 ;         (Conclusions q)) (CTV (STV ..) ..))  -> (ruleN q (ctv (..) (..)) prems)
 ;   (: r (Implication ...) (STV s c))          -> (ruleN q (stv (s c) (brpat a q')) prems)
@@ -41,7 +43,8 @@
        (empty)
        (superpose (
          (fact $type ($s $c))
-         (fact-evidence $type ($s $c) (pcons (fact-ev $type) pnil))))))
+         (fact-evidence $type ($s $c) (pcons (fact-ev $type) pnil))
+         (proved $type ($s $c) $name (pcons (fact-ev $type) pnil))))))
 
 ; Only CTV rules compile an inverse for now. An STV rule's derived CTV and
 ; its inverse both read the conclusion's base rate, and PeTTa's base-rate

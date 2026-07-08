@@ -156,7 +156,7 @@
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
-       (let (subgoal ($shape $type) $tv) (mm2-ir-item $goal-item)
+       (let (subgoal ($shape $type) $tv $_prf) (mm2-ir-item $goal-item)
          (mm2-ir-append
            (collapse
              (match &mork (fact ($shape $type) ($s $c))
@@ -176,19 +176,23 @@
                   (mm2-run-compiled-queries $kb $rest)))
 
 (= (mm2-cleanup-goal $g)
-   (let $_goal (mm2-remove-matches (, (Goal $g)))
+     (let $_goal (mm2-remove-matches (, (Goal $g)))
      (let $_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises))
-       (let $_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset))
-         (let $_wait (mm2-remove-matches (wait-premise $g $rule-stv $prem $rest $agg $proof-id $evset))
-           (let $_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset))
-             (let $_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset))
-               (let $_inv (mm2-remove-matches (inv-checked $verdict $g $proof-id $evset))
-                 cleaned))))))))
+       (let $_pending-named (mm2-remove-matches (pendingN $priority2 $g $rule-stv2 $premises2 $pending-evset))
+         (let $_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset))
+           (let $_pool-waits (mm2-remove-matches (wait-premises-pool $g $pool-rest $pool-state $pool-proof-id))
+             (let $_wait (mm2-remove-matches (wait-premise $g $rule-stv $prem $rest $agg $proof-id $evset))
+               (let $_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2))
+                 (let $_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result))
+                   (let $_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset))
+                     (let $_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset))
+                       (let $_inv (mm2-remove-matches (inv-checked $verdict $g $proof-id $evset))
+                         cleaned))))))))))))
 
 (= (mm2-cleanup-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
-       (let (subgoal $g $tv) (mm2-ir-item $goal-item)
+       (let (subgoal $g $tv $_prf) (mm2-ir-item $goal-item)
          (let $_adds (mm2-remove-atoms (mm2-translate-query $cq))
            (mm2-cleanup-goal $g))))
       ($other cleaned))))

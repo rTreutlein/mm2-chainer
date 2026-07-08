@@ -317,9 +317,9 @@ EOF
   mork run "$rules" --steps "$(steps_budget 5 0)" --aux-path "$runtime" "$out_mid" >/dev/null
   mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premise (And (Own (i ann)) (Pet ann)) identity (Pet ann) pnil (0.8 0.9999000095990804) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Own (i ann))) pnil))"
+  assert_contains "$out_mid" "(wait-premise-pool (And (Own (i ann)) (Pet ann)) (Pet ann) pnil (and-pool (0.8 0.9999000095990804) (pcons (fact-ev (Have (i ann))) pnil) (pcons (indep-part (0.8 0.9999000095990804)) pnil)) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401))"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Pet ann)) (pcons (fact-ev (Own (i ann))) pnil)))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Have (i ann))) (pcons (fact-ev (Dog ann)) pnil)))"
 }
 
 run_reference_three_premise_test() {
@@ -368,7 +368,7 @@ EOF
   grep -E '^\(adapterN ' "$compiler_out" > "$rules"
 
   local seed_exprs=()
-  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
+  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |proved |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
   mork run "$rules" --steps "$(steps_budget 4 12)" --aux-path "$runtime" "$out" >/dev/null
@@ -403,7 +403,7 @@ EOF
   grep -E '^\((ruleN|adapterN|base-rate|base-rate-def) ' "$compiler_out" > "$rules"
 
   local seed_exprs=()
-  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
+  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |proved |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
   mork run "$rules" --steps "$(steps_budget 7 1)" --aux-path "$runtime" "$out" >/dev/null
@@ -439,7 +439,7 @@ EOF
   grep -E '^\((ruleN|adapterN|base-rate|base-rate-def) ' "$compiler_out" > "$rules"
 
   local seed_exprs=()
-  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |, \(Goal )' "$compiler_out")
+  mapfile -t seed_exprs < <(grep -E '^\((fact |fact-evidence |proved |, \(Goal )' "$compiler_out")
   build_runtime_from_core "$runtime" "${seed_exprs[@]}"
 
   mork run "$rules" --steps "$(steps_budget 23 9)" --aux-path "$runtime" "$out" >/dev/null

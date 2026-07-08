@@ -11,3 +11,15 @@
                 no-stv
                 (scheduledN $g $rule-stv $premises)
                 pnil)))))
+
+(exec-template
+  (exec 3
+        (I (head 32 (pendingN $priority $g $rule-stv $premises $evset)))
+        (O (- (pendingN $priority $g $rule-stv $premises $evset))
+           (+ (wait-premises
+                $g
+                $rule-stv
+                $premises
+                no-stv
+                (scheduledN $g $rule-stv $premises)
+                $evset)))))

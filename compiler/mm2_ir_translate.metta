@@ -55,9 +55,9 @@
 
 (= (mm2-ir-item $item)
    (case $item
-     (((: $shape $prf $ptype $tv) (subgoal ($shape $ptype) $tv))
+     (((: $shape $prf $ptype $tv) (subgoal ($shape $ptype) $tv $prf))
       ((CPU $formula $args $out) (cpu $formula $args $out))
-      (($ptype $shape $prf $tv) (subgoal ($shape $ptype) $tv))
+      (($ptype $shape $prf $tv) (subgoal ($shape $ptype) $tv $prf))
       ($other (unknown $other)))))
 
 ; Split the premise items into an ordered pcons list of subgoal types and the
@@ -66,7 +66,7 @@
 (= (mm2-ir-collect (cons $item $rest))
    (let (collected $ptypes $cpus) (mm2-ir-collect $rest)
      (case (mm2-ir-item $item)
-       (((subgoal $t $v) (collected (pcons $t $ptypes) $cpus))
+       (((subgoal $t $v $_prf) (collected (pcons $t $ptypes) $cpus))
         ((cpu $f $a $o) (collected $ptypes (cons (cpu $f $a $o) $cpus)))
         ((unknown $o) (collected $ptypes (cons (unknown $o) $cpus)))))))
 
@@ -195,31 +195,31 @@
 ; --- statement translation ---------------------------------------------------
 ; Each translation superposes the mm2 atoms for one IR statement.
 
-(= (mm2-ir-emit-rule $ctype $ptypes identity)
+(= (mm2-ir-emit-rule $_rid $ctype $ptypes identity)
    (adapterN $ctype $ptypes))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (proj-kind $op))
-   (ruleN $ctype (proj $op) $ptypes))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (proj-kind $op))
+   (ruleN $ctype (proj $op $rid) $ptypes))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (ctv-kind $pos $neg))
-   (ruleN $ctype (ctv $pos $neg) $ptypes))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (ctv-kind $pos $neg))
+   (ruleN $ctype $rid (ctv $pos $neg) $ptypes))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (not-ctv-kind $pos $neg))
-   (ruleN $ctype (not-ctv $pos $neg) $ptypes))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (not-ctv-kind $pos $neg))
+   (ruleN $ctype $rid (not-ctv $pos $neg) $ptypes))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (not-and-ctv-kind $pos $neg))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (not-and-ctv-kind $pos $neg))
    (case $ptypes
      (((pcons ($scope $prem) $rest)
        (let $not-prem ($scope (Not $prem))
          (superpose (
            (ruleN $not-prem (proj not) (pcons ($scope $prem) pnil))
-           (ruleN $ctype (ctv $pos $neg) (pcons $not-prem $rest))))))
+           (ruleN $ctype $rid (ctv $pos $neg) (pcons $not-prem $rest))))))
       ($other (notsupported-ir (not-and-ctv $ctype $ptypes))))))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (ctvn-kind $pos $neg))
-   (ruleN $ctype (ctvn $pos $neg) $ptypes))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (ctvn-kind $pos $neg))
+   (ruleN $ctype $rid (ctvn $pos $neg) $ptypes))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (fold-sum-kind $pat $value $out))
+(= (mm2-ir-emit-rule $_rid $ctype $ptypes (fold-sum-kind $pat $value $out))
    (case $ptypes
      ((pnil
        (let $result-copy (copy_term $ctype)
@@ -230,7 +230,7 @@
             ($other (notsupported-ir (foldall-result-copy $ctype)))))))
       ($other (notsupported-ir (foldall-with-premises $ctype $ptypes))))))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (fold-pair-counts-kind $pat $value $out))
+(= (mm2-ir-emit-rule $_rid $ctype $ptypes (fold-pair-counts-kind $pat $value $out))
    (case $ptypes
      ((pnil
        (let $result-copy (copy_term $ctype)
@@ -241,52 +241,53 @@
             ($other (notsupported-ir (foldall-result-copy $ctype)))))))
       ($other (notsupported-ir (foldall-with-premises $ctype $ptypes))))))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (stv-kind $pos $pa $pb))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-kind $pos $pa $pb))
    (superpose (
-     (ruleN $ctype (stv $pos (brpat $pa $pb)) $ptypes)
+     (ruleN $ctype $rid (stv $pos (brpat $pa $pb)) $ptypes)
      (mm2-base-rate-support $pa)
      (mm2-base-rate-support $pb))))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (stv-weighted-kind $pos $pa $pb))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-weighted-kind $pos $pa $pb))
    (superpose (
-     (ruleN $ctype (stv $pos (brpat $pa $pb)) $ptypes)
+     (ruleN $ctype $rid (stv $pos (brpat $pa $pb)) $ptypes)
      (mm2-base-rate-support $pa)
      (base-rate (copy_term $pb) (0.0 0.0)))))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (inv-kind $pos $pa $pb $materialize))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $pa $pb $materialize))
    (superpose (
-     (ruleN $ctype (inv $pos (brpat $pa $pb)) $ptypes)
+     (ruleN $ctype $rid (inv $pos (brpat $pa $pb)) $ptypes)
      (mm2-base-rate-support $pa)
      (mm2-base-rate-support $pb)
      (if (== $materialize yes)
        (, (Goal (copy_term $pb)))
        (empty)))))
 
-(= (mm2-ir-emit-rule $ctype $ptypes (unsupported-tail $tail))
+(= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
    (notsupported-ir (rule-tail $ctype $tail)))
 
-(= (mm2-ir-emit-fact $g ($s $c))
+(= (mm2-ir-emit-fact $g $prf ($s $c))
    (superpose (
      (fact $g ($s $c))
-     (fact-evidence $g ($s $c) (pcons (fact-ev $g) pnil)))))
+     (fact-evidence $g ($s $c) (pcons (fact-ev $prf $g) pnil))
+     (proved $g ($s $c) $prf (pcons (fact-ev $prf $g) pnil)))))
 
 ; The TV is is-var-checked before structural matching: a case pattern
 ; (STV $s $c) would UNIFY with a free tv var (identity-query ctxatoms carry
 ; one) and emit a wildcard fact with unbound strength/confidence that then
 ; unifies with every premise lookup.
-(= (mm2-ir-fact-stmt $g $tv)
+(= (mm2-ir-fact-stmt $g $prf $tv)
    (if (is-var $tv)
      (notsupported-ir (free-tv-fact $g))
      (case $tv
        (((STV $s $c)
          (if (or (is-var $s) (is-var $c))
            (notsupported-ir (free-tv-fact $g))
-           (mm2-ir-emit-fact $g ($s $c))))
+           (mm2-ir-emit-fact $g $prf ($s $c))))
         ((CTV (STV $ps $pc) (STV $ns $nc))
          (if (or (or (is-var $ps) (is-var $pc))
                  (or (is-var $ns) (is-var $nc)))
            (notsupported-ir (free-tv-fact $g))
-           (mm2-ir-emit-fact $g (ctvpair ($ps $pc) ($ns $nc)))))
+           (mm2-ir-emit-fact $g $prf (ctvpair ($ps $pc) ($ns $nc)))))
         ($other (notsupported-ir (fact-tv $g $other)))))))
 
 ; Rules with an implication-typed premise need that premise's
@@ -316,17 +317,17 @@
 (= (mm2-translate-stmt $stmt)
    (case $stmt
      (((: $shape $prf $type $tv)
-       (mm2-ir-fact-stmt ($shape $type) $tv))
+       (mm2-ir-fact-stmt ($shape $type) $prf $tv))
       ((rules ($prems |- $ccl))
        (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
-              ((subgoal $ctype $ctv) (mm2-ir-item $ccl))
+              ((subgoal $ctype $ctv $cprf) (mm2-ir-item $ccl))
               ($kind (mm2-ir-refine-kind
                        (mm2-ir-classify (mm2-ir-drop-and $cpus))
                        $ctv)))
-         (superpose ((mm2-ir-emit-rule $ctype $ptypes $kind)
+         (superpose ((mm2-ir-emit-rule $cprf $ctype $ptypes $kind)
                      (mm2-ir-implication-queries $ptypes)))))
       (($type $shape $prf $tv)
-       (mm2-ir-fact-stmt ($shape $type) $tv))
+       (mm2-ir-fact-stmt ($shape $type) $prf $tv))
       ($other (notsupported-ir (stmt $other))))))
 
 (= (mm2-translate-all ()) ())
@@ -340,6 +341,6 @@
 (= (mm2-translate-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
-       (let (subgoal $g $tv) (mm2-ir-item $goal-item)
+       (let (subgoal $g $tv $_prf) (mm2-ir-item $goal-item)
          (cons (, (Goal $g)) (mm2-translate-all $adds))))
       ($other (cons (notsupported-ir (query $other)) ())))))
