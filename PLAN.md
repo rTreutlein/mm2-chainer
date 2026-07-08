@@ -297,7 +297,7 @@ Latest corpus snapshot after this port:
 
     totals: pass=69 close=2 fail=42 unsupported=122 flagged-files=0
 
-## Base-rate cache operations (IN PROGRESS 2026-07-08)
+## Base-rate cache operations (DONE 2026-07-08)
 
 Generated tests now rewrite `set-base-rate`, `clear-base-rate`, and
 `store-computed-base-rate!` to MM2-harness operations that update the MM2
@@ -307,15 +307,26 @@ overwrite them; clearing re-adds the fold support and zero seed. MORK's
 `fold-base-rate` sink now preserves a higher-confidence cached/computed value
 instead of replacing it with a lower-confidence recomputation.
 
-This moves `test_base_rate_cache` to 3 pass / 1 close / 1 fail. Remaining
-divergence: with a high-confidence cached antecedent, MM2 can fire the inverse
-after the consequent has direct base-rate evidence but before the derived
-consequent proof is folded into that consequent base rate. PeTTa's agenda
-orders that query so the consequent fold includes the derived witness first.
+The remaining supported divergence was repeated inversion over refining
+base-rate snapshots. The compiler now normalizes converted inversion rule
+evidence back to the source rule id, the scheduler gives inversion proofs a
+stable `(scheduledN ... (inv $pos) ...)` token that omits the base-rate
+pattern snapshot, and merge replaces the previous canonical inversion snapshot
+before `revise-proofs` can count old and new TVs as independent proofs.
 
-Latest corpus snapshot after this step:
+`test_base_rate_cache` now passes all supported assertions, including the
+high-confidence cached antecedent case:
+`(P alice) (STV 0.5258301716166336 0.008091509912253481)`. The remaining
+entries in that generated file are unsupported cache-introspection forms, not
+wrong supported query results.
+
+Latest full corpus snapshot before this final repeated-inversion fix:
 
     totals: pass=70 close=2 fail=41 unsupported=122 flagged-files=0
+
+Fresh full-corpus totals are currently blocked by
+`test_backward_open_query_results` timing out in the corpus runner; targeted
+verification for this change is recorded below in the latest status section.
 
 ## CTV query assumption facts (DONE 2026-07-08)
 
@@ -418,7 +429,7 @@ Latest corpus snapshot after this adjustment:
    then remaining MP arrangements, weighted/grouped folds, and member
    machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
-   Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
+   Last complete corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, FoldAll query
    aggregates, partial base-rate cache operations, CTV assumption facts, the
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
@@ -431,10 +442,12 @@ Latest corpus snapshot after this adjustment:
    forward_backward_compose 1 (OrFormula FoldAll), implication_premise 3,
    inheritance_query_proof 1, member_compat 1, specializing_rule 3,
    total_implication_aggregate 1, uniform_prior 1.
-2. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
-   caches base rates per (kb, pattern) at first use (base_rate_cache in
-   compiled_query_runtime.metta) so all rule firings in a query see one
-   value; mm2 recomputes every round and merged facts keep refining.
+   Targeted check after the repeated-inversion fix: `test_base_rate_cache`
+   has no supported failures, so remove `base_rate_cache 1` from this list
+   when the full corpus runner is unblocked.
+2. **Open-query premise bounding / fair expansion**: currently
+   `test_backward_open_query_results` can time out before the corpus runner
+   reaches later files. This is the blocker for fresh full-corpus totals.
 3. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
 4. Converter gaps: `!(test (let ...))` forms and non-query test forms

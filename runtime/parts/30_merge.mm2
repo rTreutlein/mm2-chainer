@@ -1,6 +1,20 @@
 ; Proof merge and truth-value revision into canonical facts.
 ; STVs are carried as packed pairs: (strength confidence).
 
+; Inversion over refining base-rate snapshots can regenerate the same logical
+; proof at a new TV. If the old canonical fact is exactly that inversion proof,
+; replace the snapshot before revise-proofs sees it; revising old and new
+; snapshots would double-count one proof path.
+(exec-template
+  (exec A
+        (, (open-proof $g $new-stv (scheduledN $g (inv $pos) $premises) $evset)
+           (proved $g $old-stv (scheduledN $g (inv $pos) $premises) $evset)
+           (fact $g $old-stv)
+           (fact-evidence $g $old-stv $evset))
+        (O (- (proved $g $old-stv (scheduledN $g (inv $pos) $premises) $evset))
+           (- (fact $g $old-stv))
+           (- (fact-evidence $g $old-stv $evset)))))
+
 ; If an open-query wait regenerates an already merged proof, drop the open token.
 (exec-template
   (exec B

@@ -1,5 +1,32 @@
-; The proof token includes the rule TV so two rules that prove the same goal
-; from the same premises produce distinct proofs instead of colliding.
+; The proof token normally includes the rule TV so two rules that prove the
+; same goal from the same premises produce distinct proofs instead of
+; colliding. Inversion strips the base-rate pattern snapshot from that token:
+; refreshed base rates update the same logical proof instead of adding another
+; independent proof path.
+(exec-template
+  (exec 3
+        (I (head 32 (pendingN $priority $g (inv $pos $brpat) $premises)))
+        (O (- (pendingN $priority $g (inv $pos $brpat) $premises))
+           (+ (wait-premises
+                $g
+                (inv $pos $brpat)
+                $premises
+                no-stv
+                (scheduledN $g (inv $pos) $premises)
+                pnil)))))
+
+(exec-template
+  (exec 3
+        (I (head 32 (pendingN $priority $g (inv $pos $brpat) $premises $evset)))
+        (O (- (pendingN $priority $g (inv $pos $brpat) $premises $evset))
+           (+ (wait-premises
+                $g
+                (inv $pos $brpat)
+                $premises
+                no-stv
+                (scheduledN $g (inv $pos) $premises)
+                $evset)))))
+
 (exec-template
   (exec 3
         (I (head 32 (pendingN $priority $g $rule-stv $premises)))

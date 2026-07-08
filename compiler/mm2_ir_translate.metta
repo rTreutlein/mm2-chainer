@@ -264,9 +264,15 @@
      (mm2-base-rate-support $pa)
      (base-rate (copy_term $pb) (0.0 0.0)))))
 
+(= (mm2-ir-inv-evidence-id $rid)
+   (case $rid
+     ((((inverted $base with $_pa $_pb) $_wit) $base)
+      ((inverted $base with $_pa $_pb) $base)
+      ($other $other))))
+
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $pa $pb $materialize))
    (superpose (
-     (ruleN $ctype $rid (inv $pos (brpat $pa $pb)) $ptypes)
+     (ruleN $ctype (mm2-ir-inv-evidence-id $rid) (inv $pos (brpat $pa $pb)) $ptypes)
      (mm2-base-rate-support $pa)
      (mm2-base-rate-support $pb)
      (if (== $materialize yes)
