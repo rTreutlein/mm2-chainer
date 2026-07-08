@@ -159,17 +159,27 @@
 ; term — usually the kb's MAIN context, or the fresh query context some
 ; queries allocate. Assumption-context facts never surface because their
 ; contexts are not any compiled goal's scope.
+(= (mm2-readback-type $shape $type $prf $tv)
+   (case $shape
+     ((($kb $ctx $vars)
+       (if (and (not (== $ctx MAIN))
+                (and (not (is-var $prf)) (not (is-var $tv))))
+         (Implication (Premises $type) (Conclusions $type))
+         $type))
+      ($other $type))))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
-       (let (subgoal ($shape $type) $tv $_prf) (mm2-ir-item $goal-item)
-         (mm2-ir-append
-           (collapse
-             (match &mork (fact ($shape $type) ($s $c))
-               (: mm2-merged $type (STV $s $c))))
-           (collapse
-             (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-               (: mm2-merged $type (CTV (STV $ps $pc) (STV $ns $nc))))))))
+       (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
+         (let $readback-type (mm2-readback-type $shape $type $prf $tv)
+           (mm2-ir-append
+             (collapse
+               (match &mork (fact ($shape $type) ($s $c))
+                 (: mm2-merged $readback-type (STV $s $c))))
+             (collapse
+               (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+                 (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
