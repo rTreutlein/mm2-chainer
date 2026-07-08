@@ -184,6 +184,12 @@ def convert_test(expr):
     term_conf = term_confidence_test(queryish, expected)
     if term_conf is not None:
         return term_conf
+    if head(queryish) == "premises-expected-confidence" and len(queryish) == 2:
+        return [
+            "mm2-test-premises-expected-confidence",
+            rename_calls(queryish[1]),
+            rename_calls(expected),
+        ]
     if head(queryish) == "CTVModusPonensFormula" and len(queryish) == 3:
         return [
             "mm2-test-CTVModusPonensFormula",

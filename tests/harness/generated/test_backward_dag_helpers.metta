@@ -17,14 +17,10 @@
 !(mm2-test-term-confidence-CTVInversionFormula-vars (CTV (STV 0.8 0.632121) (STV 0.1 0.632121)) 0.5689089)
 !(mm2-test-CTVInversionFormula (STV 0.2 1.0) (STV 0.24 1.0) (CTV (STV 0.8 1.0) (STV 0.1 1.0)) (CTV (STV 0.6666666666666669 0.9985188611281907) (STV 0.05263157894736841 0.9999538033069306)))
 !(mm2-test-CTVInversionFormula (STV 0.0 1.0) (STV 0.1 1.0) (CTV (STV 0.8 1.0) (STV 0.1 1.0)) (CTV (STV 0.0 0.993640649761643) (STV 0.0 0.9999950617533683)))
-; UNSUPPORTED test form: (test (premises-expected-confidence (cons (CPU CTVModusPonensFormula ((STV 1.0 1.0) (CTV (STV 1.0 0.2) (STV 0.0 1.0))) $tv1) (cons (CPU CTVModusPonensFormula ($
-!(mm2-test-unsupported "test  premises-expected-confidence  cons  CPU CTVModusPonensFormula   STV 1.0 1")
-; UNSUPPORTED test form: (test (premises-expected-confidence (cons (CPU CTVModusPonensFormula ((STV 0.25 1.0) (CTV (STV 1.0 0.8) (STV 0.0 1.0))) $tv) ())) 0.9998999264084577)
-!(mm2-test-unsupported "test  premises-expected-confidence  cons  CPU CTVModusPonensFormula   STV 0.25")
-; UNSUPPORTED test form: (test (premises-expected-confidence (cons (CPU NotFormula ((STV 0.75 1.0)) $not-tv) (cons (CPU CTVModusPonensFormula ($not-tv (CTV (STV 1.0 0.8) (STV 0.0 0.0)))
-!(mm2-test-unsupported "test  premises-expected-confidence  cons  CPU NotFormula   STV 0.75 1.0   $not-")
-; UNSUPPORTED test form: (test (premises-expected-confidence (cons ((Creature $c) (kb MAIN Nil) $prfC $tvB) (cons (CPU FoldAllCompiled (kb (Animal $a) extract-tv (BaseRateEvidence 0.0 0
-!(mm2-test-unsupported "test  premises-expected-confidence  cons   Creature $c   kb MAIN Nil  $prfC $tv")
+!(mm2-test-premises-expected-confidence (cons (CPU CTVModusPonensFormula ((STV 1.0 1.0) (CTV (STV 1.0 0.2) (STV 0.0 1.0))) $tv1) (cons (CPU CTVModusPonensFormula ($tv1 (CTV (STV 1.0 0.55) (STV 0.0 1.0))) $tv2) ())) 0.1716299316527129)
+!(mm2-test-premises-expected-confidence (cons (CPU CTVModusPonensFormula ((STV 0.25 1.0) (CTV (STV 1.0 0.8) (STV 0.0 1.0))) $tv) ()) 0.9998999264084577)
+!(mm2-test-premises-expected-confidence (cons (CPU NotFormula ((STV 0.75 1.0)) $not-tv) (cons (CPU CTVModusPonensFormula ($not-tv (CTV (STV 1.0 0.8) (STV 0.0 0.0))) $tv) ())) 0.9975061460485739)
+!(mm2-test-premises-expected-confidence (cons ((Creature $c) (kb MAIN Nil) $prfC $tvB) (cons (CPU FoldAllCompiled (kb (Animal $a) extract-tv (BaseRateEvidence 0.0 0.0) BaseRateAcc base-rate result-tv) $tvA) (cons (CPU FoldAllCompiled (kb (Creature $c2) extract-tv (BaseRateEvidence 0.0 0.0) BaseRateAcc base-rate result-tv) $tvBr) (cons (CPU CTVInversionFormula ($tvA $tvBr (CTV (STV 0.8 0.632121) (STV 0.1 0.632121))) $iitv) (cons (CPU CTVModusPonensFormula ($tvB $iitv) $mp-tv) ()))))) 0.5689089)
 !(mm2-compileadd inverseTotalKb (: inverseTotalRule (Implication (Premises (InverseTotalA)) (Conclusions (InverseTotalB))) (CTV (STV 0.8 0.9) (STV 0.1 0.9))))
 ; UNSUPPORTED test form: (test (collapse (once (match rules ($id ((InverseTotalA) (inverseTotalKb $ctx $vars) ((inverted inverseTotalRule with cpu cpu) $prfb-wit) $mp-tv) (((InverseTota
 !(mm2-test-unsupported "test  collapse  once  match rules  $id   InverseTotalA   inverseTotalKb $ctx $v")
