@@ -132,7 +132,10 @@ compiler (3 pass, 1 close).
 Corpus: `scripts/convert_petta_tests.py` converted 29 test files into
 `tests/harness/generated/`; `scripts/run-harness-corpus.sh` runs them
 (one petta process per file, 180 s timeout) into
-`outputs/harness_report.txt` (per-file pass/close/fail/unsupported/ERROR).
+`outputs/harness_report.txt` (per-file pass/close/fail/unsupported-ir/skipped/ERROR).
+Older snapshots below use the previous combined `unsupported` count, where
+converter-level skipped tests and real `(notsupported-ir ...)` markers were
+added together.
 
 ## First full corpus run (2026-07-07)
 
@@ -331,7 +334,7 @@ copy as no evidence, which matches PeTTa's result for this focused test.
 
 Latest corpus snapshot after this translator shortcut:
 
-    totals: pass=70 close=4 fail=39 unsupported=119 flagged-files=0
+    totals: pass=70 close=4 fail=39 unsupported-ir=37 skipped=82 flagged-files=0
 
 ## Next
 
@@ -349,8 +352,8 @@ Latest corpus snapshot after this translator shortcut:
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, FoldAll query
    aggregates, partial base-rate cache operations, CTV assumption facts, and
-   the var-head weighted-fold shortcut): pass=70 close=4 fail=39 unsupported=119
-   flagged-files=0, wall time about 52 s.
+   the var-head weighted-fold shortcut): pass=70 close=4 fail=39
+   unsupported-ir=37 skipped=82 flagged-files=0, wall time about 52 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools
    proofs that share a premise but differ in rules by factoring the shared

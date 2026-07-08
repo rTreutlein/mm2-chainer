@@ -10,8 +10,9 @@
 # verdicts produced before it.
 #
 # Verdicts: mm2-test-pass / mm2-test-close / mm2-test-FAIL, plus
-#   notsupported = IR shapes or test forms the pipeline cannot express yet
-#   TIMEOUT/ERROR = the petta process was killed or aborted
+#   unsupported-ir = IR shapes the translator/runtime cannot express yet
+#   skipped        = converter-level PeTTa test forms not ported to MM2
+#   TIMEOUT/ERROR  = the petta process was killed or aborted
 
 set -uo pipefail
 
@@ -25,7 +26,7 @@ report="outputs/harness_report.txt"
 vlog="outputs/harness_verdicts.log"
 : > "$report"
 
-total_pass=0 total_close=0 total_fail=0 total_unsup=0 total_err=0
+total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_err=0
 
 for f in tests/harness/generated/*.metta; do
   name="$(basename "$f" .metta)"
@@ -37,7 +38,8 @@ for f in tests/harness/generated/*.metta; do
   pass="$(grep -c 'mm2-test-pass' "$vlog" || true)"
   close="$(grep -c 'mm2-test-close' "$vlog" || true)"
   fail="$(grep -c 'mm2-test-FAIL' "$vlog" || true)"
-  unsup="$(( $(grep -c 'notsupported-ir' "$vlog" || true) + $(grep -c 'mm2-test-unsupported' "$log" || true) ))"
+  unsup_ir="$(grep -c 'notsupported-ir' "$vlog" || true)"
+  skipped="$(grep -c 'mm2-test-unsupported' "$log" || true)"
   flag=""
   if [ $status -eq 124 ]; then
     flag="TIMEOUT"
@@ -49,15 +51,16 @@ for f in tests/harness/generated/*.metta; do
   total_pass=$((total_pass + pass))
   total_close=$((total_close + close))
   total_fail=$((total_fail + fail))
-  total_unsup=$((total_unsup + unsup))
-  printf '%-45s pass=%-3s close=%-3s fail=%-3s unsupported=%-3s %s\n' \
-    "$name" "$pass" "$close" "$fail" "$unsup" "$flag" \
+  total_unsup_ir=$((total_unsup_ir + unsup_ir))
+  total_skipped=$((total_skipped + skipped))
+  printf '%-45s pass=%-3s close=%-3s fail=%-3s unsupported-ir=%-3s skipped=%-3s %s\n' \
+    "$name" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$flag" \
     >> "$report"
 done
 
 {
   echo "---"
-  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported=$total_unsup flagged-files=$total_err"
+  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped flagged-files=$total_err"
 } >> "$report"
 
 cat "$report"
