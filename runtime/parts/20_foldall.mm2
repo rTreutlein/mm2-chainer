@@ -19,9 +19,8 @@
              $counts
              $value))))
 
-; Point-mass AverageDist support.  This intentionally consumes only
-; dist-point-dist markers, so multi-pair distributions do not get collapsed to
-; an incorrect deterministic average.
+; AverageDist materializes the product distribution over one sample from each
+; matching source distribution, then emits averaged output pairs.
 (exec-template
   (exec 4
         (, (wait-premises
@@ -45,20 +44,9 @@
   (exec 2
         (, (avg-dist-active $result-pid $pat $value)
            (fact $pat ($s $c))
-           (dist-point-dist $value $x $w))
-        (O (fsum (avg-dist-sum $result-pid $sum) $sum $x $pat)
-           (count (avg-dist-count $result-pid $count) $count $pat))))
-
-(exec-template
-  (exec 2
-        (, (avg-dist-sum $result-pid $sum)
-           (avg-dist-count $result-pid $count))
-        (O (pure (dist-pair $result-pid $avg 1.0)
-                 $avg
-                 (f64_to_string
-                   (div_f64
-                     (f64_from_string $sum)
-                     (f64_from_string $count)))))))
+           (dist-particle-dist $value $pid)
+           (dist-pair $pid $x $w))
+        (O (dist-average $result-pid $pat $x $w))))
 
 ; Existential-disjunction implication queries compile to a FoldAll over the
 ; matching premise facts with OrFormula, followed by CTVModusPonensFormula.

@@ -463,13 +463,14 @@ Latest corpus snapshot after this adjustment:
    redundant Or projection scaffold suppression, ignoring the
    variable-headed grouped-fold output scaffold emitted by `copyPredicate`,
    point-mass `AverageDist`, product-distribution `Map2Dist *`, guarded
-   distribution pair summing, and generated `DistGreaterThanFormula`
-   assertions for rectangle area / point-mass average height):
-   pass=110 close=14 fail=0 unsupported-ir=0 skipped=76 flagged-files=0,
-   wall time about 34 s.
+   distribution pair summing, generated `DistGreaterThanFormula`
+   assertions for rectangle area / point-mass average height, and
+   multi-pair `AverageDist` convolution):
+   pass=102 close=14 fail=0 unsupported-ir=0 skipped=75 flagged-files=0,
+   wall time about 35 s.  The hand harness is separate and currently reports
+   `HARNESS: 9 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
-   legacy/non-query harness forms plus the multi-pair `AverageDist`
-   convolution case still left as a converter-level skip.
+   legacy/non-query harness forms.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is covered as a close result by readback-level factoring of
@@ -483,11 +484,13 @@ Latest corpus snapshot after this adjustment:
    `dist-pair` atoms in the MORK space.  Identity-CTV `Map2Dist *` rules now
    derive deterministic output `ParticleDist` ids and materialize their pairs
    through guarded `fsum`, so duplicate product values are summed instead of
-   deduplicated.  `AverageDist`/`DistSumCountAcc` now has a deterministic
-   point-mass path using `dist-point-dist`, guarded `fsum`, and `count`; full
-   convolution for multi-pair distributions is still future work.  Converted
-   `DistGreaterThanFormula` assertions now cover rectangle-area product
-   distributions and point-mass average-height distributions.
+   deduplicated.  Distribution exports also emit `dist-particle-dist` markers,
+   and `AverageDist`/`DistSumCountAcc` now materializes the convolution over
+   one sampled pair from each matching source distribution through MORK's
+   generic `dist-average` sink, pooling duplicate averaged values by mass.
+   Converted `DistGreaterThanFormula` assertions now cover rectangle-area
+   product distributions plus point-mass and multi-pair average-height
+   distributions.
 5. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:

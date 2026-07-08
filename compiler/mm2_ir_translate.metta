@@ -46,6 +46,9 @@
 (= (mm2-ir-dist-pair-atoms $pid (cons ($x $w) $rest))
    (cons (dist-pair $pid $x $w) (mm2-ir-dist-pair-atoms $pid $rest)))
 
+(= (mm2-ir-dist-particle-atom $term $pid)
+   ((dist-particle-dist $term $pid)))
+
 (= (mm2-ir-dist-point-atoms $term $pid (cons ($x $w) ()))
    ((dist-point-pair $pid $x $w) (dist-point-dist $term $x $w)))
 (= (mm2-ir-dist-point-atoms $_term $_pid $_pairs) ())
@@ -64,8 +67,10 @@
              (((ParticleDist $pid $_scale)
                (let $pairs (ParticlePairs $term)
                  (mm2-ir-append
-                   (mm2-ir-dist-pair-atoms $pid $pairs)
-                   (mm2-ir-dist-point-atoms $term $pid $pairs))))))
+                   (mm2-ir-dist-particle-atom $term $pid)
+                   (mm2-ir-append
+                     (mm2-ir-dist-pair-atoms $pid $pairs)
+                     (mm2-ir-dist-point-atoms $term $pid $pairs)))))))
            (mm2-ir-dist-atoms-list (cdr-atom $term))))
        ())))
 
