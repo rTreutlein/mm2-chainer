@@ -467,10 +467,10 @@ Latest corpus snapshot after this adjustment:
    assertions for rectangle area / point-mass average height, multi-pair
    `AverageDist` convolution, query-materialize marker coverage, and
    cached base-rate readback checks, Member concept-node checks,
-   negated-evidence helper checks, query-TV let readback, and direct
-   formula-helper probes):
-   pass=127 close=18 fail=0 unsupported-ir=0 skipped=46 flagged-files=0,
-   wall time about 34 s.  The hand harness is separate and currently reports
+   negated-evidence helper checks, query-TV let readback, direct
+   formula-helper probes, and direct confidence helper probes):
+   pass=138 close=19 fail=0 unsupported-ir=0 skipped=34 flagged-files=0,
+   wall time about 37 s.  The hand harness is separate and currently reports
    `HARNESS: 9 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
    legacy/non-query harness forms.
@@ -506,13 +506,14 @@ Latest corpus snapshot after this adjustment:
    `close` result because MM2's broad-wave readback exposes an alpha-equivalent
    implication TV with small confidence drift.
 8. **Direct formula-helper probes**:
-   `CTVModusPonensFormula`, `AndFormula`, `OrFormula`, and
-   `CTVInversionFormula` helper assertions are covered through a small
-   on-demand MORK formula runtime (`runtime/formula_eval.mm2`). The helper
-   runtime is intentionally outside `runtime/parts` so it does not perturb
-   normal query scheduling; generated `test_idealized_confidence` is fully
-   covered, and four direct formula assertions in `test_backward_dag_helpers`
-   are covered.
+   `CTVModusPonensFormula`, `AndFormula`, `OrFormula`, `NotFormula`,
+   `LikelierThanFormula`, `OrProjection`, and `CTVInversionFormula` helper
+   assertions are covered through a small on-demand MORK formula runtime
+   (`runtime/formula_eval.mm2`). The helper runtime is intentionally outside
+   `runtime/parts` so it does not perturb normal query scheduling; generated
+   `test_idealized_confidence` is fully covered, and the top direct formula,
+   `tv-confidence`, and CPU `term-confidence` block in
+   `test_backward_dag_helpers` is covered.
 9. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
 10. Converter gaps: most `!(test (let ...))` forms and non-query test forms

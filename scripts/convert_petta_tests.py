@@ -115,6 +115,10 @@ def head(e):
     return e[0] if isinstance(e, list) and e else None
 
 
+def is_var(e):
+    return isinstance(e, str) and e.startswith("$")
+
+
 def rename_calls(e):
     """Rename compileadd/query calls anywhere in an expression."""
     if not isinstance(e, list):
@@ -171,6 +175,15 @@ def convert_test(expr):
     dist_gt = dist_greater_than_test(queryish, expected)
     if dist_gt is not None:
         return dist_gt
+    if head(queryish) == "tv-confidence" and len(queryish) == 2:
+        return [
+            "mm2-test-tv-confidence",
+            rename_calls(queryish[1]),
+            rename_calls(expected),
+        ]
+    term_conf = term_confidence_test(queryish, expected)
+    if term_conf is not None:
+        return term_conf
     if head(queryish) == "CTVModusPonensFormula" and len(queryish) == 3:
         return [
             "mm2-test-CTVModusPonensFormula",
@@ -178,7 +191,7 @@ def convert_test(expr):
             rename_calls(queryish[2]),
             rename_calls(expected),
         ]
-    if head(queryish) in {"AndFormula", "OrFormula"} and len(queryish) == 3:
+    if head(queryish) in {"AndFormula", "OrFormula", "LikelierThanFormula", "OrProjection"} and len(queryish) == 3:
         return [
             "mm2-test-" + head(queryish),
             rename_calls(queryish[1]),
@@ -235,6 +248,40 @@ def convert_test(expr):
         rename_calls(queryish[3]),
         normalize_expected(rename_calls(expected)),
     ]
+
+
+def term_confidence_test(queryish, expected):
+    if head(queryish) != "term-confidence" or len(queryish) != 2:
+        return None
+    term = queryish[1]
+    if head(term) != "CPU" or len(term) != 4:
+        return None
+    fun, args = term[1], term[2]
+    if not isinstance(args, list):
+        return None
+    if fun == "CTVModusPonensFormula" and len(args) == 2:
+        return [
+            "mm2-test-term-confidence-CTVModusPonensFormula",
+            rename_calls(args[0]),
+            rename_calls(args[1]),
+            rename_calls(expected),
+        ]
+    if fun == "NotFormula" and len(args) == 1:
+        return ["mm2-test-term-confidence-NotFormula", rename_calls(args[0]), rename_calls(expected)]
+    if fun in {"AndFormula", "OrFormula", "LikelierThanFormula"} and len(args) == 2:
+        return [
+            "mm2-test-term-confidence-" + fun,
+            rename_calls(args[0]),
+            rename_calls(args[1]),
+            rename_calls(expected),
+        ]
+    if fun == "CTVInversionFormula" and len(args) == 3 and is_var(args[0]) and is_var(args[1]):
+        return [
+            "mm2-test-term-confidence-CTVInversionFormula-vars",
+            rename_calls(args[2]),
+            rename_calls(expected),
+        ]
+    return None
 
 
 def materialized_match(queryish):

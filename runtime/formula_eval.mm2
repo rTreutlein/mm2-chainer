@@ -63,6 +63,50 @@
 
 (exec-template
   (exec 4
+        (, (formula-eval $key (NotFormula (STV $s $c))))
+        (O (- (formula-eval $key (NotFormula (STV $s $c))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string
+                     (sub_f64 (f64_from_string 1.0) (f64_from_string $s)))
+                   (f64_to_string (f64_from_string $c)))))))
+
+(exec-template
+  (exec 4
+        (, (formula-eval $key (LikelierThanFormula (STV $sa $ca) (STV $sb $cb))))
+        (O (- (formula-eval $key (LikelierThanFormula (STV $sa $ca) (STV $sb $cb))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $sa)
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb))))
+                   (f64_to_string
+                     (min_f64
+                       (f64_from_string $ca)
+                       (f64_from_string $cb))))))))
+
+(exec-template
+  (exec 4
+        (, (formula-eval $key (OrProjection (STV $sab $cab) (STV $sa $ca))))
+        (O (- (formula-eval $key (OrProjection (STV $sab $cab) (STV $sa $ca))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string
+                     (pln_or_proj_strength_f64
+                       (f64_from_string $sab)
+                       (f64_from_string $sa)))
+                   (f64_to_string
+                     (pln_or_proj_confidence_f64
+                       (f64_from_string $cab)
+                       (f64_from_string $ca)
+                       (f64_from_string $sa))))))))
+
+(exec-template
+  (exec 4
         (, (formula-eval $key (CTVInversionFormula (STV $sa $ca) (STV $sb $cb) (CTV (STV $sb-a $cb-a) (STV $sb-na $cb-na)))))
         (O (- (formula-eval $key (CTVInversionFormula (STV $sa $ca) (STV $sb $cb) (CTV (STV $sb-a $cb-a) (STV $sb-na $cb-na)))))
            (pure (formula-result-inversion $key $packed)

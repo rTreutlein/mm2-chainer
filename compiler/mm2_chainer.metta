@@ -207,12 +207,39 @@
           ($_add (add-atom &mork (formula-eval $key (OrFormula $a $b)))))
      (mm2-formula-probe-result $key)))
 
+(= (mm2-formula-not $a)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (NotFormula $a)))))
+     (mm2-formula-probe-result $key)))
+
+(= (mm2-formula-likelier $a $b)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (LikelierThanFormula $a $b)))))
+     (mm2-formula-probe-result $key)))
+
+(= (mm2-formula-or-projection $compound $evidence)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (OrProjection $compound $evidence)))))
+     (mm2-formula-probe-result $key)))
+
 (= (mm2-formula-inversion $a $b $ctv)
    (let* (($key mm2-formula-probe)
           ($_runtime (mm2-ensure-formula-runtime))
           ($_clear (mm2-clear-formula-probe $key))
           ($_add (add-atom &mork (formula-eval $key (CTVInversionFormula $a $b $ctv)))))
      (mm2-formula-probe-result $key)))
+
+(= (mm2-tv-confidence $tv)
+   (case $tv
+     (((STV $_s $c) $c)
+      ((CTV $pos $neg) (min (mm2-tv-confidence $pos) (mm2-tv-confidence $neg)))
+      ($other 1.0))))
 
 ; Base-rate cache operations used by PeTTaChainer tests. These intentionally
 ; target the MM2 runtime state, not PeTTa's separate &base_rate_cache space.
@@ -846,6 +873,22 @@
           ($_log (mm2-log-line $verdict)))
      $verdict))
 
+(= (mm2-test-float-value $got $expected)
+   (let* (($verdict
+            (if (== $got $expected)
+              (mm2-test-pass $expected)
+              (case ($got $expected)
+                ((($g $e)
+                  (if (mm2-rel-close $g $e)
+                    (mm2-test-close (inexact $expected) (got $got))
+                    (mm2-test-FAIL (expected $expected) (got $got))))
+                 ($other (mm2-test-FAIL (expected $expected) (got $got)))))))
+          ($_log (mm2-log-line $verdict)))
+     $verdict))
+
+(= (mm2-test-tv-confidence $tv $expected)
+   (mm2-test-float-value (mm2-tv-confidence $tv) $expected))
+
 (= (mm2-test-CTVModusPonensFormula $prem $ctv $expected)
    (mm2-test-tv-value (mm2-formula-mp $prem $ctv) $expected))
 
@@ -855,8 +898,39 @@
 (= (mm2-test-OrFormula $a $b $expected)
    (mm2-test-tv-value (mm2-formula-or $a $b) $expected))
 
+(= (mm2-test-NotFormula $a $expected)
+   (mm2-test-tv-value (mm2-formula-not $a) $expected))
+
+(= (mm2-test-LikelierThanFormula $a $b $expected)
+   (mm2-test-tv-value (mm2-formula-likelier $a $b) $expected))
+
+(= (mm2-test-OrProjection $compound $evidence $expected)
+   (mm2-test-tv-value (mm2-formula-or-projection $compound $evidence) $expected))
+
 (= (mm2-test-CTVInversionFormula $a $b $ctv $expected)
    (mm2-test-tv-value (mm2-formula-inversion $a $b $ctv) $expected))
+
+(= (mm2-test-term-confidence-CTVModusPonensFormula $prem $ctv $expected)
+   (mm2-test-float-value (mm2-tv-confidence (mm2-formula-mp $prem $ctv)) $expected))
+
+(= (mm2-test-term-confidence-NotFormula $a $expected)
+   (mm2-test-float-value (mm2-tv-confidence (mm2-formula-not $a)) $expected))
+
+(= (mm2-test-term-confidence-AndFormula $a $b $expected)
+   (mm2-test-float-value (mm2-tv-confidence (mm2-formula-and $a $b)) $expected))
+
+(= (mm2-test-term-confidence-OrFormula $a $b $expected)
+   (mm2-test-float-value (mm2-tv-confidence (mm2-formula-or $a $b)) $expected))
+
+(= (mm2-test-term-confidence-LikelierThanFormula $a $b $expected)
+   (mm2-test-float-value (mm2-tv-confidence (mm2-formula-likelier $a $b)) $expected))
+
+(= (mm2-test-term-confidence-CTVInversionFormula-vars (CTV $pos $neg) $expected)
+   (let $conf (* (min (min (mm2-tv-confidence (STV 1.0 1.0))
+                           (mm2-tv-confidence (STV 1.0 1.0)))
+                      (mm2-tv-confidence (CTV $pos $neg)))
+                  0.9)
+     (mm2-test-float-value $conf $expected)))
 
 (= (mm2-dist-pairs (ParticleDist $pid $_scale))
    (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))
