@@ -610,7 +610,13 @@ Latest corpus snapshot after this adjustment:
    This removes repeated readback rows caused by combining direct canonical
    fact readback with factoring/lifting readback paths, while preserving one
    representative result row and all non-result markers.
-22. petta facts: bang results print only at process exit (main.pl collects
+22. **Total-implication branch readback**: total-implication queries now read
+   back proof/proof, revised-positive/proof-negative, and
+   proof-positive/revised-negative branch combinations. This matches PeTTa's
+   factor-merge behavior in `test_evidence_semantics`: disjoint positive
+   branches can pool while the negative branch remains proof-specific when its
+   evidence is shared.
+23. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 

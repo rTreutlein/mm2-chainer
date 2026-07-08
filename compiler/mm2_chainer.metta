@@ -519,12 +519,35 @@
          (proved ($neg-shape $neg-type) ($ns $nc) $neg-proof-id $neg-evset)
          (: mm2-proved $goal-type (CTV (STV $ps $pc) (STV $ns $nc)))))))
 
+(= (mm2-readback-total-implication-pos-fact $goal-type $pos-shape $pos-type $neg-shape $neg-type)
+   (collapse
+     (match &mork
+       (fact ($pos-shape $pos-type) ($ps $pc))
+       (match &mork
+         (proved ($neg-shape $neg-type) ($ns $nc) $neg-proof-id $neg-evset)
+         (: mm2-proved $goal-type (CTV (STV $ps $pc) (STV $ns $nc)))))))
+
+(= (mm2-readback-total-implication-neg-fact $goal-type $pos-shape $pos-type $neg-shape $neg-type)
+   (collapse
+     (match &mork
+       (proved ($pos-shape $pos-type) ($ps $pc) $pos-proof-id $pos-evset)
+       (match &mork
+         (fact ($neg-shape $neg-type) ($ns $nc))
+         (: mm2-proved $goal-type (CTV (STV $ps $pc) (STV $ns $nc)))))))
+
+(= (mm2-readback-total-implication-branches $goal-type $pos-shape $pos-type $neg-shape $neg-type)
+   (mm2-ir-append
+     (mm2-readback-total-implication-proofs $goal-type $pos-shape $pos-type $neg-shape $neg-type)
+     (mm2-ir-append
+       (mm2-readback-total-implication-pos-fact $goal-type $pos-shape $pos-type $neg-shape $neg-type)
+       (mm2-readback-total-implication-neg-fact $goal-type $pos-shape $pos-type $neg-shape $neg-type))))
+
 (= (mm2-readback-total-implication-premises $goal-type $prems)
    (case (mm2-ir-collect $prems)
      (((collected (pcons ($pos-shape $pos-type)
                    (pcons ($neg-shape $neg-type) pnil))
                   ())
-       (mm2-readback-total-implication-proofs $goal-type $pos-shape $pos-type $neg-shape $neg-type))
+       (mm2-readback-total-implication-branches $goal-type $pos-shape $pos-type $neg-shape $neg-type))
       ($other ()))))
 
 (= (mm2-readback-total-implication-rule $goal-type $goal-shape $prems $ccl)
