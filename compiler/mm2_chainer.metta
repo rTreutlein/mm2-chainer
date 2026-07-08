@@ -44,6 +44,12 @@
 ; PeTTa-style step budget so small budgets still cover whole rounds.
 (= (mm2-steps-per-round) 20)
 
+; The runtime currently has 55 exec templates. Positive expected tests use a
+; wider cap and stop as soon as the expected result is seen; empty-result
+; checks keep the narrower query cap above so they do not become broader
+; absence claims.
+(= (mm2-test-steps-per-round) 55)
+
 ; Expected-aware tests run MORK in chunks and stop as soon as the expected
 ; result is present.  This avoids burning the full scaled budget after a query
 ; has already produced the assertion target.
@@ -275,6 +281,9 @@
 (= (mm2-total-steps $steps)
    (* $steps (mm2-steps-per-round)))
 
+(= (mm2-test-total-steps $steps)
+   (* $steps (mm2-test-steps-per-round)))
+
 (= (mm2-min $a $b)
    (if (< $a $b) $a $b))
 
@@ -386,6 +395,6 @@
             ($results
               (if (== $want ())
                 (mm2-run-query-full $steps $notsup $cqs)
-                (mm2-run-query-until (mm2-total-steps $steps) $notsup $cqs $expected)))
+                (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        (mm2-test $results $expected))))

@@ -454,14 +454,13 @@ Latest corpus snapshot after this adjustment:
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
    intent rewrite, best-first incumbent state isolation,
    query-materialization budget scaling, backward two-hop compose budget
-   scaling, Compute + query-compound lowering, and repeated-inversion
-   replacement through `revise-proofs`, and FoldAll OrFormula MP lowering):
-   pass=88 close=9 fail=12 unsupported-ir=34 skipped=82 flagged-files=0,
-   wall time about 47 s.
+   scaling, Compute + query-compound lowering, repeated-inversion replacement
+   through `revise-proofs`, FoldAll OrFormula MP lowering, total-implication
+   proof-CTV readback, and positive-test round-budget scaling):
+   pass=93 close=12 fail=4 unsupported-ir=34 skipped=82 flagged-files=0,
+   wall time about 46 s.
    Remaining failures: backward_open_query_results 1,
-   implication_premise 3, inheritance_query_proof 1, member_compat 1,
-   specializing_rule 3,
-   total_implication_aggregate 1, uniform_prior 1.
+   inheritance_query_proof 1, member_compat 1, uniform_prior 1.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes, but openAndFairKb still
    diverges: PeTTa expects the max-only lifted conjunction at the stronger TV,
