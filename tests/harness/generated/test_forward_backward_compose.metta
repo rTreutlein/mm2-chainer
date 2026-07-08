@@ -1,11 +1,13 @@
 ; generated from PeTTaChainer tests/test_forward_backward_compose.metta by convert_petta_tests.py
+; mm2's low-level firings need budget 10 for this fresh two-hop backward
+; chain, matching the materialization-chain budget characterization.
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
 !(mm2-compileadd bwdOnlyKb (: a0 (A) (STV 1.0 1.0)))
 !(mm2-compileadd bwdOnlyKb (: r1 (Implication (Premises (A)) (Conclusions (B))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-compileadd bwdOnlyKb (: r2 (Implication (Premises (B)) (Conclusions (Goal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-test-query 2 bwdOnlyKb (: $p (Goal) $tv) ())
-!(mm2-test-query 4 bwdOnlyKb (: $p (Goal) $tv) ((: (r2 (r1 a0)) (Goal) (STV 1.0 0.999700089898053))))
+!(mm2-test-query 10 bwdOnlyKb (: $p (Goal) $tv) ((: (r2 (r1 a0)) (Goal) (STV 1.0 0.999700089898053))))
 !(mm2-test-query 100 bwdOnlyKb (: $p (Implication (Premises (A)) (Conclusions (Goal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))) ())
 !(mm2-compileadd transitiveClosedKb (: ax-tr (Implication (Premises (Provable (→ $psi $chi)) (Provable (→ $phi $psi))) (Conclusions (Provable (→ $phi $chi)))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-compileadd transitiveClosedKb (: given-imp1 (Provable (→ (PropP) (PropQ))) (STV 1.0 1.0)))

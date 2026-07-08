@@ -368,6 +368,17 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=85 close=9 fail=15 unsupported-ir=37 skipped=82 flagged-files=0
 
+## Backward two-hop compose budget scaling (DONE 2026-07-08)
+
+`test_forward_backward_compose` had the same fresh `Goal <- B <- A` converted
+budget issue as `test_query_materialize`; the direct backward-only check now
+uses budget 10. The file's remaining failure is separate:
+`FoldAllCompiled ... OrFormula identity` for the existential-disjunction path.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=86 close=9 fail=14 unsupported-ir=37 skipped=82 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -385,11 +396,11 @@ Latest corpus snapshot after this adjustment:
    Not+And compound lowering, preserved logic-config imports, FoldAll query
    aggregates, partial base-rate cache operations, CTV assumption facts, the
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
-   intent rewrite, and query-materialization budget scaling): pass=85
-   close=9 fail=15 unsupported-ir=37 skipped=82 flagged-files=0, wall time
-   about 47 s.
+   intent rewrite, query-materialization budget scaling, and backward
+   two-hop compose budget scaling): pass=86 close=9 fail=14
+   unsupported-ir=37 skipped=82 flagged-files=0, wall time about 51 s.
    Remaining failures: backward_open_query_results 1, base_rate_cache 1,
-   forward_backward_compose 2, implication_premise 3,
+   forward_backward_compose 1 (OrFormula FoldAll), implication_premise 3,
    inheritance_query_proof 1, member_compat 1, query_compute_in_compound 1,
    specializing_rule 3, total_implication_aggregate 1, uniform_prior 1.
 2. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
