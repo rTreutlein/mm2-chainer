@@ -89,7 +89,23 @@
 (= (mm2-base-rate-support $pat)
    (superpose (
      (base-rate-def (copy_term $pat) (copy_term $pat))
-     (base-rate (copy_term $pat) (0.0 0.0)))))
+     (base-rate (copy_term $pat) (0.0 0.0))
+     (mm2-base-rate-materialization-goal $pat))))
+
+; PeTTaChainer's FoldAll base-rate premises can derive compound query facts
+; while folding. MM2's maintained base-rate relation only sees materialized
+; facts, so compound antecedents need an explicit goal to populate adapterN
+; facts before the fold is recomputed. Keep this narrow to And adapters; do
+; not open arbitrary atomic base-rate patterns.
+(= (mm2-base-rate-materialization-goal $pat)
+   (case $pat
+     (((And $a $b) (, (Goal (copy_term $pat))))
+      ((And $a $b $c) (, (Goal (copy_term $pat))))
+      ((And $a $b $c $d) (, (Goal (copy_term $pat))))
+      (($scope (And $a $b)) (, (Goal (copy_term $pat))))
+      (($scope (And $a $b $c)) (, (Goal (copy_term $pat))))
+      (($scope (And $a $b $c $d)) (, (Goal (copy_term $pat))))
+      ($other (empty)))))
 
 ; --- query lowering -----------------------------------------------------
 
