@@ -18,6 +18,7 @@
 ;   [subgoals] NotFormula AndFormula (MP $agg (CTV ..))           -> ruleN not-and-ctv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV ..) Inversion MP          -> ruleN inv
+;   [FoldAll OrFormula] MP                                        -> foldall-or-ctv
 ;   [compound other*] AndFormula* (AndProjection ..)              -> ruleN (proj and)
 ;   [compound other]  (OrProjection ..)                           -> ruleN (proj or)
 ;   [compound] (AndMarginalProjection ..)                         -> ruleN (proj marg)
@@ -114,6 +115,12 @@
          unsupported-foldall))
       ($other unsupported-foldall))))
 
+(= (mm2-ir-foldall-or $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled ($kbid $pat extract-tv (STV 0.0 1.0) OrFormula identity result-tv) $out)
+       (let $skb (mm2-ir-scope-kb $kbid) (fold-or ($skb $pat) $out)))
+      ($other unsupported-foldall))))
+
 (= (mm2-ir-stv-kind $pos $fa $fb $tail)
    (case ($fa $fb)
      ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
@@ -155,6 +162,14 @@
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
        (ctvn-kind ($ps $pc) ($ns $nc)))
+      ((cons $fold
+         (cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
+       (case (mm2-ir-foldall-or $fold)
+         (((fold-or $pat $fold-out)
+           (if (== $fold-out $agg)
+             (fold-or-ctv-kind $pat ($ps $pc) ($ns $nc))
+             (unsupported-tail $tail)))
+          ($other (unsupported-tail $tail)))))
       ((cons $fold ())
        (case (mm2-ir-foldall-sum $fold)
          (((fold-sum $pat $value $out) (fold-sum-kind $pat $value $out))
@@ -229,6 +244,11 @@
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (ctvn-kind $pos $neg))
    (ruleN $ctype $rid (ctvn $pos $neg) $ptypes))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (fold-or-ctv-kind $pat $pos $neg))
+   (case $ptypes
+     ((pnil (foldall-or-ctv $ctype $rid $pos $neg $pat))
+      ($other (notsupported-ir (foldall-or-with-premises $ctype $ptypes))))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (fold-sum-kind $pat $value $out))
    (case $ptypes

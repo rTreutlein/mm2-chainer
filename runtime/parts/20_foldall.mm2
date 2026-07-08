@@ -18,3 +18,15 @@
              (fact $g (1.0 1.0))
              $counts
              $value))))
+
+; Existential-disjunction implication queries compile to a FoldAll over the
+; matching premise facts with OrFormula, followed by CTVModusPonensFormula.
+; Consume the canonical fact stream plus its matching proof record so the
+; aggregate carries both the folded TV and PeTTa-style disjunction proof label.
+(exec-template
+  (exec 2
+        (, (foldall-or-ctv $g $rule-id $pos $neg $pat)
+           (fact $pat $stv)
+           (fact-evidence $pat $stv $evset)
+           (proved $pat $stv $proof-id $evset))
+        (O (or-stv $g $rule-id $pos $neg $stv $proof-id $evset))))

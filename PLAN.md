@@ -416,6 +416,25 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=88 close=8 fail=13 unsupported-ir=35 skipped=82 flagged-files=0
 
+## FoldAll OrFormula MP lowering (DONE 2026-07-08)
+
+Existential-disjunction queries now lower the exact
+`FoldAllCompiled ... OrFormula identity result-tv` plus
+`CTVModusPonensFormula` IR shape to `foldall-or-ctv`. The runtime feeds
+canonical fact/proof rows into MORK's `or-stv` aggregate sink, which folds the
+matching STVs with PeTTa's `OrFormula`, preserves a `(rule (disjunction ...))`
+proof label, unions evidence, and applies the rule CTV.
+
+The remaining converted result is a one-ulp close verdict rather than a
+supported failure:
+`(T) (STV 0.9199999999999999 0.7123799943249735)` vs PeTTa's
+`0.7123799943249737`. The openAndFair test budget is capped at 15 to preserve
+its known semantic mismatch without entering the self-feeding expansion path.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=88 close=9 fail=12 unsupported-ir=34 skipped=82 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -436,12 +455,12 @@ Latest corpus snapshot after this adjustment:
    intent rewrite, best-first incumbent state isolation,
    query-materialization budget scaling, backward two-hop compose budget
    scaling, Compute + query-compound lowering, and repeated-inversion
-   replacement through `revise-proofs`):
-   pass=88 close=8 fail=13 unsupported-ir=35 skipped=82 flagged-files=0,
-   wall time about 51 s.
+   replacement through `revise-proofs`, and FoldAll OrFormula MP lowering):
+   pass=88 close=9 fail=12 unsupported-ir=34 skipped=82 flagged-files=0,
+   wall time about 47 s.
    Remaining failures: backward_open_query_results 1,
-   forward_backward_compose 1 (OrFormula FoldAll), implication_premise 3,
-   inheritance_query_proof 1, member_compat 1, specializing_rule 3,
+   implication_premise 3, inheritance_query_proof 1, member_compat 1,
+   specializing_rule 3,
    total_implication_aggregate 1, uniform_prior 1.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes, but openAndFairKb still
