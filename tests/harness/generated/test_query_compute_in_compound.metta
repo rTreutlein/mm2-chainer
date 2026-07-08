@@ -1,8 +1,7 @@
 ; generated from PeTTaChainer tests/test_query_compute_in_compound.metta by convert_petta_tests.py
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
-; UNSUPPORTED test form: (test (== (length (compile-query-adds (: (kbctx queryComputeKb) $prf (And (P $x) (Compute + ($x 1) $y) (P $y)) $tv))) 1) true)
-!(mm2-test-unsupported "test      length  compile-query-adds     kbctx queryComputeKb  $prf  And  P $x")
+!(mm2-test-equal (== (length (compile-query-adds (: (kbctx queryComputeKb) $prf (And (P $x) (Compute + ($x 1) $y) (P $y)) $tv))) 1) true)
 !(mm2-compileadd queryComputeKb (: p1 (P 1) (STV 1.0 1.0)))
 !(mm2-compileadd queryComputeKb (: p2 (P 2) (STV 1.0 1.0)))
 !(mm2-compileadd queryComputeKb (: p3 (P 3) (STV 1.0 1.0)))

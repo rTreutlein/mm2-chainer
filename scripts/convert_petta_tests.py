@@ -242,6 +242,8 @@ def convert_test(expr):
             rename_calls(queryish[2]),
             rename_calls(expected),
         ]
+    if head(queryish) == "==" and len(queryish) == 3:
+        return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
     rules_match = collapse_once_rules_match_test(queryish)
     if rules_match is not None:
         return ["mm2-test-equal", rules_match, rename_calls(expected)]
