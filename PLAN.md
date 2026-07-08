@@ -466,9 +466,10 @@ Latest corpus snapshot after this adjustment:
    distribution pair summing, generated `DistGreaterThanFormula`
    assertions for rectangle area / point-mass average height, multi-pair
    `AverageDist` convolution, query-materialize marker coverage, and
-   cached base-rate readback checks, and Member concept-node checks):
-   pass=113 close=15 fail=0 unsupported-ir=0 skipped=63 flagged-files=0,
-   wall time about 32 s.  The hand harness is separate and currently reports
+   cached base-rate readback checks, Member concept-node checks, and
+   negated-evidence helper checks):
+   pass=115 close=15 fail=0 unsupported-ir=0 skipped=61 flagged-files=0,
+   wall time about 34 s.  The hand harness is separate and currently reports
    `HARNESS: 9 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
    legacy/non-query harness forms.
@@ -493,11 +494,18 @@ Latest corpus snapshot after this adjustment:
    `known-concept-node?` is covered for Member-only classes by checking scoped
    `(Member $obj $class)` facts. This matches the PeTTa regression that the
    class position is a concept node while the member object is not.
-6. STV-rule inversion materialization still needs the fold recursion guard
+6. **Negated evidence helpers**:
+   `evidence-negate` and `evidence-sets-overlap?` are covered at the harness
+   helper layer. The generated `test_negated_evidence_merge` file now covers
+   both pure helper assertions plus the existing negated-evidence query cases.
+7. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
-7. Converter gaps: `!(test (let ...))` forms and non-query test forms
+8. Converter gaps: most `!(test (let ...))` forms and non-query test forms
    (set-base-rate, forward-chain, chainer-internal APIs) are passed through
    and surface as unsupported markers / unreduced terms.
+   The converter now also preserves the known MM2-specific generated-fixture
+   adaptations for materialization/two-hop budgets, best-first intent checks,
+   openAndFair's capped budget, and `DistGreaterThanFormula` helper tests.
    Distributional fact terms now export PeTTa `ParticleDist` pairs as
    `dist-pair` atoms in the MORK space.  Identity-CTV `Map2Dist *` rules now
    derive deterministic output `ParticleDist` ids and materialize their pairs
@@ -509,7 +517,7 @@ Latest corpus snapshot after this adjustment:
    Converted `DistGreaterThanFormula` assertions now cover rectangle-area
    product distributions plus point-mass and multi-pair average-height
    distributions.
-8. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
+9. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
    `(AtTime $x $t),(AtTime $y $t) -> (AtTime (And $x $y) $t)`) derives only
@@ -521,7 +529,7 @@ Latest corpus snapshot after this adjustment:
    again. If this regresses later, the likely fix is bounded premise matching
    (head-style sink on wait-premise instantiation) or PeTTa-style expansion
    accounting.
-9. petta facts: bang results print only at process exit (main.pl collects
+10. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 

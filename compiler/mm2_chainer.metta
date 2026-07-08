@@ -128,6 +128,21 @@
 (= (mm2-test-known-concept-node $kb $node $expected)
    (mm2-test-equal (mm2-known-concept-node? $kb $node) $expected))
 
+(= (mm2-evidence-negate $ev)
+   (case $ev
+     (((fact-ev $kb $prf $type) (not-fact-ev $kb $prf $type))
+      ((not-fact-ev $kb $prf $type) (fact-ev $kb $prf $type))
+      ($other (not-ev $other)))))
+
+(= (mm2-evidence-sets-overlap? $set-a $set-b)
+   (not (== (intersection-atom $set-a $set-b) ())))
+
+(= (mm2-test-evidence-negate $ev $expected)
+   (mm2-test-equal (mm2-evidence-negate $ev) $expected))
+
+(= (mm2-test-evidence-sets-overlap? $set-a $set-b $expected)
+   (mm2-test-equal (mm2-evidence-sets-overlap? $set-a $set-b) $expected))
+
 ; Remove exact atoms produced by a MORK match. Calling remove-atom with a
 ; variable pattern would remove nothing, so cleanup first materializes the
 ; matching atoms and then removes those exact terms.

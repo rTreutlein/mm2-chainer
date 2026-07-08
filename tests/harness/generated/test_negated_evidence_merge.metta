@@ -1,10 +1,8 @@
 ; generated from PeTTaChainer tests/test_negated_evidence_merge.metta by convert_petta_tests.py
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
-; UNSUPPORTED test form: (test (evidence-negate (fact-ev (kb MAIN Nil) d (Dog))) (not-fact-ev (kb MAIN Nil) d (Dog)))
-!(mm2-test-unsupported "test  evidence-negate  fact-ev  kb MAIN Nil  d  Dog     not-fact-ev  kb MAIN Ni")
-; UNSUPPORTED test form: (test (evidence-sets-overlap? ((fact-ev (kb MAIN Nil) d (Dog))) ((not-fact-ev (kb MAIN Nil) d (Dog)))) false)
-!(mm2-test-unsupported "test  evidence-sets-overlap    fact-ev  kb MAIN Nil  d  Dog      not-fact-ev  k")
+!(mm2-test-evidence-negate (fact-ev (kb MAIN Nil) d (Dog)) (not-fact-ev (kb MAIN Nil) d (Dog)))
+!(mm2-test-evidence-sets-overlap? ((fact-ev (kb MAIN Nil) d (Dog))) ((not-fact-ev (kb MAIN Nil) d (Dog))) false)
 !(mm2-compileadd negEvidenceMergeKb (: nd_a (Implication (Premises (Not (Dog))) (Conclusions (Animal))) (CTV (STV 0.75 0.5) (STV 0.0 1.0))))
 !(mm2-compileadd negEvidenceMergeKb (: d_a (Implication (Premises (Dog)) (Conclusions (Animal))) (CTV (STV 0.25 0.5) (STV 0.0 1.0))))
 !(mm2-compileadd negEvidenceMergeKb (: d (Dog) (STV 0.5 1.0)))
