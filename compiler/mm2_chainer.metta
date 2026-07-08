@@ -432,13 +432,21 @@
       ((cons (STV 0.0 0.0) $_rest) no-cache-entry)
       ((cons $tv $_rest) $tv))))
 
+(= (mm2-unmarked-cached-base-rate $pat)
+   (case (mm2-live-cached-base-rate $pat)
+     ((no-cache-entry no-cache-entry)
+      ($live
+       (case (mm2-direct-fact-base-rate $pat)
+         ((no-cache-entry $live)
+          ($direct $direct)))))))
+
 (= (mm2-cached-base-rate $kb $pattern)
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
      (case (collapse
              (match &mork
                (base-rate-cache-entry $pat $source $stored-tv $mode)
                ($source $stored-tv $mode)))
-       ((() (mm2-live-cached-base-rate $pat))
+       ((() (mm2-unmarked-cached-base-rate $pat))
         ((cons (user $stored-tv $_mode) $_rest) $stored-tv)
         ((cons (computed $stored-tv $_mode) $_rest)
          (mm2-computed-cached-base-rate $pat $stored-tv))

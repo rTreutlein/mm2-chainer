@@ -128,7 +128,7 @@ Unrecognized IR -> `(notsupported-ir ...)` markers in the transcript and the
 space. Hand-converted tests keep identical verdicts through the real
 compiler (3 pass, 1 close).
 
-Corpus: `scripts/convert_petta_tests.py` converted 34 test files into
+Corpus: `scripts/convert_petta_tests.py` converted 35 test files into
 `tests/harness/generated/`; `scripts/run-harness-corpus.sh` runs them
 (one petta process per file, 180 s timeout) into
 `outputs/harness_report.txt` (per-file pass/close/fail/unsupported-ir/skipped/ERROR).
@@ -556,6 +556,25 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=203 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Numeric-pattern query prefix coverage (DONE 2026-07-09)
+
+`test_numeric_pattern_dist.metta` now has a generated prefix file covering its
+supported `Compute +` query over numeric feature patterns. The runtime's
+`compute-plus-ctv` path now folds any factual premises before the compute point,
+then inserts the certain CPU evidence before checking the final constrained
+premise. The later `struct-distance2`, `DistMap2Formula XY`, and
+`joint-cond-add-sample` helper assertions remain omitted as numeric
+distribution-helper work.
+
+Unmarked `cached-base-rate` harness readback now prefers a direct-fact recompute
+only when the live maintained cache is present. This keeps cache reads stable
+against broader wave execution while preserving explicit `clear-base-rate`
+`no-cache-entry` semantics.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=204 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -597,8 +616,9 @@ Latest corpus snapshot after this adjustment:
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
    coverage, self-dependent proof revision suppression, generated coverage for
-   the older hand-ported query tests, and direct distribution-helper coverage):
-   pass=203 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   the older hand-ported query tests, direct distribution-helper coverage, and
+   numeric-pattern query-prefix coverage):
+   pass=204 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -698,11 +718,12 @@ Latest corpus snapshot after this adjustment:
    derived by the same STV rule.
 19. Converter gaps: no generated corpus tests are currently skipped. The only
    upstream `test_*.metta` files not generated are the explicit out-of-scope
-   benchmark, forward-chainer, and numeric-pattern distribution file. Two
-   distribution files are generated as direct-helper subsets, with their
-   FoldAllValue/query particle-store sections omitted explicitly in the generated
-   files. Keep any future non-query harness additions explicit about whether
-   they exercise MM2 runtime behavior or PeTTa helper/compiler state.
+   benchmark and forward-chainer files. Two distribution files are generated as
+   direct-helper subsets, and the numeric-pattern distribution file is generated
+   as a query-prefix subset; omitted helper/query-tail sections are documented in
+   the generated files. Keep any future non-query harness additions explicit
+   about whether they exercise MM2 runtime behavior or PeTTa helper/compiler
+   state.
    The converter now also preserves the known MM2-specific generated-fixture
    adaptations for materialization/two-hop budgets, best-first intent checks,
    openAndFair's capped budget, and `DistGreaterThanFormula` helper tests.

@@ -229,8 +229,71 @@
 
 ; Query-compound Compute + pseudo-premise. PeTTa counts the CPU result as
 ; certain evidence, but the arithmetic output must constrain the following
-; real premise. Keep a special rule state after the first premise so the
-; second-premise match can gate proof opening on lhs + rhs = result.
+; real premise. Fold factual premises before the compute point normally, then
+; keep a special bound state so the final premise match can gate proof opening
+; on lhs + rhs = result.
+(exec-template
+  (exec 3
+        (, (wait-premises
+             $g
+             (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+             (pcons $prem (pcons $next (pcons $more $rest)))
+             no-stv
+             $proof-id
+             $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premises
+              $g
+              (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+              (pcons $prem (pcons $next (pcons $more $rest)))
+              no-stv
+              $proof-id
+              $evset))
+           (+ (wait-premises
+                $g
+                (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+                (pcons $next (pcons $more $rest))
+                ($prem-s $prem-c)
+                $proof-id
+                (pcons (fact-ev $prem) $evset))))))
+
+(exec-template
+  (exec 3
+        (, (wait-premises
+             $g
+             (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+             (pcons $prem (pcons $next (pcons $more $rest)))
+             ($agg-s $agg-c)
+             $proof-id
+             $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premises
+              $g
+              (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+              (pcons $prem (pcons $next (pcons $more $rest)))
+              ($agg-s $agg-c)
+              $proof-id
+              $evset))
+           (pure (wait-premises
+                   $g
+                   (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+                   (pcons $next (pcons $more $rest))
+                   $next-agg-stv
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $next-agg-stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $prem-s)))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $agg-c)
+                       (f64_from_string $prem-s)
+                       (f64_from_string $prem-c))))))))
+
 (exec-template
   (exec 3
         (, (wait-premises
@@ -262,6 +325,49 @@
                      (f64_from_string $prem-c)
                      (f64_from_string 1.0)
                      (f64_from_string 1.0)))))))
+
+(exec-template
+  (exec 3
+        (, (wait-premises
+             $g
+             (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+             (pcons $prem (pcons $next pnil))
+             ($agg-s $agg-c)
+             $proof-id
+             $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premises
+              $g
+              (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+              (pcons $prem (pcons $next pnil))
+              ($agg-s $agg-c)
+              $proof-id
+              $evset))
+           (pure (wait-premises
+                   $g
+                   (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+                   (pcons $next pnil)
+                   $cpu-agg-stv
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $cpu-agg-stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $agg-s)
+                       (f64_from_string $prem-s)))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $prem-s))
+                       (pln_and_confidence_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $agg-c)
+                         (f64_from_string $prem-s)
+                         (f64_from_string $prem-c))
+                       (f64_from_string 1.0)
+                       (f64_from_string 1.0))))))))
 
 (exec-template
   (exec 3

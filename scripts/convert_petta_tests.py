@@ -33,13 +33,16 @@ HARNESS = "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer"
 SKIP_FILES = {
     "test.metta",                     # top-level umbrella, not a query test file
     "test_forward_chainer.metta",     # forward chaining out of scope
-    "test_numeric_pattern_dist.metta",# distributional values out of scope
     "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
 }
 
 PARTIAL_DIRECT_DIST_FILES = {
     "test_distribution_values.metta",
     "test_particle_values.metta",
+}
+
+PARTIAL_PREFIX_FILES = {
+    "test_numeric_pattern_dist.metta",
 }
 
 def tokenize(text):
@@ -622,8 +625,11 @@ def convert_file(path):
         "!(mm2-init)",
     ]
     direct_dist_only = path.name in PARTIAL_DIRECT_DIST_FILES
+    prefix_only = path.name in PARTIAL_PREFIX_FILES
     if direct_dist_only:
         out.insert(1, "; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet")
+    if prefix_only:
+        out.insert(1, "; supported query-prefix subset; later numeric distribution helpers are not generated yet")
     unsupported = 0
     for kind, expr in forms:
         if direct_dist_only and kind == "bang" and head(expr) == "compileadd":
@@ -639,6 +645,9 @@ def convert_file(path):
             if converted is not None:
                 out.append("!" + show(converted))
                 continue
+            if prefix_only:
+                out.append("; Remaining source forms start at numeric distribution helper coverage and are intentionally omitted here.")
+                break
             if direct_dist_only:
                 out.append("; OMITTED direct distribution helper form: " + show(expr)[:160])
                 continue
