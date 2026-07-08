@@ -356,6 +356,18 @@ Latest corpus snapshot after proof pooling and best-first intent rewrite:
 
     totals: pass=83 close=9 fail=17 unsupported-ir=37 skipped=82 flagged-files=0
 
+## Query materialization budget scaling (DONE 2026-07-08)
+
+`test_query_materialize` was a converted-budget mismatch, not a missing
+two-hop runtime chain: fresh `Goal <- B <- A` queries fail at mm2 budget 5 and
+pass at budget 10. The generated harness test now uses budget 10 for the
+two-hop `Goal` checks while leaving the still-unported PeTTa `match &kb` and
+`query-materialize` forms marked as converter-level skipped tests.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=85 close=9 fail=15 unsupported-ir=37 skipped=82 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -372,14 +384,14 @@ Latest corpus snapshot after proof pooling and best-first intent rewrite:
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, FoldAll query
    aggregates, partial base-rate cache operations, CTV assumption facts, the
-   var-head weighted-fold shortcut, proof/evidence pooling, and the
-   best-first intent rewrite): pass=83 close=9 fail=17 unsupported-ir=37
-   skipped=82 flagged-files=0, wall time about 48 s.
+   var-head weighted-fold shortcut, proof/evidence pooling, the best-first
+   intent rewrite, and query-materialization budget scaling): pass=85
+   close=9 fail=15 unsupported-ir=37 skipped=82 flagged-files=0, wall time
+   about 47 s.
    Remaining failures: backward_open_query_results 1, base_rate_cache 1,
    forward_backward_compose 2, implication_premise 3,
    inheritance_query_proof 1, member_compat 1, query_compute_in_compound 1,
-   query_materialize 2, specializing_rule 3, total_implication_aggregate 1,
-   uniform_prior 1.
+   specializing_rule 3, total_implication_aggregate 1, uniform_prior 1.
 2. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
    caches base rates per (kb, pattern) at first use (base_rate_cache in
    compiled_query_runtime.metta) so all rule firings in a query see one
