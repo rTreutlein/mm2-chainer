@@ -471,8 +471,9 @@ Latest corpus snapshot after this adjustment:
    formula-helper probes, direct confidence helper probes, and
    projection-dominance merge helper coverage, and
    `premises-expected-confidence` helper coverage, and inverse-total
-   `rules` shape coverage, and compiler equality assertion coverage):
-   pass=145 close=19 fail=0 unsupported-ir=0 skipped=27 flagged-files=0,
+   `rules` shape coverage, compiler equality assertion coverage, and
+   specializing-rule compiler-space match coverage):
+   pass=147 close=19 fail=0 unsupported-ir=0 skipped=25 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 9 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
@@ -537,9 +538,15 @@ Latest corpus snapshot after this adjustment:
    covers `test_query_compute_in_compound`'s `compile-query-adds` length check,
    which guards the compiler recognition path for `Compute` inside compound
    query goals.
-13. STV-rule inversion materialization still needs the fold recursion guard
+13. **Specializing-rule compiler-space matches**:
+   `test_specializing_rule` now covers the original PeTTa checks over
+   `ccls_head_index` and `&kb`, verifying that specialization avoids the
+   `any` wildcard conclusion bucket while preserving the `(Symmetric Friend)`
+   fact. These remain harness-level checks over PeTTa compiler state; the MM2
+   query behavior was already covered by the surrounding query assertions.
+14. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
-14. Converter gaps: most `!(test (let ...))` forms and non-query test forms
+15. Converter gaps: most `!(test (let ...))` forms and non-query test forms
    (set-base-rate, forward-chain, chainer-internal APIs) are passed through
    and surface as unsupported markers / unreduced terms.
    The converter now also preserves the known MM2-specific generated-fixture
@@ -556,7 +563,7 @@ Latest corpus snapshot after this adjustment:
    Converted `DistGreaterThanFormula` assertions now cover rectangle-area
    product distributions plus point-mass and multi-pair average-height
    distributions.
-15. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
+16. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
    `(AtTime $x $t),(AtTime $y $t) -> (AtTime (And $x $y) $t)`) derives only
@@ -568,7 +575,7 @@ Latest corpus snapshot after this adjustment:
    again. If this regresses later, the likely fix is bounded premise matching
    (head-style sink on wait-premise instantiation) or PeTTa-style expansion
    accounting.
-16. petta facts: bang results print only at process exit (main.pl collects
+17. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 

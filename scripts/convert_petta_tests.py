@@ -247,6 +247,9 @@ def convert_test(expr):
     rules_match = collapse_once_rules_match_test(queryish)
     if rules_match is not None:
         return ["mm2-test-equal", rules_match, rename_calls(expected)]
+    space_match = compiler_space_match_test(queryish)
+    if space_match is not None:
+        return ["mm2-test-equal", space_match, rename_calls(expected)]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
@@ -312,6 +315,17 @@ def collapse_once_rules_match_test(queryish):
     if head(match) != "match" or len(match) != 4 or match[1] != "rules":
         return None
     return ["collapse", ["once", rename_calls(match)]]
+
+
+def compiler_space_match_test(queryish):
+    if head(queryish) == "collapse" and len(queryish) == 2:
+        inner = queryish[1]
+        if head(inner) == "match" and len(inner) == 4 and inner[1] == "ccls_head_index":
+            return ["collapse", rename_calls(inner)]
+        return None
+    if head(queryish) == "match" and len(queryish) == 4 and queryish[1] == "&kb":
+        return rename_calls(queryish)
+    return None
 
 
 def materialized_match(queryish):
