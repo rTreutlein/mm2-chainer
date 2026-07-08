@@ -9,3 +9,12 @@
         (, (foldall-sum $g $total $pat $value)
            (fact $pat ($s $c)))
         (O (sum (open-proof $g (1.0 1.0) foldall-sum pnil) $total $value))))
+
+(exec-template
+  (exec 2
+        (, (foldall-pair-counts $g $counts $pat $value)
+           (fact $pat ($s $c)))
+        (O (pair-counts
+             (fact $g (1.0 1.0))
+             $counts
+             $value))))

@@ -275,6 +275,20 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
   into the revise sink rows (evset items are in premise order) and the rule
   CTV in the proof token — flat (s c) agg is not enough.
 
+## FoldAll query aggregates (DONE 2026-07-08)
+
+Numeric `FoldAll ... -> sum` and distributional `PairCounts` query folds now
+lower through `compiler/mm2_ir_translate.metta` into `runtime/parts/20_foldall.mm2`.
+`sum` uses the existing MORK aggregate sink; `PairCounts` uses a new MORK
+`pair-counts` aggregate sink that groups distinct values and emits a
+deterministic `(PairCounts ((value mass) ...))` result. Both direct facts and
+derived facts are covered by `test_foldall_query_goal`; merged-proof FoldAll
+inputs are covered by `test_foldall_merged_outputs`.
+
+Latest corpus snapshot after this port:
+
+    totals: pass=69 close=2 fail=42 unsupported=122 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -289,8 +303,9 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
    machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
-   Not+And compound lowering, and preserved logic-config imports): pass=65
-   close=4 fail=44 unsupported=126 flagged-files=0, wall time about 52 s.
+   Not+And compound lowering, preserved logic-config imports, and FoldAll
+   query aggregates): pass=69 close=2 fail=42 unsupported=122
+   flagged-files=0, wall time about 52 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools
    proofs that share a premise but differ in rules by factoring the shared

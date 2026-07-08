@@ -95,6 +95,14 @@
          unsupported-foldall))
       ($other unsupported-foldall))))
 
+(= (mm2-ir-foldall-pair-counts $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled ($kbid $pat (extract-value $pat2 $value) (PairCounts ()) DistValueCountAcc identity unit-stv) $out)
+       (if (== $pat $pat2)
+         (let $skb (mm2-ir-scope-kb $kbid) (fold-pair-counts ($skb $pat) $value $out))
+         unsupported-foldall))
+      ($other unsupported-foldall))))
+
 (= (mm2-ir-stv-kind $pos $fa $fb $tail)
    (case ($fa $fb)
      ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
@@ -131,7 +139,10 @@
       ((cons $fold ())
        (case (mm2-ir-foldall-sum $fold)
          (((fold-sum $pat $value $out) (fold-sum-kind $pat $value $out))
-          ($other (unsupported-tail $tail)))))
+          ($other
+           (case (mm2-ir-foldall-pair-counts $fold)
+             (((fold-pair-counts $pat $value $out) (fold-pair-counts-kind $pat $value $out))
+              ($other2 (unsupported-tail $tail))))))))
       ((cons $fold-a
          (cons $fold-b
            (cons (cpu ImplicationCTVFormula ($atv $btv (STV $s $c)) $ctv)
@@ -197,16 +208,27 @@
 (= (mm2-ir-emit-rule $ctype $ptypes (ctvn-kind $pos $neg))
    (ruleN $ctype (ctvn $pos $neg) $ptypes))
 
-(= (mm2-ir-emit-rule $ctype pnil (fold-sum-kind $pat $value $out))
-   (let $result-copy (copy_term $ctype)
-     (case $result-copy
-       ((($scope (FoldAll $qpat $qvalue $zero $fun -> $out-copy))
-         (let (fold-source $pat-copy $value-copy) (copy_term (fold-source $pat $value))
-           (foldall-sum $result-copy $out-copy $pat-copy $value-copy)))
-        ($other (notsupported-ir (foldall-result-copy $ctype)))))))
-
 (= (mm2-ir-emit-rule $ctype $ptypes (fold-sum-kind $pat $value $out))
-   (notsupported-ir (foldall-with-premises $ctype $ptypes)))
+   (case $ptypes
+     ((pnil
+       (let $result-copy (copy_term $ctype)
+         (case $result-copy
+           ((($scope (FoldAll $qpat $qvalue $zero $fun -> $out-copy))
+             (let (fold-source $pat-copy $value-copy) (copy_term (fold-source $pat $value))
+               (foldall-sum $result-copy $out-copy $pat-copy $value-copy)))
+            ($other (notsupported-ir (foldall-result-copy $ctype)))))))
+      ($other (notsupported-ir (foldall-with-premises $ctype $ptypes))))))
+
+(= (mm2-ir-emit-rule $ctype $ptypes (fold-pair-counts-kind $pat $value $out))
+   (case $ptypes
+     ((pnil
+       (let $result-copy (copy_term $ctype)
+         (case $result-copy
+           ((($scope (FoldAll $qpat $qvalue $zero $fun -> $out-copy))
+             (let (fold-source $pat-copy $value-copy) (copy_term (fold-source $pat $value))
+               (foldall-pair-counts $result-copy $out-copy $pat-copy $value-copy)))
+            ($other (notsupported-ir (foldall-result-copy $ctype)))))))
+      ($other (notsupported-ir (foldall-with-premises $ctype $ptypes))))))
 
 (= (mm2-ir-emit-rule $ctype $ptypes (stv-kind $pos $pa $pb))
    (superpose (
