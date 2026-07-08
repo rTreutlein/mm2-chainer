@@ -3,9 +3,10 @@
 
 Mechanical rewrite:
   !(import! &self petta_chainer)        -> harness import + !(mm2-init)
+  !(import! &self logic_configs/...)    -> absolute PeTTaChainer import
   (compileadd kb stmt)                  -> (mm2-compileadd kb stmt)
-  !(test (query N kb pat) expected)     -> !(mm2-test (mm2-query N kb pat) <list>)
-  !(test (collapse (query ...)) exp)    -> !(mm2-test (mm2-query ...) exp)
+  !(test (query N kb pat) expected)     -> !(mm2-test-query N kb pat <list>)
+  !(test (collapse (query ...)) exp)    -> !(mm2-test-query ... exp)
 
 Expected results are normalized to a list: () stays, a single (: ...) is
 wrapped, an existing list is kept. Constructs the harness doesn't know
@@ -21,6 +22,7 @@ import sys
 from pathlib import Path
 
 SRC_DIR = Path("/nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/tests")
+PETTA_METTA_DIR = SRC_DIR.parent
 DST_DIR = Path(__file__).resolve().parent.parent / "tests" / "harness" / "generated"
 HARNESS = "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer"
 
@@ -135,15 +137,32 @@ def normalize_expected(e):
 
 
 def convert_test(expr):
-    """(test QUERYISH EXPECTED) -> (mm2-test QUERY EXPECTED-LIST) or None."""
+    """(test QUERYISH EXPECTED) -> (mm2-test-query N kb pattern EXPECTED-LIST) or None."""
     if head(expr) != "test" or len(expr) != 3:
         return None
     queryish, expected = expr[1], expr[2]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
-    if head(queryish) != "query":
+    if head(queryish) != "query" or len(queryish) != 4:
         return None  # unsupported test form; caller passes through
-    return ["mm2-test", rename_calls(queryish), normalize_expected(rename_calls(expected))]
+    return [
+        "mm2-test-query",
+        rename_calls(queryish[1]),
+        rename_calls(queryish[2]),
+        rename_calls(queryish[3]),
+        normalize_expected(rename_calls(expected)),
+    ]
+
+
+def convert_import(expr):
+    if head(expr) != "import!" or len(expr) != 3:
+        return None
+    target = expr[2]
+    if target == "petta_chainer":
+        return None
+    if isinstance(target, str) and target.startswith("logic_configs/"):
+        return ["import!", expr[1], str(PETTA_METTA_DIR / target)]
+    return None
 
 
 def convert_file(path):
@@ -156,6 +175,9 @@ def convert_file(path):
     unsupported = 0
     for kind, expr in forms:
         if kind == "bang" and head(expr) == "import!":
+            converted = convert_import(expr)
+            if converted is not None:
+                out.append("!" + show(converted))
             continue
         if kind == "bang" and head(expr) == "test":
             converted = convert_test(expr)

@@ -11,4 +11,4 @@
 !(mm2-compileadd sharedKb (: cm (C m) (STV 1.0 0.9)))
 !(mm2-compileadd sharedKb (: cImpliesB (Implication (Premises (C $x)) (Conclusions (B $x))) (CTV (STV 0.8 0.9) (STV 0.0 1.0))))
 !(mm2-compileadd sharedKb (: bImpliesD (Implication (Premises (B $x)) (Conclusions (D $x))) (CTV (STV 0.5 0.9) (STV 0.0 1.0))))
-!(mm2-test (mm2-query 60 sharedKb (: $prf (D m) $tv)) ((: (bImpliesD (merge/revision bm (cImpliesB cm))) (D m) (STV 0.4500001000170611 0.9124430019925824))))
+!(mm2-test-query 60 sharedKb (: $prf (D m) $tv) ((: (bImpliesD (merge/revision bm (cImpliesB cm))) (D m) (STV 0.4500001000170611 0.9124430019925824))))

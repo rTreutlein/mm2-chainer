@@ -25,5 +25,5 @@
 !(mm2-compileadd med (: cough (Cough p) (STV 0.6 0.7)))
 !(mm2-compileadd med (: fluRule (Implication (Premises (And (Fever $x) (Cough $x))) (Conclusions (Flu $x))) (CTV (STV 0.7 0.85) (STV 0.5 0.15))))
 !(mm2-compileadd med (: tiredRule (Implication (Premises (Flu $x)) (Conclusions (Tired $x))) (CTV (STV 0.9 0.9) (STV 0.5 0.1))))
-!(mm2-test (mm2-query 40 med (: $prf (Flu p) $tv)) ((: (fluRule (conjunction fever cough)) (Flu p) (STV 0.62 0.49224732166420715))))
-!(mm2-test (mm2-query 60 med (: $prf (Tired p) $tv)) ((: (tiredRule (fluRule (conjunction fever cough))) (Tired p) (STV 0.748 0.3402330502780622))))
+!(mm2-test-query 40 med (: $prf (Flu p) $tv) ((: (fluRule (conjunction fever cough)) (Flu p) (STV 0.62 0.49224732166420715))))
+!(mm2-test-query 60 med (: $prf (Tired p) $tv) ((: (tiredRule (fluRule (conjunction fever cough))) (Tired p) (STV 0.748 0.3402330502780622))))

@@ -44,6 +44,11 @@
 ; PeTTa-style step budget so small budgets still cover whole rounds.
 (= (mm2-steps-per-round) 20)
 
+; Expected-aware tests run MORK in chunks and stop as soon as the expected
+; result is present.  This avoids burning the full scaled budget after a query
+; has already produced the assertion target.
+(= (mm2-query-chunk-size) 50)
+
 ; --- compileadd / query ----------------------------------------------------
 ; The translator scopes every goal-level term with the IR's own kb triple, so
 ; the atoms are added verbatim. (notsupported-ir ...) markers are both stored
@@ -93,6 +98,17 @@
 (= (mm2-compileadd $kb $stmt)
    (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
 
+; Remove exact atoms produced by a MORK match. Calling remove-atom with a
+; variable pattern would remove nothing, so cleanup first materializes the
+; matching atoms and then removes those exact terms.
+(= (mm2-remove-atoms ()) ())
+(= (mm2-remove-atoms (cons $atom $rest))
+   (let $_remove (remove-atom &mork $atom)
+     (mm2-remove-atoms $rest)))
+
+(= (mm2-remove-matches $pattern)
+   (mm2-remove-atoms (collapse (match &mork $pattern $pattern))))
+
 ; Query answers are the facts matching each compiled query's own scoped goal
 ; term — usually the kb's MAIN context, or the fresh query context some
 ; queries allocate. Assumption-context facts never surface because their
@@ -119,11 +135,63 @@
    (mm2-ir-append (mm2-add-compiled $kb (mm2-translate-query $cq))
                   (mm2-run-compiled-queries $kb $rest)))
 
-(= (mm2-query $steps $kb (: $prf $type $tv))
+(= (mm2-cleanup-goal $g)
+   (let $_goal (mm2-remove-matches (, (Goal $g)))
+     (let $_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises))
+       (let $_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset))
+         (let $_wait (mm2-remove-matches (wait-premise $g $rule-stv $prem $rest $agg $proof-id $evset))
+           (let $_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset))
+             (let $_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset))
+               (let $_inv (mm2-remove-matches (inv-checked $verdict $g $proof-id $evset))
+                 cleaned))))))))
+
+(= (mm2-cleanup-query $cq)
+   (case $cq
+     (((compiled-query $goal-item $adds)
+       (let (subgoal $g $tv) (mm2-ir-item $goal-item)
+         (let $_adds (mm2-remove-atoms (mm2-translate-query $cq))
+           (mm2-cleanup-goal $g))))
+      ($other cleaned))))
+
+(= (mm2-cleanup-queries ()) ())
+(= (mm2-cleanup-queries (cons $cq $rest))
+   (let $_cleanup (mm2-cleanup-query $cq)
+     (mm2-cleanup-queries $rest)))
+
+(= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($cqs (collapse (mm2compileQuery $kb (: $prf $type $tv))))
-          ($notsup (mm2-run-compiled-queries $kb $cqs))
-          ($_run (mm2-exec &mork (* $steps (mm2-steps-per-round)))))
-     (mm2-ir-append $notsup (mm2-readback-queries $cqs))))
+          ($notsup (mm2-run-compiled-queries $kb $cqs)))
+     (prepared-query $cqs $notsup)))
+
+(= (mm2-query-results $notsup $cqs)
+   (mm2-ir-append $notsup (mm2-readback-queries $cqs)))
+
+(= (mm2-total-steps $steps)
+   (* $steps (mm2-steps-per-round)))
+
+(= (mm2-min $a $b)
+   (if (< $a $b) $a $b))
+
+(= (mm2-run-query-full $steps $notsup $cqs)
+   (let $_run (mm2-exec &mork (mm2-total-steps $steps))
+     (mm2-query-results $notsup $cqs)))
+
+(= (mm2-run-query-until $remaining $notsup $cqs $expected)
+   (let* (($results (mm2-query-results $notsup $cqs))
+          ($verdict (mm2-test-verdict $results $expected)))
+     (if (mm2-verdict-ok? $verdict)
+       $results
+       (if (< 0 $remaining)
+         (let* (($chunk (mm2-min $remaining (mm2-query-chunk-size)))
+                ($_run (mm2-exec &mork $chunk)))
+           (mm2-run-query-until (- $remaining $chunk) $notsup $cqs $expected))
+         $results))))
+
+(= (mm2-query $steps $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
 
 ; --- test comparison --------------------------------------------------------
 ; Compare (type, tv) sets; proof tokens intentionally differ from PeTTa.
@@ -183,16 +251,35 @@
      (mm2-far-keys $rest $got)
      (cons $k (mm2-far-keys $rest $got))))
 
-(= (mm2-test $results $expected)
+(= (mm2-test-verdict $results $expected)
    (let* (($got (mm2-result-keys $results))
           ($want (mm2-result-keys $expected))
           ($missing (mm2-missing-keys $want $got))
-          ($verdict
-            (if (== $missing ())
-              (mm2-test-pass $want)
-              (let $far (mm2-far-keys $missing $got)
-                (if (== $far ())
-                  (mm2-test-close (inexact $missing) (got $got))
-                  (mm2-test-FAIL (missing $far) (got $got))))))
+          ($verdict (if (== $missing ())
+                      (mm2-test-pass $want)
+                      (let $far (mm2-far-keys $missing $got)
+                        (if (== $far ())
+                          (mm2-test-close (inexact $missing) (got $got))
+                          (mm2-test-FAIL (missing $far) (got $got)))))))
+     $verdict))
+
+(= (mm2-verdict-ok? $verdict)
+   (case $verdict
+     (((mm2-test-pass $want) true)
+      ((mm2-test-close $inexact $got) true)
+      ($other false))))
+
+(= (mm2-test $results $expected)
+   (let* (($verdict (mm2-test-verdict $results $expected))
           ($_log (mm2-log-line $verdict)))
      $verdict))
+
+(= (mm2-test-query $steps $kb (: $prf $type $tv) $expected)
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($want (mm2-result-keys $expected))
+            ($results
+              (if (== $want ())
+                (mm2-run-query-full $steps $notsup $cqs)
+                (mm2-run-query-until (mm2-total-steps $steps) $notsup $cqs $expected)))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       (mm2-test $results $expected))))

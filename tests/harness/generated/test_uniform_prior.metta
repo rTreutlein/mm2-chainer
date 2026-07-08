@@ -27,4 +27,4 @@
 !(mm2-compileadd urKb (: rv1Black (Inheritance rv1 (IntSet black)) (STV 0.8 0.9)))
 !(mm2-compileadd urKb (: rv2NotBlack (Inheritance rv2 (IntSet black)) (STV 0.0 0.9)))
 !(register-inheritance-induction! urKb)
-!(mm2-test (mm2-query 100 urKb (: $prf (Inheritance raven (IntSet black)) $tv)) ((: (merge/revision (inheritanceInduction rv1Raven rv1Black) (inheritanceInduction rv2Raven rv2NotBlack)) (Inheritance raven (IntSet black)) (STV 0.5 0.3932038834951457))))
+!(mm2-test-query 100 urKb (: $prf (Inheritance raven (IntSet black)) $tv) ((: (merge/revision (inheritanceInduction rv1Raven rv1Black) (inheritanceInduction rv2Raven rv2NotBlack)) (Inheritance raven (IntSet black)) (STV 0.5 0.3932038834951457))))
