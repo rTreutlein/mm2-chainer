@@ -128,7 +128,7 @@ Unrecognized IR -> `(notsupported-ir ...)` markers in the transcript and the
 space. Hand-converted tests keep identical verdicts through the real
 compiler (3 pass, 1 close).
 
-Corpus: `scripts/convert_petta_tests.py` converted 29 test files into
+Corpus: `scripts/convert_petta_tests.py` converted 32 test files into
 `tests/harness/generated/`; `scripts/run-harness-corpus.sh` runs them
 (one petta process per file, 180 s timeout) into
 `outputs/harness_report.txt` (per-file pass/close/fail/unsupported-ir/skipped/ERROR).
@@ -522,6 +522,25 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=191 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Generated corpus coverage expansion (DONE 2026-07-09)
+
+The converter now also emits generated files for the three query-oriented tests
+that were originally kept only in `tests/harness/converted_tests.metta`:
+`test_stv_implication_derived_ctv.metta`, `test_nary_conjuction.metta`, and
+`test_implication_inversion.metta`.
+
+This keeps the hand harness as focused supplemental coverage while making the
+generated corpus the primary source-file parity report. The generated corpus now
+covers 32 of the 37 upstream `test_*.metta` files. The five still excluded files
+are explicit out-of-scope cases for this runtime-focused harness:
+`test_benchgen_metta.metta`, `test_forward_chainer.metta`,
+`test_distribution_values.metta`, `test_numeric_pattern_dist.metta`, and
+`test_particle_values.metta`.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=194 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -562,8 +581,9 @@ Latest corpus snapshot after this adjustment:
    specializing-rule compiler-space match coverage, and `chainer-add-atom`
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
-   coverage, and self-dependent proof revision suppression):
-   pass=191 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   coverage, self-dependent proof revision suppression, and generated coverage
+   for the older hand-ported query tests):
+   pass=194 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -661,7 +681,9 @@ Latest corpus snapshot after this adjustment:
    `tests/harness/converted_tests.metta` checks that the guarded consequent
    fold includes another rule's `Q` conclusion while excluding conclusions
    derived by the same STV rule.
-19. Converter gaps: no generated corpus tests are currently skipped; keep any
+19. Converter gaps: no generated corpus tests are currently skipped; the only
+   upstream `test_*.metta` files not generated are the explicit out-of-scope
+   benchmark, forward-chainer, and distribution/particle-value files. Keep any
    future non-query harness additions explicit about whether they exercise
    MM2 runtime behavior or PeTTa helper/compiler state.
    The converter now also preserves the known MM2-specific generated-fixture

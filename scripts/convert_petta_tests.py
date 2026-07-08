@@ -17,7 +17,8 @@ wrapped, an existing list is kept. Constructs the harness doesn't know
 unreduced terms in the run report — that's the gap list.
 
 Files whose tests are entirely out of scope (forward chainer, distribution /
-particle values) are skipped.
+particle values) are skipped; query-oriented tests are generated even when
+they also have older hand-written harness coverage.
 """
 
 import re
@@ -37,14 +38,6 @@ SKIP_FILES = {
     "test_numeric_pattern_dist.metta",# distributional values out of scope
     "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
 }
-
-# Tests already converted by hand in converted_tests.metta.
-SKIP_ALREADY = {
-    "test_nary_conjuction.metta",
-    "test_stv_implication_derived_ctv.metta",
-    "test_implication_inversion.metta",
-}
-
 
 def tokenize(text):
     toks = []
@@ -629,7 +622,7 @@ def main():
     DST_DIR.mkdir(parents=True, exist_ok=True)
     total = 0
     for path in sorted(SRC_DIR.glob("test_*.metta")):
-        if path.name in SKIP_FILES or path.name in SKIP_ALREADY:
+        if path.name in SKIP_FILES:
             continue
         text, unsupported = convert_file(path)
         dst = DST_DIR / path.name
