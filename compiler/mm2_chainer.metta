@@ -121,6 +121,13 @@
    (let $_mark (add-atom &mork (inheritance-induction-enabled $kb))
      ()))
 
+(= (mm2-known-concept-node? $kb $node)
+   (let $scope (mm2-ir-scope-kb $kb)
+     (not (== (collapse (match &mork (fact ($scope (Member $obj $node)) $stv) true)) ()))))
+
+(= (mm2-test-known-concept-node $kb $node $expected)
+   (mm2-test-equal (mm2-known-concept-node? $kb $node) $expected))
+
 ; Remove exact atoms produced by a MORK match. Calling remove-atom with a
 ; variable pattern would remove nothing, so cleanup first materializes the
 ; matching atoms and then removes those exact terms.

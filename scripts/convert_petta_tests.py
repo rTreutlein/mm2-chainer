@@ -168,6 +168,13 @@ def convert_test(expr):
     if cached_base_rate is not None:
         kb, pat = cached_base_rate
         return ["mm2-test-cached-base-rate", kb, pat, rename_calls(expected)]
+    if head(queryish) == "known-concept-node?" and len(queryish) == 3:
+        return [
+            "mm2-test-known-concept-node",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(expected),
+        ]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
