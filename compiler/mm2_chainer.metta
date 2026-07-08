@@ -890,6 +890,15 @@
             ($_cleanup (mm2-cleanup-queries $cqs)))
        $results)))
 
+; Harness approximation for PeTTa forward-chain tests: compileadd already
+; emits open materialization goals for the relevant rule conclusions, so a
+; bounded MM2 run advances those side effects before the follow-up query.
+(= (mm2-forward-chain-steps-per-round) 200)
+
+(= (mm2-forward-chain $rounds $_kb)
+   (let $_run (mm2-exec &mork (* $rounds (mm2-forward-chain-steps-per-round)))
+     ()))
+
 ; --- test comparison --------------------------------------------------------
 ; Compare (type, tv) sets; proof tokens intentionally differ from PeTTa.
 ; Both arguments are lists of (: $prf $type $tv) results.
@@ -1134,6 +1143,10 @@
                 (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        (mm2-test $results $expected))))
+
+(= (mm2-test-forward-chain-query $rounds $steps $kb (: $prf $type $tv) $expected)
+   (let $_forward (mm2-forward-chain $rounds $kb)
+     (mm2-test-query $steps $kb (: $prf $type $tv) $expected)))
 
 (= (mm2-test-query-materialize $steps $kb (: $prf $type $tv) $expected)
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))

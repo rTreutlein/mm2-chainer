@@ -474,8 +474,9 @@ Latest corpus snapshot after this adjustment:
    `rules` shape coverage, compiler equality assertion coverage, and
    specializing-rule compiler-space match coverage, and `chainer-add-atom`
    cyclic guard coverage, backward helper bookkeeping coverage, and
-   uniform-prior helper coverage):
-   pass=170 close=19 fail=0 unsupported-ir=0 skipped=2 flagged-files=0,
+   uniform-prior helper coverage, and forward-chain materialization-query
+   coverage):
+   pass=172 close=19 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 9 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
@@ -564,12 +565,17 @@ Latest corpus snapshot after this adjustment:
    dynamic `concept-node-prior-tv`, and `BaseRateWithPriorFormula`. The
    user-facing inheritance induction query in the same file was already
    covered.
-17. STV-rule inversion materialization still needs the fold recursion guard
+17. **Forward-chain materialization queries**:
+   The two `forward-chain` assertions in `test_forward_backward_compose` now
+   run through `mm2-test-forward-chain-query`. This is not a general PeTTa
+   forward chainer: it advances MM2's existing open materialization goals for a
+   bounded number of steps before running the follow-up query, preserving the
+   positive budget-2 and negative budget-1 outcomes in that fixture.
+18. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
-18. Converter gaps: the remaining skipped generated assertions are the two
-   `forward-chain` side-effect checks in `test_forward_backward_compose`; they
-   are passed through
-   and surface as unsupported markers / unreduced terms.
+19. Converter gaps: no generated corpus tests are currently skipped; keep any
+   future non-query harness additions explicit about whether they exercise
+   MM2 runtime behavior or PeTTa helper/compiler state.
    The converter now also preserves the known MM2-specific generated-fixture
    adaptations for materialization/two-hop budgets, best-first intent checks,
    openAndFair's capped budget, and `DistGreaterThanFormula` helper tests.
@@ -584,7 +590,7 @@ Latest corpus snapshot after this adjustment:
    Converted `DistGreaterThanFormula` assertions now cover rectangle-area
    product distributions plus point-mass and multi-pair average-height
    distributions.
-19. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
+20. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
    `(AtTime $x $t),(AtTime $y $t) -> (AtTime (And $x $y) $t)`) derives only
@@ -596,7 +602,7 @@ Latest corpus snapshot after this adjustment:
    again. If this regresses later, the likely fix is bounded premise matching
    (head-style sink on wait-premise instantiation) or PeTTa-style expansion
    accounting.
-20. petta facts: bang results print only at process exit (main.pl collects
+21. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 

@@ -215,6 +215,9 @@ def convert_test(expr):
     query_tv = query_tv_test(queryish, expected)
     if query_tv is not None:
         return query_tv
+    forward_query = forward_chain_query_test(queryish, expected)
+    if forward_query is not None:
+        return forward_query
     if head(queryish) == "known-concept-node?" and len(queryish) == 3:
         return [
             "mm2-test-known-concept-node",
@@ -450,6 +453,26 @@ def query_tv_test(queryish, expected):
         rename_calls(query[2]),
         rename_calls(query[3]),
         [[":", "mm2-proved", rename_calls(binding[2]), rename_calls(expected)]],
+    ]
+
+
+def forward_chain_query_test(queryish, expected):
+    if head(queryish) != "let" or len(queryish) != 4:
+        return None
+    _binding, forward, query = queryish[1], queryish[2], queryish[3]
+    if head(forward) != "forward-chain" or len(forward) != 3:
+        return None
+    if head(query) != "query" or len(query) != 4:
+        return None
+    if forward[2] != query[2]:
+        return None
+    return [
+        "mm2-test-forward-chain-query",
+        rename_calls(forward[1]),
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        normalize_expected(rename_calls(expected)),
     ]
 
 
