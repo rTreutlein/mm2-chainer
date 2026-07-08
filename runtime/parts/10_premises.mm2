@@ -119,6 +119,125 @@
         (O (- (wait-premises $g identity pnil $agg-stv $proof-id $evset))
            (+ (open-proof $g $agg-stv $proof-id $evset)))))
 
+; Query-compound Compute + pseudo-premise. PeTTa counts the CPU result as
+; certain evidence, but the arithmetic output must constrain the following
+; real premise. Keep a special rule state after the first premise so the
+; second-premise match can gate proof opening on lhs + rhs = result.
+(exec-template
+  (exec 3
+        (, (wait-premises
+             $g
+             (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+             (pcons $prem (pcons $next pnil))
+             no-stv
+             $proof-id
+             $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premises
+              $g
+              (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+              (pcons $prem (pcons $next pnil))
+              no-stv
+              $proof-id
+              $evset))
+           (pure (wait-premises
+                   $g
+                   (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+                   (pcons $next pnil)
+                   ($prem-s $cpu-agg-c)
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $cpu-agg-c
+                 (f64_to_string
+                   (pln_and_confidence_f64
+                     (f64_from_string $prem-s)
+                     (f64_from_string $prem-c)
+                     (f64_from_string 1.0)
+                     (f64_from_string 1.0)))))))
+
+(exec-template
+  (exec 3
+        (, (wait-premises
+             $g
+             (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+             (pcons $prem pnil)
+             ($agg-s $agg-c)
+             $proof-id
+             $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premises
+              $g
+              (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+              (pcons $prem pnil)
+              ($agg-s $agg-c)
+              $proof-id
+              $evset))
+           (pure (compute-plus-checked
+                   $verdict
+                   $g
+                   (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                   ($agg-s $agg-c)
+                   ($prem-s $prem-c)
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $verdict
+                 (i64_to_string
+                   (signum_i64
+                     (abs_i64
+                       (sub_i64
+                         (i64_from_string $res)
+                         (sum_i64
+                           (i64_from_string $lhs)
+                           (i64_from_string $rhs))))))))))
+
+(exec-template
+  (exec 4
+        (, (compute-plus-checked
+             0
+             $g
+             (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+             ($agg-s $agg-c)
+             ($prem-s $prem-c)
+             $proof-id
+             $evset))
+        (O (- (compute-plus-checked
+              0
+              $g
+              (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+              ($agg-s $agg-c)
+              ($prem-s $prem-c)
+              $proof-id
+              $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $prem-s))
+                       (f64_from_string $pos-s)
+                       (f64_from_string $neg-s)))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $prem-s))
+                       (pln_and_confidence_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $agg-c)
+                         (f64_from_string $prem-s)
+                         (f64_from_string $prem-c))
+                       (f64_from_string $pos-s)
+                       (f64_from_string $pos-c)
+                       (f64_from_string $neg-s)
+                       (f64_from_string $neg-c))))))))
+
+(exec-template
+  (exec 4
+        (, (compute-plus-checked 1 $g $rule-stv $agg-stv $prem-stv $proof-id $evset))
+        (O (- (compute-plus-checked 1 $g $rule-stv $agg-stv $prem-stv $proof-id $evset)))))
+
 ; Evidence-aware conjunction adapter.  It carries pool state for same-source
 ; marginal projections so a query over several projections of one (And ...)
 ; source counts that source once instead of multiplying/revising its marginals.

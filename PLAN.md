@@ -379,6 +379,19 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=86 close=9 fail=14 unsupported-ir=37 skipped=82 flagged-files=0
 
+## Query Compute-in-compound lowering (DONE 2026-07-08)
+
+`test_query_compute_in_compound` now recognizes the PeTTa IR shape
+`subgoal, Compute +, subgoal, AndFormula*, CTVModusPonensFormula` and lowers it
+to a `compute-plus-ctv` rule kind. The runtime keeps the arithmetic pseudo
+premise in a compute-specific state: the first real premise plus `(STV 1 1)`
+seeds the aggregate, the second real premise binds the result variable, and a
+numeric verdict only opens proofs where `lhs + rhs == result`.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=87 close=8 fail=14 unsupported-ir=35 skipped=82 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -397,12 +410,14 @@ Latest corpus snapshot after this adjustment:
    aggregates, partial base-rate cache operations, CTV assumption facts, the
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
    intent rewrite, query-materialization budget scaling, and backward
-   two-hop compose budget scaling): pass=86 close=9 fail=14
-   unsupported-ir=37 skipped=82 flagged-files=0, wall time about 51 s.
+   two-hop compose budget scaling, and Compute + query-compound lowering):
+   pass=87 close=8 fail=14 unsupported-ir=35 skipped=82 flagged-files=0,
+   wall time about 51 s.
    Remaining failures: backward_open_query_results 1, base_rate_cache 1,
+   best_first_runtime 1 (incumbent confidence expectation),
    forward_backward_compose 1 (OrFormula FoldAll), implication_premise 3,
-   inheritance_query_proof 1, member_compat 1, query_compute_in_compound 1,
-   specializing_rule 3, total_implication_aggregate 1, uniform_prior 1.
+   inheritance_query_proof 1, member_compat 1, specializing_rule 3,
+   total_implication_aggregate 1, uniform_prior 1.
 2. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
    caches base rates per (kb, pattern) at first use (base_rate_cache in
    compiled_query_runtime.metta) so all rule firings in a query see one

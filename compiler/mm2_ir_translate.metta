@@ -13,6 +13,7 @@
 ;
 ;   [subgoals] AndFormula*                                        -> adapterN
 ;   [subgoals] AndFormula* (MP $agg (CTV ..))                     -> ruleN ctv
+;   [subgoal]  Compute + [subgoal] AndFormula* MP                 -> ruleN compute-plus-ctv
 ;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> ruleN not-ctv
 ;   [subgoals] NotFormula AndFormula (MP $agg (CTV ..))           -> ruleN not-and-ctv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
@@ -133,6 +134,13 @@
       ((cons (cpu NotFormula ($tvin) $out) ()) (proj-kind not))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
+      ((cons (cpu + ($lhs $rhs) $res)
+         (cons (cpu AndFormula ($prem-tv (STV 1.0 1.0)) $agg1)
+           (cons (cpu AndFormula ($agg1b $next-tv) $agg2)
+             (cons (cpu CTVModusPonensFormula ($agg2b (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))))
+       (if (and (== $agg1 $agg1b) (== $agg2 $agg2b))
+         (compute-plus-ctv-kind $lhs $rhs $res ($ps $pc) ($ns $nc))
+         (unsupported-tail $tail)))
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (if (== $not $not2)
@@ -203,6 +211,9 @@
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (ctv-kind $pos $neg))
    (ruleN $ctype $rid (ctv $pos $neg) $ptypes))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (compute-plus-ctv-kind $lhs $rhs $res $pos $neg))
+   (ruleN $ctype $rid (compute-plus-ctv $pos ($lhs $rhs $res $neg)) $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (not-ctv-kind $pos $neg))
    (ruleN $ctype $rid (not-ctv $pos $neg) $ptypes))

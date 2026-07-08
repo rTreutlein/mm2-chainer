@@ -185,9 +185,10 @@
                (let $_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2))
                  (let $_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result))
                    (let $_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset))
-                     (let $_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset))
-                       (let $_inv (mm2-remove-matches (inv-checked $verdict $g $proof-id $evset))
-                         cleaned))))))))))))
+                     (let $_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset))
+                       (let $_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset))
+                         (let $_inv (mm2-remove-matches (inv-checked $verdict2 $g $proof-id $evset))
+                           cleaned)))))))))))))
 
 (= (mm2-cleanup-query $cq)
    (case $cq
