@@ -289,6 +289,26 @@ Latest corpus snapshot after this port:
 
     totals: pass=69 close=2 fail=42 unsupported=122 flagged-files=0
 
+## Base-rate cache operations (IN PROGRESS 2026-07-08)
+
+Generated tests now rewrite `set-base-rate`, `clear-base-rate`, and
+`store-computed-base-rate!` to MM2-harness operations that update the MM2
+runtime state rather than PeTTa's separate `&base_rate_cache`. User-provided
+base rates remove the corresponding `base-rate-def` so the runtime fold cannot
+overwrite them; clearing re-adds the fold support and zero seed. MORK's
+`fold-base-rate` sink now preserves a higher-confidence cached/computed value
+instead of replacing it with a lower-confidence recomputation.
+
+This moves `test_base_rate_cache` to 3 pass / 1 close / 1 fail. Remaining
+divergence: with a high-confidence cached antecedent, MM2 can fire the inverse
+after the consequent has direct base-rate evidence but before the derived
+consequent proof is folded into that consequent base rate. PeTTa's agenda
+orders that query so the consequent fold includes the derived witness first.
+
+Latest corpus snapshot after this step:
+
+    totals: pass=70 close=2 fail=41 unsupported=122 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -304,7 +324,8 @@ Latest corpus snapshot after this port:
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, and FoldAll
-   query aggregates): pass=69 close=2 fail=42 unsupported=122
+   query aggregates, and partial base-rate cache operations): pass=70
+   close=2 fail=41 unsupported=122
    flagged-files=0, wall time about 52 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools

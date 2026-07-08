@@ -109,6 +109,46 @@
 (= (mm2-remove-matches $pattern)
    (mm2-remove-atoms (collapse (match &mork $pattern $pattern))))
 
+; Base-rate cache operations used by PeTTaChainer tests. These intentionally
+; target the MM2 runtime state, not PeTTa's separate &base_rate_cache space.
+(= (mm2-scoped-base-rate-pattern $kb $pattern)
+   (let $scope (mm2-ir-scope-kb $kb) ($scope $pattern)))
+
+(= (mm2-remove-base-rate-state $kb $pattern)
+   (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+     (let $_br (mm2-remove-matches (base-rate $pat $tv))
+       (let $_def (mm2-remove-matches (base-rate-def $pat $match))
+         ()))))
+
+(= (mm2-add-base-rate-support $kb $pattern)
+   (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+     (let* (($qpat (copy_term $pat))
+            ($mpat (copy_term $pat))
+            ($seed (copy_term $pat))
+            ($_def (add-atom &mork (base-rate-def $qpat $mpat)))
+            ($_seed (add-atom &mork (base-rate $seed (0.0 0.0)))))
+       ())))
+
+(= (mm2-set-base-rate $kb $pattern (STV $s $c))
+   (let $_clear (mm2-remove-base-rate-state $kb $pattern)
+     (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+       (let $stored (copy_term $pat)
+        (let $_set (add-atom &mork (base-rate $stored ($s $c)))
+         ())))))
+
+(= (mm2-clear-base-rate $kb $pattern)
+   (let $_clear (mm2-remove-base-rate-state $kb $pattern)
+     (mm2-add-base-rate-support $kb $pattern)))
+
+(= (mm2-store-computed-base-rate! $kb $pattern (STV $s $c) $mode)
+   (let $_clear (mm2-remove-base-rate-state $kb $pattern)
+     (let $_support (mm2-add-base-rate-support $kb $pattern)
+       (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+         (let $_old (mm2-remove-matches (base-rate $pat $tv))
+           (let $stored (copy_term $pat)
+            (let $_set (add-atom &mork (base-rate $stored ($s $c)))
+             ())))))))
+
 ; Query answers are the facts matching each compiled query's own scoped goal
 ; term — usually the kb's MAIN context, or the fresh query context some
 ; queries allocate. Assumption-context facts never surface because their

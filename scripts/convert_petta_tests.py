@@ -5,13 +5,15 @@ Mechanical rewrite:
   !(import! &self petta_chainer)        -> harness import + !(mm2-init)
   !(import! &self logic_configs/...)    -> absolute PeTTaChainer import
   (compileadd kb stmt)                  -> (mm2-compileadd kb stmt)
+  (set-base-rate ...)/(clear-base-rate ...)
+                                         -> (mm2-set-base-rate ...), etc.
   !(test (query N kb pat) expected)     -> !(mm2-test-query N kb pat <list>)
   !(test (collapse (query ...)) exp)    -> !(mm2-test-query ... exp)
 
 Expected results are normalized to a list: () stays, a single (: ...) is
 wrapped, an existing list is kept. Constructs the harness doesn't know
-(set-base-rate, fc, chainer internals, ...) are passed through unchanged so
-they surface as unreduced terms in the run report — that's the gap list.
+(fc, chainer internals, ...) are passed through unchanged so they surface as
+unreduced terms in the run report — that's the gap list.
 
 Files whose tests are entirely out of scope (forward chainer, distribution /
 particle values) are skipped.
@@ -121,6 +123,12 @@ def rename_calls(e):
         e[0] = "mm2-compileadd"
     elif head(e) == "query":
         e[0] = "mm2-query"
+    elif head(e) == "set-base-rate":
+        e[0] = "mm2-set-base-rate"
+    elif head(e) == "clear-base-rate":
+        e[0] = "mm2-clear-base-rate"
+    elif head(e) == "store-computed-base-rate!":
+        e[0] = "mm2-store-computed-base-rate!"
     return e
 
 
