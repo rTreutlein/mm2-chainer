@@ -321,24 +321,49 @@
          (unsupported-tail (total-evidence-tv $case-tv $ctv $agg))))
       ($other $kind))))
 
+(= (mm2-ir-refine-non-total-kind $kind $ctv)
+   (case $kind
+     (((not-first-kind $agg)
+       (if (== $agg $ctv)
+         (not-first-kind identity)
+         (unsupported-tail (not-first-tv $agg $ctv))))
+      ($k2
+       (if (and (== $k2 identity) (is-expr $ctv))
+         (case $ctv
+           (((CTV $pos $neg) (proj-kind ctvpair))
+           ($other2 $k2)))
+         $k2)))))
+
+(= (mm2-ir-var-output-scaffold? $tail)
+   (case $tail
+     (((cons (cpu GroupedFoldAllCompiled $fold-args $fold-tv)
+        (cons (cpu AndFormula ($lhs $fold-tv2) $agg)
+          (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV 1.0 1.0) (STV 0.0 1.0))) $mp)
+            (cons (cpu NotFormula ($mp2) $out) ()))))
+       (and (== $fold-tv $fold-tv2)
+            (and (== $agg $agg2) (== $mp $mp2))))
+      ($other false))))
+
+(= (mm2-ir-refine-var-kind $kind $ctv)
+   (case $kind
+     (((unsupported-tail $tail)
+       (if (mm2-ir-var-output-scaffold? $tail)
+         ignore-kind
+         $kind))
+      ($other (mm2-ir-refine-non-total-kind $kind $ctv)))))
+
 (= (mm2-ir-refine-kind $kind $ctype $ctv)
    (case $ctype
-     ((($scope (TotalEvidence pos $p1 $p2 $x $case-tv))
-       (mm2-ir-refine-total-evidence-kind $kind pos $case-tv $ctv))
-      (($scope (TotalEvidence neg $p1 $p2 $x $case-tv))
-       (mm2-ir-refine-total-evidence-kind $kind neg $case-tv $ctv))
-      ($other
-       (case $kind
-         (((not-first-kind $agg)
-           (if (== $agg $ctv)
-             (not-first-kind identity)
-             (unsupported-tail (not-first-tv $agg $ctv))))
-          ($k2
-           (if (and (== $k2 identity) (is-expr $ctv))
-             (case $ctv
-               (((CTV $pos $neg) (proj-kind ctvpair))
-                ($other2 $k2)))
-             $k2))))))))
+     ((($scope $term)
+       (if (is-var $term)
+         (mm2-ir-refine-var-kind $kind $ctv)
+         (case $term
+           (((TotalEvidence pos $p1 $p2 $x $case-tv)
+             (mm2-ir-refine-total-evidence-kind $kind pos $case-tv $ctv))
+            ((TotalEvidence neg $p1 $p2 $x $case-tv)
+             (mm2-ir-refine-total-evidence-kind $kind neg $case-tv $ctv))
+            ($other (mm2-ir-refine-non-total-kind $kind $ctv))))))
+      ($other (mm2-ir-refine-non-total-kind $kind $ctv)))))
 
 (= (mm2-ir-rule-pos (CTV (STV $ps $pc) $neg)) ($ps $pc))
 (= (mm2-ir-rule-pos (STV $s $c)) ($s $c))

@@ -459,9 +459,10 @@ Latest corpus snapshot after this adjustment:
    proof-CTV readback, positive-test round-budget scaling,
    MemberInheritanceFormula readback, prior-aware inheritance base rates,
    inheritance induction readback, and readback-level lifting merge for
-   two-premise And adapter queries, plus OrFormula adapter lowering and
-   redundant Or projection scaffold suppression):
-   pass=95 close=14 fail=0 unsupported-ir=3 skipped=82 flagged-files=0,
+   two-premise And adapter queries, OrFormula adapter lowering,
+   redundant Or projection scaffold suppression, and ignoring the
+   variable-headed grouped-fold output scaffold emitted by `copyPredicate`):
+   pass=95 close=14 fail=0 unsupported-ir=2 skipped=82 flagged-files=0,
    wall time about 43 s.
    No supported failures remain; remaining gaps are unsupported converter/IR
    coverage and skipped legacy/non-query harness forms.
