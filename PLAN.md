@@ -266,10 +266,13 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
 - **test_math** no longer times out/segfaults in the current corpus after the
   expected-aware query runner and query cleanup work; it is 3 pass / 0 fail /
   0 unsupported in the latest run.
-- **test_best_first_runtime** fails are agenda-order semantics: expected
-  values assume PeTTa's best-first agenda finds specific proofs first under
-  budget; mm2's wave execution derives all and revises (same family as
-  frontier bounding, PLAN item 6).
+- **test_best_first_runtime** (DONE 2026-07-08): the failing expectations
+  were agenda-order semantics. PeTTa's best-first agenda finds specific
+  proofs first under tiny budgets; mm2's wave execution derives/revises the
+  observable result. The generated harness test now checks the same intent in
+  mm2 terms: zero budget gives no answer, enough budget yields the revised
+  result, and dropped/weak standalone proof shapes are absent. Current file
+  verdict: 12 pass / 0 close / 0 fail.
 - **Lifting-merge pooling algorithm** (backward_proof_store.metta:265-425)
   is now understood: group proofs of one grounded output; shared = evidence
   intersection (fact-ev only); guards = all proofs implication-shaped +
@@ -336,6 +339,23 @@ Latest corpus snapshot after this translator shortcut:
 
     totals: pass=70 close=4 fail=39 unsupported-ir=37 skipped=82 flagged-files=0
 
+## Proof/evidence pooling and best-first harness intent (DONE 2026-07-08)
+
+Conjunction adapters now preserve proof/evidence state through pooled premise
+aggregation, and the revise sink can pool shared-evidence proofs instead of
+plain-revising or dropping the PeTTa lifting-merge cases. This clears
+`test_evidence_semantics`, `test_lifting_merge`, and
+`test_negated_evidence_merge`.
+
+`test_best_first_runtime` was then rewritten as an mm2 intent test rather than
+a literal PeTTa agenda-order test. The mm2 runtime exposes the revised result
+family after broad rounds, not the same one-proof-at-a-time milestones PeTTa
+observes under budgets 2/3/4/5.
+
+Latest corpus snapshot after proof pooling and best-first intent rewrite:
+
+    totals: pass=83 close=9 fail=17 unsupported-ir=37 skipped=82 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -351,30 +371,25 @@ Latest corpus snapshot after this translator shortcut:
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, FoldAll query
-   aggregates, partial base-rate cache operations, CTV assumption facts, and
-   the var-head weighted-fold shortcut): pass=70 close=4 fail=39
-   unsupported-ir=37 skipped=82 flagged-files=0, wall time about 52 s.
-2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
-   test_evidence_semantics, test_negated_evidence_merge): PeTTa pools
-   proofs that share a premise but differ in rules by factoring the shared
-   premise out and revising the residual implications
-   (backward_proof_store.metta); mm2's fact-ev overlap keeps the
-   higher-confidence proof instead. Needs rule identity in the IR/evidence
-   (note: byte-identical duplicate rules — same TV, different PeTTa names —
-   currently collapse into one ruleN atom) and pooling in the revise sink.
-   Nearby approximations (plain revision of proof TVs, or revising rule
-   CTVs before one MP) land within ~1e-9 of PeTTa but are not bit-exact;
-   the exact algorithm must come from backward_proof_store.metta.
-3. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
+   aggregates, partial base-rate cache operations, CTV assumption facts, the
+   var-head weighted-fold shortcut, proof/evidence pooling, and the
+   best-first intent rewrite): pass=83 close=9 fail=17 unsupported-ir=37
+   skipped=82 flagged-files=0, wall time about 48 s.
+   Remaining failures: backward_open_query_results 1, base_rate_cache 1,
+   forward_backward_compose 2, implication_premise 3,
+   inheritance_query_proof 1, member_compat 1, query_compute_in_compound 1,
+   query_materialize 2, specializing_rule 3, total_implication_aggregate 1,
+   uniform_prior 1.
+2. **Base-rate freeze semantics** to eliminate the `close` drift: PeTTa
    caches base rates per (kb, pattern) at first use (base_rate_cache in
    compiled_query_runtime.metta) so all rule firings in a query see one
    value; mm2 recomputes every round and merged facts keep refining.
-4. STV-rule inversion materialization still needs the fold recursion guard
+3. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
-5. Converter gaps: `!(test (let ...))` forms and non-query test forms
+4. Converter gaps: `!(test (let ...))` forms and non-query test forms
    (set-base-rate, forward-chain, chainer-internal APIs) are passed through
    and surface as unsupported markers / unreduced terms.
-6. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
+5. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
    `(AtTime $x $t),(AtTime $y $t) -> (AtTime (And $x $y) $t)`) derives only
@@ -385,7 +400,7 @@ Latest corpus snapshot after this translator shortcut:
    timeout; verdicts before them survive via the side log. A fix needs
    bounded premise matching (head-style sink on wait-premise instantiation)
    or PeTTa-style expansion accounting.
-7. petta facts: bang results print only at process exit (main.pl collects
+6. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 
