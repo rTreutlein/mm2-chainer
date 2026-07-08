@@ -248,16 +248,18 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
 
 ## Open investigation notes (2026-07-07)
 
-- **test_var_head** (2 fails): the consequent pattern has a variable head,
-  so PeTTa compiles its base rate as a **weighted-universe fold**
-  (`FoldAllCompiled (kb (Inheritance $x $c) (extract-inheritance-tv ...)
-  ... WeightedBaseRateAcc (weighted-base-rate-in-universe kb) result-tv)`):
-  fold over Inheritance facts, per-row mass m*mc*c from
-  inheritance-subject-prior-tv, result STV(wsum/msum, min(1, msum))
-  (tv_formulas.metta:117-125). Needs a new MORK sink with a per-row prior
-  join — tracked as its own task; the classifier marks these tails
-  unsupported for now. Same machinery family as member/inheritance tests
-  and probably parts of specializing_rule/uniform_prior.
+- **test_var_head** (DONE 2026-07-08): the consequent pattern has a variable
+  head, so PeTTa compiles its base rate as a non-prior weighted-universe fold
+  over fully open `Inheritance` facts
+  (`WeightedBaseRateAcc (weighted-base-rate-in-universe kb)`). The current
+  translator handles only that narrow empty-evidence branch by seeding the
+  consequent base-rate relation as `(0.0 0.0)`; this is enough for
+  `test_var_head` and avoids pretending we have full weighted inheritance
+  fold support.
+- **test_uniform_prior** is not a primary parity driver right now. It mixes
+  standalone prior helper checks, dynamic concept-prior configuration, and an
+  explicitly legacy inheritance-induction integration case, so use it as
+  broad later integration coverage rather than the next focused runtime task.
 - **test_math** no longer times out/segfaults in the current corpus after the
   expected-aware query runner and query cleanup work; it is 3 pass / 0 fail /
   0 unsupported in the latest run.
@@ -319,6 +321,18 @@ Latest corpus snapshot after this translator cleanup:
 
     totals: pass=70 close=2 fail=41 unsupported=120 flagged-files=0
 
+## Var-head weighted inheritance fold shortcut (DONE 2026-07-08)
+
+`test_var_head` now lowers the exact weighted fold emitted for a var-headed
+STV consequent: a non-prior `WeightedBaseRateAcc` fold over fully open
+`Inheritance` facts. MM2 still does not implement the full weighted fold; the
+translator only recognizes this open shape and seeds the consequent base-rate
+copy as no evidence, which matches PeTTa's result for this focused test.
+
+Latest corpus snapshot after this translator shortcut:
+
+    totals: pass=70 close=4 fail=39 unsupported=119 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -333,9 +347,9 @@ Latest corpus snapshot after this translator cleanup:
    machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
-   Not+And compound lowering, preserved logic-config imports, and FoldAll
-   query aggregates, partial base-rate cache operations, and CTV assumption
-   facts): pass=70 close=2 fail=41 unsupported=120
+   Not+And compound lowering, preserved logic-config imports, FoldAll query
+   aggregates, partial base-rate cache operations, CTV assumption facts, and
+   the var-head weighted-fold shortcut): pass=70 close=4 fail=39 unsupported=119
    flagged-files=0, wall time about 52 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools

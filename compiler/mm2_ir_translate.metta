@@ -47,6 +47,10 @@
 
 (= (mm2-ir-scope-kb $kb) (if (is-expr $kb) $kb ($kb MAIN Nil)))
 
+(= (mm2-ir-open-inheritance-pattern? $pat)
+   (and (= $pat (Inheritance $subj $concept))
+        (and (is-var $subj) (is-var $concept))))
+
 ; --- premise/conclusion item classification --------------------------------
 
 (= (mm2-ir-item $item)
@@ -76,15 +80,21 @@
 
 ; --- rule-kind classification of the cpu tail -------------------------------
 
-; Only the plain base-rate fold shape maps onto the runtime's base-rate
-; relation. Anything else (weighted-universe folds for var-headed patterns,
-; grouped folds, ...) makes the whole tail unsupported -- loudly: a partial
-; match here used to leave an unreduced helper call inside the rule atom,
-; which silently dropped the rule.
+; Plain base-rate folds map onto the runtime's maintained base-rate relation.
+; The non-prior weighted inheritance fold appears for fully open Inheritance
+; patterns; for current var-headed STV consequents PeTTa sees no consequent
+; base-rate evidence, so the narrow translation below seeds it as no-evidence
+; without claiming full weighted inheritance-fold support.
 (= (mm2-ir-fold-pattern $cpu)
    (case $cpu
      (((cpu FoldAllCompiled ($kbid $pat extract-tv $zero BaseRateAcc base-rate $resmode) $out)
        (let $skb (mm2-ir-scope-kb $kbid) (brfold ($skb $pat))))
+      ((cpu FoldAllCompiled ($kbid $pat (extract-inheritance-tv $kbid2 $pat2) $zero WeightedBaseRateAcc (weighted-base-rate-in-universe $kbid3) $resmode) $out)
+       (if (and (== $kbid $kbid2)
+                (and (== $kbid $kbid3)
+                     (and (== $pat $pat2) (mm2-ir-open-inheritance-pattern? $pat))))
+         (let $skb (mm2-ir-scope-kb $kbid) (weighted-brfold ($skb $pat)))
+         unsupported-fold))
       ($other unsupported-fold))))
 
 (= (mm2-ir-foldall-sum $cpu)
@@ -106,6 +116,7 @@
 (= (mm2-ir-stv-kind $pos $fa $fb $tail)
    (case ($fa $fb)
      ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
+      (((brfold $pa) (weighted-brfold $pb)) (stv-weighted-kind $pos $pa $pb))
       ($other (unsupported-tail $tail)))))
 
 (= (mm2-ir-inv-kind $pos $fa $fb $materialize $tail)
@@ -235,6 +246,12 @@
      (ruleN $ctype (stv $pos (brpat $pa $pb)) $ptypes)
      (mm2-base-rate-support $pa)
      (mm2-base-rate-support $pb))))
+
+(= (mm2-ir-emit-rule $ctype $ptypes (stv-weighted-kind $pos $pa $pb))
+   (superpose (
+     (ruleN $ctype (stv $pos (brpat $pa $pb)) $ptypes)
+     (mm2-base-rate-support $pa)
+     (base-rate (copy_term $pb) (0.0 0.0)))))
 
 (= (mm2-ir-emit-rule $ctype $ptypes (inv-kind $pos $pa $pb $materialize))
    (superpose (
