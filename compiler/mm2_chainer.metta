@@ -691,6 +691,16 @@
           ($_log (mm2-log-line $verdict)))
      $verdict))
 
+(= (mm2-test-equal $got $expected)
+   (let* (($verdict (if (== $got $expected)
+                      (mm2-test-pass $expected)
+                      (mm2-test-FAIL (expected $expected) (got $got))))
+          ($_log (mm2-log-line $verdict)))
+     $verdict))
+
+(= (mm2-dist-pairs (ParticleDist $pid $_scale))
+   (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))
+
 (= (mm2-test-query $steps $kb (: $prf $type $tv) $expected)
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($want (mm2-result-keys $expected))

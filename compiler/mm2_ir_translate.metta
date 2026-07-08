@@ -42,6 +42,30 @@
 (= (mm2-ir-append () $ys) $ys)
 (= (mm2-ir-append (cons $x $xs) $ys) (cons $x (mm2-ir-append $xs $ys)))
 
+(= (mm2-ir-dist-pair-atoms $_pid ()) ())
+(= (mm2-ir-dist-pair-atoms $pid (cons ($x $w) $rest))
+   (cons (dist-pair $pid $x $w) (mm2-ir-dist-pair-atoms $pid $rest)))
+
+(= (mm2-ir-dist-atoms-list ()) ())
+(= (mm2-ir-dist-atoms-list (cons $term $rest))
+   (mm2-ir-append (mm2-ir-dist-atoms $term) (mm2-ir-dist-atoms-list $rest)))
+
+(= (mm2-ir-dist-atoms $term)
+   (if (is-var $term)
+     ()
+     (if (is-expr $term)
+       (let $head (car-atom $term)
+         (if (and (not (is-var $head)) (== $head ParticleDist))
+           (case $term
+             (((ParticleDist $pid $_scale)
+               (mm2-ir-dist-pair-atoms $pid (ParticlePairs $term)))))
+           (mm2-ir-dist-atoms-list (cdr-atom $term))))
+       ())))
+
+(= (mm2-ir-superpose-list ()) (empty))
+(= (mm2-ir-superpose-list (cons $atom $rest))
+   (superpose ($atom (mm2-ir-superpose-list $rest))))
+
 ; --- kb scoping --------------------------------------------------------------
 ; Goal-level terms are scoped by the IR's own kb field: ($kb-triple $term).
 ; compile.metta scopes every item with a kb triple ($kb $ctx $vars) — MAIN/Nil
@@ -498,7 +522,8 @@
    (superpose (
      (fact $g ($s $c))
      (fact-evidence $g ($s $c) (pcons (fact-ev $prf $g) pnil))
-     (proved $g ($s $c) $prf (pcons (fact-ev $prf $g) pnil)))))
+     (proved $g ($s $c) $prf (pcons (fact-ev $prf $g) pnil))
+     (mm2-ir-superpose-list (mm2-ir-dist-atoms $g)))))
 
 ; The TV is is-var-checked before structural matching: a case pattern
 ; (STV $s $c) would UNIFY with a free tv var (identity-query ctxatoms carry

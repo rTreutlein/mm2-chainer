@@ -21,6 +21,12 @@
 !(mm2-test-query 20 orAllKb (: $prf (Or OA OB) $tv)
                  ((: $_ (Or OA OB) (STV 0.85 0.8908311399639481))))
 
+; Distribution bridge: concrete PeTTa ParticleDist facts expose their pairs to
+; the MORK runtime for later MapDist/Map2Dist/AverageDist support.
+!(let $pd (PointMass 3.0)
+   (let $_ (mm2-compileadd distBridgeKb (: pm (DistHolder $pd) (STV 1.0 1.0)))
+      (mm2-test-equal (mm2-dist-pairs $pd) ((3.0 1.0)))))
+
 ; test_implication_inversion.metta
 !(mm2-compileadd invKb (: r (Implication (Premises (P $x)) (Conclusions (Q $x))) (CTV (STV 0.8 0.9) (STV 0.1 0.9))))
 !(mm2-compileadd invKb (: qa (Q alice) (STV 0.9 0.8)))

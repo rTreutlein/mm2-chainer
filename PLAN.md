@@ -475,6 +475,9 @@ Latest corpus snapshot after this adjustment:
 4. Converter gaps: `!(test (let ...))` forms and non-query test forms
    (set-base-rate, forward-chain, chainer-internal APIs) are passed through
    and surface as unsupported markers / unreduced terms.
+   Distributional fact terms now export PeTTa `ParticleDist` pairs as
+   `dist-pair` atoms in the MORK space; the remaining distributional IR gaps
+   still need runtime support for `DistMap2Formula` and `DistSumCountAcc`.
 5. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
