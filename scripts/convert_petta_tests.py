@@ -250,6 +250,9 @@ def convert_test(expr):
     space_match = compiler_space_match_test(queryish)
     if space_match is not None:
         return ["mm2-test-equal", space_match, rename_calls(expected)]
+    add_atom = chainer_add_atom_test(queryish)
+    if add_atom is not None:
+        return ["mm2-test-equal", add_atom, rename_calls(expected)]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
@@ -305,6 +308,14 @@ def term_confidence_test(queryish, expected):
     return None
 
 
+def contains_head(expr, name):
+    if not isinstance(expr, list):
+        return False
+    if head(expr) == name:
+        return True
+    return any(contains_head(item, name) for item in expr)
+
+
 def collapse_once_rules_match_test(queryish):
     if head(queryish) != "collapse" or len(queryish) != 2:
         return None
@@ -324,6 +335,12 @@ def compiler_space_match_test(queryish):
             return ["collapse", rename_calls(inner)]
         return None
     if head(queryish) == "match" and len(queryish) == 4 and queryish[1] == "&kb":
+        return rename_calls(queryish)
+    return None
+
+
+def chainer_add_atom_test(queryish):
+    if head(queryish) == "collapse" and len(queryish) == 2 and contains_head(queryish[1], "chainer-add-atom"):
         return rename_calls(queryish)
     return None
 
