@@ -283,13 +283,14 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
    final rule's conclusion TV is `(CTV $pos-tv $neg-tv)` built structurally
    from the two context conclusions' TVs — no CPU formula — and facts can
    then carry CTV values), (c) ~~single-premise NotFormula -> CTV MP~~ done
-   via `not-ctv` (remaining NotFormula+AndFormula chain in
-   `test_query_compute_in_compound`), (d) remaining MP arrangements, then
-   weighted/grouped folds and member machinery. Rerun
+   via `not-ctv`, (d) ~~NotFormula+AndFormula query-compound chain~~ done by
+   lowering through an ordinary `proj not` rule plus a normal `ctv` rule,
+   then remaining MP arrangements, weighted/grouped folds, and member
+   machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
-   Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`, and
-   preserved logic-config imports): pass=65 close=3 fail=45 unsupported=127
-   flagged-files=0, wall time about 54 s.
+   Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
+   Not+And compound lowering, and preserved logic-config imports): pass=65
+   close=4 fail=44 unsupported=126 flagged-files=0, wall time about 52 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools
    proofs that share a premise but differ in rules by factoring the shared
