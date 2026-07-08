@@ -265,6 +265,11 @@
          (if (or (is-var $s) (is-var $c))
            (notsupported-ir (free-tv-fact $g))
            (mm2-ir-emit-fact $g ($s $c))))
+        ((CTV (STV $ps $pc) (STV $ns $nc))
+         (if (or (or (is-var $ps) (is-var $pc))
+                 (or (is-var $ns) (is-var $nc)))
+           (notsupported-ir (free-tv-fact $g))
+           (mm2-ir-emit-fact $g (ctvpair ($ps $pc) ($ns $nc)))))
         ($other (notsupported-ir (fact-tv $g $other)))))))
 
 ; Rules with an implication-typed premise need that premise's

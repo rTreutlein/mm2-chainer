@@ -309,6 +309,16 @@ Latest corpus snapshot after this step:
 
     totals: pass=70 close=2 fail=41 unsupported=122 flagged-files=0
 
+## CTV query assumption facts (DONE 2026-07-08)
+
+Concrete CTV-valued facts now translate to `ctvpair` facts instead of
+`notsupported-ir` markers. This covers total-implication query assumption
+facts whose TV is already known as `(CTV (STV ...) (STV ...))`.
+
+Latest corpus snapshot after this translator cleanup:
+
+    totals: pass=70 close=2 fail=41 unsupported=120 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -324,8 +334,8 @@ Latest corpus snapshot after this step:
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
    Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, and FoldAll
-   query aggregates, and partial base-rate cache operations): pass=70
-   close=2 fail=41 unsupported=122
+   query aggregates, partial base-rate cache operations, and CTV assumption
+   facts): pass=70 close=2 fail=41 unsupported=120
    flagged-files=0, wall time about 52 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools
