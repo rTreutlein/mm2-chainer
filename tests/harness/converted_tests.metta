@@ -27,6 +27,35 @@
    (let $_ (mm2-compileadd distBridgeKb (: pm (DistHolder $pd) (STV 1.0 1.0)))
       (mm2-test-equal (mm2-dist-pairs $pd) ((3.0 1.0)))))
 
+; Map2Dist *: derive a deterministic output distribution from two point masses
+; and materialize the result pair through the MORK fsum sink.
+!(let $len (PointMass 8.0)
+   (let $wid (PointMass 4.0)
+      (let $_r (mm2-compileadd distMap2Kb (: r (Rectangle rectB) (STV 1.0 1.0)))
+        (let $_l (mm2-compileadd distMap2Kb (: len (LengthDist rectB $len) (STV 1.0 1.0)))
+          (let $_w (mm2-compileadd distMap2Kb (: wid (WidthDist rectB $wid) (STV 1.0 1.0)))
+            (let $_rule
+              (mm2-compileadd distMap2Kb
+                (: areaRule
+                   (Implication
+                     (Premises
+                       (Rectangle $rect)
+                       (Map2Dist *
+                         (LengthDist $rect $lengthDist)
+                         $lengthDist
+                         (WidthDist $rect $widthDist)
+                         $widthDist
+                         ->
+                         $areaDist))
+                     (Conclusions (AreaDist $rect $areaDist)))
+                   (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
+              (let $out (ParticleDist (dist-map2 * $len $wid) 1.0)
+                (let $_q
+                  (mm2-test-query 20 distMap2Kb (: $prf (AreaDist rectB $areaDist) $tv)
+                    ((: $_ (AreaDist rectB $out) (STV 1.0 0.999700089898053))))
+                  (let $_run (mm2-exec &mork 200)
+                    (mm2-test-equal (mm2-dist-pairs $out) ((32.0 1))))))))))))
+
 ; test_implication_inversion.metta
 !(mm2-compileadd invKb (: r (Implication (Premises (P $x)) (Conclusions (Q $x))) (CTV (STV 0.8 0.9) (STV 0.1 0.9))))
 !(mm2-compileadd invKb (: qa (Q alice) (STV 0.9 0.8)))

@@ -66,6 +66,14 @@
 (= (mm2-ir-superpose-list (cons $atom $rest))
    (superpose ($atom (mm2-ir-superpose-list $rest))))
 
+(= (mm2-ir-dist-map2-conclusion $ctype $dist-out $result-dist)
+   (case $ctype
+     ((($scope ($head $dist-out)) ($scope ($head $result-dist)))
+      (($scope ($head $arg1 $dist-out)) ($scope ($head $arg1 $result-dist)))
+      (($scope ($head $arg1 $arg2 $dist-out)) ($scope ($head $arg1 $arg2 $result-dist)))
+      (($scope ($head $arg1 $arg2 $arg3 $dist-out)) ($scope ($head $arg1 $arg2 $arg3 $result-dist)))
+      ($other (notsupported-ir (dist-map2-conclusion $ctype $dist-out))))))
+
 ; --- kb scoping --------------------------------------------------------------
 ; Goal-level terms are scoped by the IR's own kb field: ($kb-triple $term).
 ; compile.metta scopes every item with a kb triple ($kb $ctx $vars) — MAIN/Nil
@@ -251,6 +259,15 @@
        (if (and (== $agg1 $agg1b) (== $agg2 $agg2b))
          (compute-plus-ctv-kind $lhs $rhs $res ($ps $pc) ($ns $nc))
          (unsupported-tail $tail)))
+      ((cons (cpu DistMap2Formula ($fun $lhs $rhs) $dist-out)
+         (cons (cpu AndFormula ($prem-tv (STV 1.0 1.0)) $agg)
+           (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())))
+       (if (and (== $agg $agg2)
+                (and (== $ps 1.0)
+                     (and (== $pc 1.0)
+                          (and (== $ns 0.0) (== $nc 1.0)))))
+         (dist-map2-ctv-kind $fun $lhs $rhs $dist-out ($ps $pc) ($ns $nc))
+         (unsupported-tail $tail)))
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (if (== $not $not2)
@@ -415,6 +432,14 @@
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (compute-plus-ctv-kind $lhs $rhs $res $pos $neg))
    (ruleN $ctype $rid (compute-plus-ctv $pos ($lhs $rhs $res $neg)) $ptypes))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (dist-map2-ctv-kind $fun $lhs $rhs $dist-out $pos $neg))
+   (let $result-dist (ParticleDist (dist-map2 $fun $lhs $rhs) 1.0)
+     (ruleN
+       (mm2-ir-dist-map2-conclusion $ctype $dist-out $result-dist)
+       $rid
+       (dist-map2-ctv $pos (map2 $fun $lhs $rhs $neg))
+       $ptypes)))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (not-ctv-kind $pos $neg))
    (ruleN $ctype $rid (not-ctv $pos $neg) $ptypes))

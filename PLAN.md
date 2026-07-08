@@ -462,7 +462,7 @@ Latest corpus snapshot after this adjustment:
    two-premise And adapter queries, OrFormula adapter lowering,
    redundant Or projection scaffold suppression, and ignoring the
    variable-headed grouped-fold output scaffold emitted by `copyPredicate`):
-   pass=95 close=14 fail=0 unsupported-ir=2 skipped=82 flagged-files=0,
+   pass=95 close=14 fail=0 unsupported-ir=1 skipped=82 flagged-files=0,
    wall time about 43 s.
    No supported failures remain; remaining gaps are unsupported converter/IR
    coverage and skipped legacy/non-query harness forms.
@@ -476,8 +476,10 @@ Latest corpus snapshot after this adjustment:
    (set-base-rate, forward-chain, chainer-internal APIs) are passed through
    and surface as unsupported markers / unreduced terms.
    Distributional fact terms now export PeTTa `ParticleDist` pairs as
-   `dist-pair` atoms in the MORK space; the remaining distributional IR gaps
-   still need runtime support for `DistMap2Formula` and `DistSumCountAcc`.
+   `dist-pair` atoms in the MORK space.  Identity-CTV `Map2Dist *` rules now
+   derive deterministic output `ParticleDist` ids and materialize their pairs
+   through `fsum`; the remaining distributional IR gap is `DistSumCountAcc`
+   for `AverageDist`.
 5. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:

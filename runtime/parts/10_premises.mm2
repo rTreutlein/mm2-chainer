@@ -346,6 +346,56 @@
         (, (compute-plus-checked 1 $g $rule-stv $agg-stv $prem-stv $proof-id $evset))
         (O (- (compute-plus-checked 1 $g $rule-stv $agg-stv $prem-stv $proof-id $evset)))))
 
+; Distribution Map2 pseudo-premise. The compiler rewrites the conclusion to a
+; deterministic result ParticleDist, then this path materializes its weighted
+; output pairs from the exported input distribution pairs.
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (dist-map2-ctv (1.0 1.0) (map2 * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) (0.0 1.0)))
+             pnil
+             $agg-stv
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+              $g
+              (dist-map2-ctv (1.0 1.0) (map2 * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) (0.0 1.0)))
+              pnil
+              $agg-stv
+              $proof-id
+              $evset))
+           (+ (dist-map2-active * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb)))
+           (+ (open-proof $g $agg-stv $proof-id $evset)))))
+
+(exec-template
+  (exec 2
+        (, (dist-map2-active * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
+           (dist-pair $pida $xa $wa)
+           (dist-pair $pidb $xb $wb))
+        (O (pure (dist-map2-contrib
+                   (dist-map2 * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
+                   $pair)
+                 $pair
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $xa)
+                       (f64_from_string $xb)))
+                   (f64_to_string
+                     (product_f64
+                       (product_f64
+                         (f64_from_string $wa)
+                         (f64_from_string $wb))
+                       (product_f64
+                         (f64_from_string $scalea)
+                         (f64_from_string $scaleb)))))))))
+
+(exec-template
+  (exec 2
+        (, (dist-map2-contrib $pid ($y $mass)))
+        (O (fsum (dist-pair $pid $y $sum) $sum $mass))))
+
 ; Evidence-aware conjunction adapter.  It carries pool state for same-source
 ; marginal projections so a query over several projections of one (And ...)
 ; source counts that source once instead of multiplying/revising its marginals.
