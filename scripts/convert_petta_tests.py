@@ -171,6 +171,9 @@ def convert_test(expr):
     dist_gt = dist_greater_than_test(queryish, expected)
     if dist_gt is not None:
         return dist_gt
+    query_tv = query_tv_test(queryish, expected)
+    if query_tv is not None:
+        return query_tv
     if head(queryish) == "known-concept-node?" and len(queryish) == 3:
         return [
             "mm2-test-known-concept-node",
@@ -272,6 +275,25 @@ def dist_greater_than_test(queryish, expected):
     if head(lhs) == ">" and len(lhs) == 3 and lhs[1] == "$s" and head(rhs) == ">" and len(rhs) == 3 and rhs[1] == "$c":
         return ["mm2-test-query-dist-gt-strength-confidence-over", *query_args, threshold, lhs[2], rhs[2]]
     return None
+
+
+def query_tv_test(queryish, expected):
+    if head(queryish) != "let" or len(queryish) != 4:
+        return None
+    binding, query, body = queryish[1], queryish[2], queryish[3]
+    if head(binding) != ":" or len(binding) != 4:
+        return None
+    if head(query) != "query" or len(query) != 4 or query[3] != binding:
+        return None
+    if body != binding[3]:
+        return None
+    return [
+        "mm2-test-query",
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        [[":", "mm2-proved", rename_calls(binding[2]), rename_calls(expected)]],
+    ]
 
 
 def cached_base_rate_test(queryish):
