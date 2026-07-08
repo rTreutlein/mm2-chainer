@@ -172,6 +172,31 @@
             (let $_set (add-atom &mork (base-rate $stored ($s $c)))
              ())))))))
 
+(= (mm2-cached-base-rate $kb $pattern)
+   (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+     (case (collapse (match &mork (base-rate $pat ($s $c)) (STV $s $c)))
+       ((() no-cache-entry)
+        ((cons (STV 0.0 0.0) $_rest) no-cache-entry)
+        ((cons $tv $_rest) $tv)))))
+
+(= (mm2-test-cached-base-rate $kb $pattern $expected)
+   (let* (($got (mm2-cached-base-rate $kb $pattern))
+          ($verdict
+            (if (== $got $expected)
+              (mm2-test-pass $expected)
+              (case ($got $expected)
+                ((((STV $gs $gc) (STV $es $ec))
+                  (if (mm2-tv-close $got $expected)
+                    (mm2-test-close (inexact $expected) (got $got))
+                    (mm2-test-FAIL (expected $expected) (got $got))))
+                 (((CTV $gp $gn) (CTV $ep $en))
+                  (if (mm2-tv-close $got $expected)
+                    (mm2-test-close (inexact $expected) (got $got))
+                    (mm2-test-FAIL (expected $expected) (got $got))))
+                 ($other (mm2-test-FAIL (expected $expected) (got $got)))))))
+          ($_log (mm2-log-line $verdict)))
+     $verdict))
+
 ; Prior-aware inheritance base rates use PeTTaChainer's late-bound
 ; ConceptNodePriorRuntime at refresh time, while exposing the same packed
 ; (base-rate $pattern ($s $c)) relation consumed by the MM2 runtime.

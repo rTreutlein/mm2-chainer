@@ -465,8 +465,9 @@ Latest corpus snapshot after this adjustment:
    point-mass `AverageDist`, product-distribution `Map2Dist *`, guarded
    distribution pair summing, generated `DistGreaterThanFormula`
    assertions for rectangle area / point-mass average height, multi-pair
-   `AverageDist` convolution, and query-materialize marker coverage):
-   pass=107 close=14 fail=0 unsupported-ir=0 skipped=70 flagged-files=0,
+   `AverageDist` convolution, query-materialize marker coverage, and
+   cached base-rate readback checks):
+   pass=111 close=15 fail=0 unsupported-ir=0 skipped=65 flagged-files=0,
    wall time about 34 s.  The hand harness is separate and currently reports
    `HARNESS: 9 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
@@ -481,9 +482,16 @@ Latest corpus snapshot after this adjustment:
    exposure even when internal MM2 facts remain in `&mork`. The generated
    `test_query_materialize` file now covers empty pre-materialization checks,
    the materializing query result, and post-materialization B/Goal presence.
-4. STV-rule inversion materialization still needs the fold recursion guard
+4. **Base-rate cache readback**:
+   The harness exposes `mm2-cached-base-rate` over MM2's maintained
+   `base-rate` relation, treating the `(0.0 0.0)` support seed as
+   `no-cache-entry`. Generated `test_base_rate_cache` now covers all cache
+   assertions; the weak computed-cache refinement is a `close` result because
+   mm2's chunked wave execution can let the newly derived premise nudge the
+   maintained base rate before the assertion reads it.
+5. STV-rule inversion materialization still needs the fold recursion guard
    (see above).
-5. Converter gaps: `!(test (let ...))` forms and non-query test forms
+6. Converter gaps: `!(test (let ...))` forms and non-query test forms
    (set-base-rate, forward-chain, chainer-internal APIs) are passed through
    and surface as unsupported markers / unreduced terms.
    Distributional fact terms now export PeTTa `ParticleDist` pairs as
@@ -497,7 +505,7 @@ Latest corpus snapshot after this adjustment:
    Converted `DistGreaterThanFormula` assertions now cover rectangle-area
    product distributions plus point-mass and multi-pair average-height
    distributions.
-6. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
+7. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
    `(AtTime $x $t),(AtTime $y $t) -> (AtTime (And $x $y) $t)`) derives only
@@ -509,7 +517,7 @@ Latest corpus snapshot after this adjustment:
    again. If this regresses later, the likely fix is bounded premise matching
    (head-style sink on wait-premise instantiation) or PeTTa-style expansion
    accounting.
-7. petta facts: bang results print only at process exit (main.pl collects
+8. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 

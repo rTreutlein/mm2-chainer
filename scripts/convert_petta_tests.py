@@ -164,6 +164,10 @@ def convert_test(expr):
             ["not", ["==", ["mm2-materialized-list", kb, typ], []]],
             rename_calls(expected),
         ]
+    cached_base_rate = cached_base_rate_test(queryish)
+    if cached_base_rate is not None:
+        kb, pat = cached_base_rate
+        return ["mm2-test-cached-base-rate", kb, pat, rename_calls(expected)]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
@@ -210,6 +214,25 @@ def materialized_present_test(queryish):
     if head(eq) != "==" or len(eq) != 3 or eq[2] != []:
         return None
     return materialized_match(eq[1])
+
+
+def cached_base_rate_test(queryish):
+    if head(queryish) != "let" or len(queryish) != 4:
+        return None
+    var, cached, body = queryish[1], queryish[2], queryish[3]
+    if head(cached) != "cached-base-rate" or len(cached) != 3:
+        return None
+    if head(body) != "if" or len(body) != 4:
+        return None
+    cond = body[1]
+    if head(cond) != "==" or len(cond) != 3 or cond[1] != var or cond[2] != []:
+        return None
+    if body[2] != "no-cache-entry":
+        return None
+    fallback = body[3]
+    if head(fallback) != "car-atom" or len(fallback) != 2 or fallback[1] != var:
+        return None
+    return rename_calls(cached[1]), rename_calls(cached[2])
 
 
 def convert_import(expr):
