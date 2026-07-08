@@ -15,6 +15,12 @@
 !(mm2-test-query 20 nAryKb (: $prf (And A B C) $tv)
                  ((: $_ (And A B C) (STV 1.0 0.999700089898053))))
 
+; PLN Or All adapter: both children are required, then folded with OrFormula.
+!(mm2-compileadd orAllKb (: oa OA (STV 0.7 0.8)))
+!(mm2-compileadd orAllKb (: ob OB (STV 0.5 0.9)))
+!(mm2-test-query 20 orAllKb (: $prf (Or OA OB) $tv)
+                 ((: $_ (Or OA OB) (STV 0.85 0.8908311399639481))))
+
 ; test_implication_inversion.metta
 !(mm2-compileadd invKb (: r (Implication (Premises (P $x)) (Conclusions (Q $x))) (CTV (STV 0.8 0.9) (STV 0.1 0.9))))
 !(mm2-compileadd invKb (: qa (Q alice) (STV 0.9 0.8)))

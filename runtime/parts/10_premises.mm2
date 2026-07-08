@@ -435,6 +435,62 @@
                        (f64_from_string $prem-s)
                        (f64_from_string $prem-c))))))))
 
+; OrFormula premise fold.  Its confidence is the same propagated product
+; variance as AndFormula over complemented strengths, converted back at the
+; Or strength point.
+(exec-template
+  (exec 4
+        (, (wait-premises-or $g identity pnil ($agg-s $agg-c) $proof-id $evset))
+        (O (- (wait-premises-or $g identity pnil ($agg-s $agg-c) $proof-id $evset))
+           (+ (open-proof $g ($agg-s $agg-c) $proof-id $evset)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises-or $g $final-kind (pcons $prem $rest) $agg-stv $proof-id $evset))
+        (O (- (wait-premises-or $g $final-kind (pcons $prem $rest) $agg-stv $proof-id $evset))
+           (+ (wait-premise-or $g $final-kind $prem $rest $agg-stv $proof-id $evset))
+           (+ (, (Goal $prem))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premise-or $g $final-kind $prem $rest no-stv $proof-id $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premise-or $g $final-kind $prem $rest no-stv $proof-id $evset))
+           (+ (wait-premises-or
+                $g
+                $final-kind
+                $rest
+                ($prem-s $prem-c)
+                $proof-id
+                (pcons (fact-ev $prem) $evset))))))
+
+(exec-template
+  (exec 4
+        (, (wait-premise-or $g $final-kind $prem $rest ($agg-s $agg-c) $proof-id $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premise-or $g $final-kind $prem $rest ($agg-s $agg-c) $proof-id $evset))
+           (pure (wait-premises-or
+                   $g
+                   $final-kind
+                   $rest
+                   $next-agg-stv
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $next-agg-stv
+                 (tuple
+                   (f64_to_string
+                     (sub_f64
+                       (f64_from_string 1.0)
+                       (product_f64
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $agg-s))
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $prem-s)))))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $agg-s))
+                       (f64_from_string $agg-c)
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $prem-s))
+                       (f64_from_string $prem-c))))))))
+
 ; Projection rules: the compound head premise's TV is captured into the
 ; rule-TV slot, then the remaining element premises run through the generic
 ; premise machinery (seed + AndFormula fold) to produce the evidence TV.

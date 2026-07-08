@@ -151,3 +151,16 @@
                 $premises
                 no-stv
                 (adapterN $g $premises))))))
+
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (adapterOrN $g $premises))
+        (O (- (, (Goal $g)))
+           (+ (wait-premises-or
+                $g
+                identity
+                $premises
+                no-stv
+                (adapterOrN $g $premises)
+                pnil)))))

@@ -12,6 +12,7 @@
 ; recognized chains map onto the mm2 runtime's rule kinds:
 ;
 ;   [subgoals] AndFormula*                                        -> adapterN
+;   [subgoals] OrFormula*                                         -> adapterOrN
 ;   [subgoals] AndFormula* (MP $agg (CTV ..))                     -> ruleN ctv
 ;   [subgoal]  Compute + [subgoal] AndFormula* MP                 -> ruleN compute-plus-ctv
 ;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> ruleN not-ctv
@@ -23,6 +24,7 @@
 ;   [TotalEvidence helpers]                                       -> total evidence
 ;   [compound other*] AndFormula* (AndProjection ..)              -> ruleN (proj and)
 ;   [compound other]  (OrProjection ..)                           -> ruleN (proj or)
+;   [compound other*] OrFormula* (OrProjection ..)                 -> redundant scaffold
 ;   [compound] (AndMarginalProjection ..)                         -> ruleN (proj marg)
 ;
 ; Anything else translates to a loud (notsupported-ir ...) atom: the corpus
@@ -241,6 +243,8 @@
        (if (== $not $not2)
          (not-first-kind $agg)
          (unsupported-tail $tail)))
+      ((cons (cpu OrFormula ($lhs $rhs) $or-out) $rest)
+       (mm2-ir-classify-or-tail $or-out $rest $tail))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
        (ctvn-kind ($ps $pc) ($ns $nc)))
@@ -289,6 +293,17 @@
                         $tail))
       ($other (unsupported-tail $other)))))
 
+(= (mm2-ir-classify-or-tail $or-out $rest $tail)
+   (case $rest
+     ((() adapter-or-kind)
+      ((cons (cpu OrFormula ($lhs $rhs) $next-out) $next-rest)
+       (mm2-ir-classify-or-tail $next-out $next-rest $tail))
+      ((cons (cpu OrProjection ($tvin $ev) $out) ())
+       (if (== $or-out $ev)
+         ignore-kind
+         (unsupported-tail $tail)))
+      ($other (unsupported-tail $tail)))))
+
 ; Total-implication rules assemble their conclusion TV structurally as
 ; (CTV $pos-tv $neg-tv) from the two context conclusions' TVs -- there is no
 ; CPU item, so they classify as identity; the CTV-shaped conclusion TV (a
@@ -336,6 +351,12 @@
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes identity)
    (adapterN $ctype $ptypes))
+
+(= (mm2-ir-emit-rule $_rid $ctype $ptypes adapter-or-kind)
+   (adapterOrN $ctype $ptypes))
+
+(= (mm2-ir-emit-rule $_rid $_ctype $_ptypes ignore-kind)
+   (empty))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (proj-kind $op))
    (ruleN $ctype (proj $op $rid) $ptypes))
