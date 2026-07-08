@@ -1288,6 +1288,22 @@
 (= (mm2-dist-pairs (ParticleDist $pid $_scale))
    (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))
 
+(= (mm2-export-dist-pairs $_pid ()) ())
+(= (mm2-export-dist-pairs $pid (cons ($x $w) $rest))
+   (let $_add (add-atom &mork (dist-pair $pid $x $w))
+     (mm2-export-dist-pairs $pid $rest)))
+
+(= (mm2-export-dist $dist)
+   (case $dist
+     (((ParticleDist $pid $_scale)
+       (mm2-export-dist-pairs $pid (ParticlePairs $dist)))
+      ($_other ()))))
+
+(= (mm2-test-ParticlePairs $dist $expected)
+   (let* (($_export (mm2-export-dist $dist))
+          ($pairs (mm2-dist-pairs $dist)))
+     (mm2-test-equal $pairs $expected)))
+
 (= (mm2-dist-pairs-stats ()) (Stats 0.0 0.0 0))
 (= (mm2-dist-pairs-stats (cons ($_x $w) $tail))
    (let (Stats $sum $sumsq $count) (mm2-dist-pairs-stats $tail)
@@ -1320,6 +1336,10 @@
    (let $pairs (mm2-dist-pairs $dist)
      (STV (mm2-dist-prob-gt $pairs $threshold)
           (mm2-dist-confidence $pairs))))
+
+(= (mm2-test-DistGreaterThanFormula $dist $threshold $expected)
+   (let $_export (mm2-export-dist $dist)
+     (mm2-test-tv-value (mm2-DistGreaterThanFormula $dist $threshold) $expected)))
 
 (= (mm2-last-list-item (cons $x ())) $x)
 (= (mm2-last-list-item (cons $_x $rest)) (mm2-last-list-item $rest))

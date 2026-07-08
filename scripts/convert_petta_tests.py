@@ -16,9 +16,9 @@ wrapped, an existing list is kept. Constructs the harness doesn't know
 (fc, chainer internals, ...) are passed through unchanged so they surface as
 unreduced terms in the run report — that's the gap list.
 
-Files whose tests are entirely out of scope (forward chainer, distribution /
-particle values) are skipped; query-oriented tests are generated even when
-they also have older hand-written harness coverage.
+Files whose tests are entirely out of scope are skipped; query-oriented tests
+are generated even when they also have older hand-written harness coverage.
+Some distribution files are generated as documented direct-helper subsets.
 """
 
 import re
@@ -33,10 +33,13 @@ HARNESS = "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer"
 SKIP_FILES = {
     "test.metta",                     # top-level umbrella, not a query test file
     "test_forward_chainer.metta",     # forward chaining out of scope
-    "test_distribution_values.metta", # distributional values out of scope
-    "test_particle_values.metta",     # particle distributions out of scope
     "test_numeric_pattern_dist.metta",# distributional values out of scope
     "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
+}
+
+PARTIAL_DIRECT_DIST_FILES = {
+    "test_distribution_values.metta",
+    "test_particle_values.metta",
 }
 
 def tokenize(text):
@@ -205,6 +208,28 @@ def convert_test(expr):
             rename_calls(queryish[3]),
             rename_calls(expected),
         ]
+    if head(queryish) == "ParticlePairs" and len(queryish) == 2:
+        return [
+            "mm2-test-ParticlePairs",
+            rename_calls(queryish[1]),
+            rename_calls(expected),
+        ]
+    if head(queryish) == "DistGreaterThanFormula" and len(queryish) == 3:
+        return [
+            "mm2-test-DistGreaterThanFormula",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(expected),
+        ]
+    if head(queryish) == "let*" and len(queryish) == 3:
+        body = queryish[2]
+        if head(body) == "DistGreaterThanFormula" and len(body) == 3:
+            return [
+                "mm2-test-DistGreaterThanFormula",
+                ["let*", rename_calls(queryish[1]), rename_calls(body[1])],
+                rename_calls(body[2]),
+                rename_calls(expected),
+            ]
     query_tv = query_tv_test(queryish, expected)
     if query_tv is not None:
         return query_tv
@@ -596,8 +621,14 @@ def convert_file(path):
         f"!(import! &self {HARNESS})",
         "!(mm2-init)",
     ]
+    direct_dist_only = path.name in PARTIAL_DIRECT_DIST_FILES
+    if direct_dist_only:
+        out.insert(1, "; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet")
     unsupported = 0
     for kind, expr in forms:
+        if direct_dist_only and kind == "bang" and head(expr) == "compileadd":
+            out.append("; Remaining source forms start at compileadd/FoldAllValue query coverage and are intentionally omitted here.")
+            break
         if kind == "bang" and head(expr) == "import!":
             converted = convert_import(expr)
             if converted is not None:
@@ -607,6 +638,9 @@ def convert_file(path):
             converted = convert_test(expr)
             if converted is not None:
                 out.append("!" + show(converted))
+                continue
+            if direct_dist_only:
+                out.append("; OMITTED direct distribution helper form: " + show(expr)[:160])
                 continue
             unsupported += 1
             out.append("; UNSUPPORTED test form: " + show(expr)[:160])
