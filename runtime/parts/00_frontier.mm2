@@ -90,6 +90,55 @@
                 pnil))
            (+ (, (Goal $head))))))
 
+; TotalEvidence helper rules need the computed TV substituted into the
+; TotalEvidence term itself. They otherwise use the ordinary premise fold.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g $rule-id (total-evidence-case $case) $premises))
+        (O (- (, (Goal $g)))
+           (+ (wait-premises
+                $g
+                (total-evidence-case $case)
+                $premises
+                no-stv
+                (scheduledN $g (total-evidence-case $case) $premises)
+                (pcons (rule-ev $rule-id) pnil))))))
+
+; Rules whose first premise is negated and then conjoined with the remaining
+; premises. The first premise is handled specially, then the standard
+; wait-premises machinery continues with the negated TV as the aggregate.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g $rule-id (not-first $final-kind) (pcons $prem $rest)))
+        (O (- (, (Goal $g)))
+           (+ (wait-premise-not
+                $g
+                $final-kind
+                $prem
+                $rest
+                (scheduledN $g (not-first $final-kind) (pcons $prem $rest))
+                (pcons (rule-ev $rule-id) pnil)))
+           (+ (, (Goal $prem))))))
+
+; TotalEvidence aggregate rules bind their antecedent first; only then is the
+; FoldAll evidence pattern concrete enough to open as a goal.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN $g $rule-id (total-evidence-ctv $p1 $p2 $fold-scope) (pcons $prem pnil)))
+        (O (- (, (Goal $g)))
+           (+ (wait-total-evidence
+                $g
+                (scheduledN $g (total-evidence-ctv $p1 $p2 $fold-scope) (pcons $prem pnil))
+                $prem
+                $p1
+                $p2
+                $fold-scope
+                (pcons (rule-ev $rule-id) pnil)))
+           (+ (, (Goal $prem))))))
+
 ; Adapter rules derive a compound goal directly from its premise list.  They use
 ; the premise aggregate TV as the proof TV instead of applying an extra rule TV.
 (exec-template

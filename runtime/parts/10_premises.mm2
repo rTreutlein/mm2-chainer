@@ -119,6 +119,114 @@
         (O (- (wait-premises $g identity pnil $agg-stv $proof-id $evset))
            (+ (open-proof $g $agg-stv $proof-id $evset)))))
 
+; TotalEvidence case helpers store the computed TV in the evidence term as well
+; as in the fact value, matching the FoldAll extract-value pattern.
+(exec-template
+  (exec 4
+        (, (wait-premises
+             ((kb $ctx $vars) (TotalEvidence $case $p1 $p2 $x $case-tv))
+             (total-evidence-case $case)
+             pnil
+             ($case-s $case-c)
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                ((kb $ctx $vars) (TotalEvidence $case $p1 $p2 $x $case-tv))
+                (total-evidence-case $case)
+                pnil
+                ($case-s $case-c)
+                $proof-id
+                $evset))
+           (+ (open-proof
+	                ((kb $ctx $vars) (TotalEvidence $case $p1 $p2 $x ($case-s $case-c)))
+	                ($case-s $case-c)
+	                $proof-id
+	                $evset)))))
+
+; First-premise NotFormula support. After complementing the first premise TV,
+; continue with the normal AndFormula premise fold over the remaining premises.
+(exec-template
+  (exec 4
+        (, (wait-premise-not $g $rule-stv $prem $rest $proof-id $evset)
+           (fact $prem ($prem-s $prem-c)))
+        (O (- (wait-premise-not $g $rule-stv $prem $rest $proof-id $evset))
+           (pure (wait-premises
+                   $g
+                   $rule-stv
+                   $rest
+                   ($not-s $prem-c)
+                   $proof-id
+                   (pcons (fact-ev $prem) $evset))
+                 $not-s
+                 (f64_to_string
+                   (sub_f64 (f64_from_string 1.0) (f64_from_string $prem-s)))))))
+
+; Once the antecedent of a TotalEvidence aggregate is known, open the FoldAll
+; evidence pattern and stream every matching evidence case into the aggregate
+; sink.
+(exec-template
+  (exec 4
+        (, (wait-total-evidence
+             $g
+             $proof-id
+             $prem
+             $p1
+             $p2
+             $fold-scope
+             $evset)
+           (fact $prem ($ante-s $ante-c)))
+        (O (- (wait-total-evidence
+                $g
+                $proof-id
+                $prem
+                $p1
+                $p2
+                $fold-scope
+                $evset))
+           (+ (total-evidence-active
+                $g
+                $proof-id
+                ($ante-s $ante-c)
+                $p1
+                $p2
+                $fold-scope
+                (pcons (fact-ev $prem) $evset)))
+           (+ (, (Goal ($fold-scope (TotalEvidence $case $p1 $p2 $x $case-tv))))))))
+
+(exec-template
+  (exec 2
+        (, (total-evidence-active
+             $g
+             $proof-id
+             $ante-stv
+             $p1
+             $p2
+             (kb $fold-ctx $fold-vars)
+             $ante-evset)
+           (fact
+             ((kb $fold-ctx $fold-vars) (TotalEvidence $case $p1 $p2 $x ($case-s $case-c)))
+             ($case-s $case-c))
+           (fact-evidence
+             ((kb $fold-ctx $fold-vars) (TotalEvidence $case $p1 $p2 $x ($case-s $case-c)))
+             ($case-s $case-c)
+             $case-evset)
+           (proved
+             ((kb $fold-ctx $fold-vars) (TotalEvidence $case $p1 $p2 $x ($case-s $case-c)))
+             ($case-s $case-c)
+             $case-proof-id
+             $case-evset))
+        (O (total-evidence-mp
+             $g
+             $proof-id
+             $ante-stv
+             $p1
+             $p2
+             $case
+             ($case-s $case-c)
+             $case-proof-id
+             $case-evset
+             $ante-evset))))
+
 ; Query-compound Compute + pseudo-premise. PeTTa counts the CPU result as
 ; certain evidence, but the arithmetic output must constrain the following
 ; real premise. Keep a special rule state after the first premise so the

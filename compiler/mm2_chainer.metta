@@ -98,6 +98,12 @@
 (= (mm2-compileadd $kb $stmt)
    (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
 
+; Some PeTTaChainer tests add already-compiled rule IR directly with
+; add-to-kb. Route those generated harness calls through the MM2 translator
+; without shadowing PeTTaChainer's own add-to-kb, which compileadd still uses.
+(= (mm2-add-to-kb $stmt)
+   (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
+
 ; Remove exact atoms produced by a MORK match. Calling remove-atom with a
 ; variable pattern would remove nothing, so cleanup first materializes the
 ; matching atoms and then removes those exact terms.
@@ -176,19 +182,22 @@
                   (mm2-run-compiled-queries $kb $rest)))
 
 (= (mm2-cleanup-goal $g)
-     (let $_goal (mm2-remove-matches (, (Goal $g)))
-     (let $_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises))
-       (let $_pending-named (mm2-remove-matches (pendingN $priority2 $g $rule-stv2 $premises2 $pending-evset))
-         (let $_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset))
-           (let $_pool-waits (mm2-remove-matches (wait-premises-pool $g $pool-rest $pool-state $pool-proof-id))
-             (let $_wait (mm2-remove-matches (wait-premise $g $rule-stv $prem $rest $agg $proof-id $evset))
-               (let $_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2))
-                 (let $_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result))
-                   (let $_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset))
-                     (let $_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset))
-                       (let $_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset))
-                         (let $_inv (mm2-remove-matches (inv-checked $verdict2 $g $proof-id $evset))
-                           cleaned)))))))))))))
+   (let* (($_goal (mm2-remove-matches (, (Goal $g))))
+          ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises)))
+          ($_pending-named (mm2-remove-matches (pendingN $priority2 $g $rule-stv2 $premises2 $pending-evset)))
+          ($_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset)))
+          ($_pool-waits (mm2-remove-matches (wait-premises-pool $g $pool-rest $pool-state $pool-proof-id)))
+          ($_wait (mm2-remove-matches (wait-premise $g $rule-stv $prem $rest $agg $proof-id $evset)))
+          ($_not-wait (mm2-remove-matches (wait-premise-not $g $not-rule-stv $not-prem $not-rest $not-proof-id $not-evset)))
+          ($_total-wait (mm2-remove-matches (wait-total-evidence $g $total-proof-id $total-prem $total-p1 $total-p2 $total-pat $total-evset)))
+          ($_total-active (mm2-remove-matches (total-evidence-active $g $total-active-proof $total-ante-stv $total-active-p1 $total-active-p2 $total-active-pat $total-active-evset)))
+          ($_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2)))
+          ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
+          ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
+          ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
+          ($_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset)))
+          ($_inv (mm2-remove-matches (inv-checked $verdict2 $g $proof-id $evset))))
+     cleaned))
 
 (= (mm2-cleanup-query $cq)
    (case $cq

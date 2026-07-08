@@ -19,6 +19,8 @@
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV ..) Inversion MP          -> ruleN inv
 ;   [FoldAll OrFormula] MP                                        -> foldall-or-ctv
+;   [subgoal]  NotFormula AndFormula                              -> not-first
+;   [TotalEvidence helpers]                                       -> total evidence
 ;   [compound other*] AndFormula* (AndProjection ..)              -> ruleN (proj and)
 ;   [compound other]  (OrProjection ..)                           -> ruleN (proj or)
 ;   [compound] (AndMarginalProjection ..)                         -> ruleN (proj marg)
@@ -121,6 +123,27 @@
        (let $skb (mm2-ir-scope-kb $kbid) (fold-or ($skb $pat) $out)))
       ($other unsupported-foldall))))
 
+(= (mm2-ir-foldall-total-evidence $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled
+        ($kbid
+         (TotalEvidence $case $p1 $p2 $x $case-tv)
+         (extract-value
+           (TotalEvidence $case $p1 $p2 $x $case-tv)
+           (EvidenceCase $case $case-tv))
+         (TotalEvidenceTvs none none)
+         TotalEvidenceAcc
+         identity
+         result-tv)
+        $out)
+       (let $skb (mm2-ir-scope-kb $kbid)
+         (fold-total-evidence
+           $skb
+           $p1
+           $p2
+           $out)))
+      ($other unsupported-foldall))))
+
 (= (mm2-ir-stv-kind $pos $fa $fb $tail)
    (case ($fa $fb)
      ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
@@ -159,9 +182,24 @@
        (if (and (== $not $not2) (== $agg $agg2))
          (not-and-ctv-kind ($ps $pc) ($ns $nc))
          (unsupported-tail $tail)))
+      ((cons (cpu NotFormula ($tvin) $not)
+         (cons (cpu AndFormula ($not2 $other) $agg) ()))
+       (if (== $not $not2)
+         (not-first-kind $agg)
+         (unsupported-tail $tail)))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
        (ctvn-kind ($ps $pc) ($ns $nc)))
+      ((cons (cpu NotEqual ($p1 $p2) true)
+         (cons $fold
+           (cons (cpu TotalEvidenceCTVModusPonensFormula ($atv $evidence-tvs) $out) ())))
+       (case (mm2-ir-foldall-total-evidence $fold)
+         (((fold-total-evidence $fold-scope $fp1 $fp2 $fold-out)
+           (if (and (=alpha $fold-out $evidence-tvs)
+                    (and (=alpha $p1 $fp1) (=alpha $p2 $fp2)))
+             (total-evidence-ctv-kind $p1 $p2 $fold-scope)
+             (unsupported-tail $tail)))
+          ($other (unsupported-tail $tail)))))
       ((cons $fold
          (cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (case (mm2-ir-foldall-or $fold)
@@ -202,12 +240,36 @@
 ; CPU item, so they classify as identity; the CTV-shaped conclusion TV (a
 ; bound expression, never a free result var) distinguishes them from adapter
 ; chains.
-(= (mm2-ir-refine-kind $kind $ctv)
-   (if (and (== $kind identity) (is-expr $ctv))
-     (case $ctv
-       (((CTV $pos $neg) (proj-kind ctvpair))
-        ($other $kind)))
-     $kind))
+(= (mm2-ir-refine-total-evidence-kind $kind $case $case-tv $ctv)
+   (case $kind
+     ((identity
+       (if (== $case-tv $ctv)
+         (total-evidence-case $case)
+         $kind))
+      ((not-first-kind $agg)
+       (if (and (== $case-tv $ctv) (== $agg $ctv))
+         (not-first-kind (total-evidence-case $case))
+         (unsupported-tail (total-evidence-tv $case-tv $ctv $agg))))
+      ($other $kind))))
+
+(= (mm2-ir-refine-kind $kind $ctype $ctv)
+   (case $ctype
+     ((($scope (TotalEvidence pos $p1 $p2 $x $case-tv))
+       (mm2-ir-refine-total-evidence-kind $kind pos $case-tv $ctv))
+      (($scope (TotalEvidence neg $p1 $p2 $x $case-tv))
+       (mm2-ir-refine-total-evidence-kind $kind neg $case-tv $ctv))
+      ($other
+       (case $kind
+         (((not-first-kind $agg)
+           (if (== $agg $ctv)
+             (not-first-kind identity)
+             (unsupported-tail (not-first-tv $agg $ctv))))
+          ($k2
+           (if (and (== $k2 identity) (is-expr $ctv))
+             (case $ctv
+               (((CTV $pos $neg) (proj-kind ctvpair))
+                ($other2 $k2)))
+             $k2))))))))
 
 (= (mm2-ir-rule-pos (CTV (STV $ps $pc) $neg)) ($ps $pc))
 (= (mm2-ir-rule-pos (STV $s $c)) ($s $c))
@@ -249,6 +311,20 @@
    (case $ptypes
      ((pnil (foldall-or-ctv $ctype $rid $pos $neg $pat))
       ($other (notsupported-ir (foldall-or-with-premises $ctype $ptypes))))))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (total-evidence-case $case))
+   (ruleN $ctype $rid (total-evidence-case $case) $ptypes))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (not-first-kind $final-kind))
+   (case $ptypes
+     (((pcons $prem $rest) (ruleN $ctype $rid (not-first $final-kind) $ptypes))
+      ($other (notsupported-ir (not-first-without-premise $ctype $ptypes))))))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (total-evidence-ctv-kind $p1 $p2 $fold-scope))
+   (case $ptypes
+     (((pcons $prem pnil)
+       (ruleN $ctype $rid (total-evidence-ctv $p1 $p2 $fold-scope) $ptypes))
+      ($other (notsupported-ir (total-evidence-ctv-premises $ctype $ptypes))))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (fold-sum-kind $pat $value $out))
    (case $ptypes
@@ -360,6 +436,7 @@
               ((subgoal $ctype $ctv $cprf) (mm2-ir-item $ccl))
               ($kind (mm2-ir-refine-kind
                        (mm2-ir-classify (mm2-ir-drop-and $cpus))
+                       $ctype
                        $ctv)))
          (superpose ((mm2-ir-emit-rule $cprf $ctype $ptypes $kind)
                      (mm2-ir-implication-queries $ptypes)))))

@@ -5,6 +5,7 @@ Mechanical rewrite:
   !(import! &self petta_chainer)        -> harness import + !(mm2-init)
   !(import! &self logic_configs/...)    -> absolute PeTTaChainer import
   (compileadd kb stmt)                  -> (mm2-compileadd kb stmt)
+  (add-to-kb (rules ...))               -> (mm2-add-to-kb (rules ...))
   (set-base-rate ...)/(clear-base-rate ...)
                                          -> (mm2-set-base-rate ...), etc.
   !(test (query N kb pat) expected)     -> !(mm2-test-query N kb pat <list>)
@@ -121,6 +122,8 @@ def rename_calls(e):
     e = [rename_calls(x) for x in e]
     if head(e) == "compileadd":
         e[0] = "mm2-compileadd"
+    elif head(e) == "add-to-kb":
+        e[0] = "mm2-add-to-kb"
     elif head(e) == "query":
         e[0] = "mm2-query"
     elif head(e) == "set-base-rate":
