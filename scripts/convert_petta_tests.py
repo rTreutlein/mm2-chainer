@@ -171,6 +171,28 @@ def convert_test(expr):
     dist_gt = dist_greater_than_test(queryish, expected)
     if dist_gt is not None:
         return dist_gt
+    if head(queryish) == "CTVModusPonensFormula" and len(queryish) == 3:
+        return [
+            "mm2-test-CTVModusPonensFormula",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(expected),
+        ]
+    if head(queryish) in {"AndFormula", "OrFormula"} and len(queryish) == 3:
+        return [
+            "mm2-test-" + head(queryish),
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(expected),
+        ]
+    if head(queryish) == "CTVInversionFormula" and len(queryish) == 4:
+        return [
+            "mm2-test-CTVInversionFormula",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(queryish[3]),
+            rename_calls(expected),
+        ]
     query_tv = query_tv_test(queryish, expected)
     if query_tv is not None:
         return query_tv

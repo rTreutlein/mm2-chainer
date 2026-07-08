@@ -44,10 +44,9 @@
 ; PeTTa-style step budget so small budgets still cover whole rounds.
 (= (mm2-steps-per-round) 20)
 
-; The runtime currently has 55 exec templates. Positive expected tests use a
-; wider cap and stop as soon as the expected result is seen; empty-result
-; checks keep the narrower query cap above so they do not become broader
-; absence claims.
+; Positive expected tests use a wider cap and stop as soon as the expected
+; result is seen; empty-result checks keep the narrower query cap above so
+; they do not become broader absence claims.
 (= (mm2-test-steps-per-round) 55)
 
 ; Expected-aware tests run MORK in chunks and stop as soon as the expected
@@ -153,6 +152,67 @@
 
 (= (mm2-remove-matches $pattern)
    (mm2-remove-atoms (collapse (match &mork $pattern $pattern))))
+
+(= (mm2-formula-runtime-path)
+   "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/runtime/formula_eval.mm2")
+
+(= (mm2-ensure-formula-runtime)
+   (let $seen (collapse (match &mork mm2-formula-runtime-loaded true))
+     (if (== $seen ())
+       (let* (($_load (mork-load-file (mm2-formula-runtime-path)))
+              ($_mark (add-atom &mork mm2-formula-runtime-loaded)))
+         loaded)
+       loaded)))
+
+(= (mm2-formula-packed-stv ($s $c)) (STV $s $c))
+
+(= (mm2-formula-packed-inversion ($flag $ps $pc $ns $nc))
+   (if (== $flag 1.0)
+     (CTV (STV $ps $pc) (STV $ns $nc))
+     ()))
+
+(= (mm2-clear-formula-probe $key)
+   (let* (($_old-eval (mm2-remove-matches (formula-eval $key $pending)))
+          ($_old-stv (mm2-remove-matches (formula-result-stv $key $stv)))
+          ($_old-inv (mm2-remove-matches (formula-result-inversion $key $packed))))
+     ()))
+
+(= (mm2-formula-probe-result $key)
+   (let* (($_run (mm2-exec &mork 500))
+          ($stvs (collapse (match &mork (formula-result-stv $key $stv) $stv))))
+     (case $stvs
+       (((cons $stv $_rest) (mm2-formula-packed-stv $stv))
+        (() (case (collapse (match &mork (formula-result-inversion $key $packed) $packed))
+              (((cons $packed $_more) (mm2-formula-packed-inversion $packed))
+               (() no-result))))))))
+
+(= (mm2-formula-mp $prem $ctv)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (CTVModusPonensFormula $prem $ctv)))))
+     (mm2-formula-probe-result $key)))
+
+(= (mm2-formula-and $a $b)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (AndFormula $a $b)))))
+     (mm2-formula-probe-result $key)))
+
+(= (mm2-formula-or $a $b)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (OrFormula $a $b)))))
+     (mm2-formula-probe-result $key)))
+
+(= (mm2-formula-inversion $a $b $ctv)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (CTVInversionFormula $a $b $ctv)))))
+     (mm2-formula-probe-result $key)))
 
 ; Base-rate cache operations used by PeTTaChainer tests. These intentionally
 ; target the MM2 runtime state, not PeTTa's separate &base_rate_cache space.
@@ -768,6 +828,35 @@
                       (mm2-test-FAIL (expected $expected) (got $got))))
           ($_log (mm2-log-line $verdict)))
      $verdict))
+
+(= (mm2-test-tv-value $got $expected)
+   (let* (($verdict
+            (if (== $got $expected)
+              (mm2-test-pass $expected)
+              (case ($got $expected)
+                ((((STV $gs $gc) (STV $es $ec))
+                  (if (mm2-tv-close $got $expected)
+                    (mm2-test-close (inexact $expected) (got $got))
+                    (mm2-test-FAIL (expected $expected) (got $got))))
+                 (((CTV $gp $gn) (CTV $ep $en))
+                  (if (mm2-tv-close $got $expected)
+                    (mm2-test-close (inexact $expected) (got $got))
+                    (mm2-test-FAIL (expected $expected) (got $got))))
+                 ($other (mm2-test-FAIL (expected $expected) (got $got)))))))
+          ($_log (mm2-log-line $verdict)))
+     $verdict))
+
+(= (mm2-test-CTVModusPonensFormula $prem $ctv $expected)
+   (mm2-test-tv-value (mm2-formula-mp $prem $ctv) $expected))
+
+(= (mm2-test-AndFormula $a $b $expected)
+   (mm2-test-tv-value (mm2-formula-and $a $b) $expected))
+
+(= (mm2-test-OrFormula $a $b $expected)
+   (mm2-test-tv-value (mm2-formula-or $a $b) $expected))
+
+(= (mm2-test-CTVInversionFormula $a $b $ctv $expected)
+   (mm2-test-tv-value (mm2-formula-inversion $a $b $ctv) $expected))
 
 (= (mm2-dist-pairs (ParticleDist $pid $_scale))
    (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))

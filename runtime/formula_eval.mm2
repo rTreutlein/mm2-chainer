@@ -1,0 +1,103 @@
+; Harness-only direct formula probes. Query/runtime rules use the same native
+; functions below; these atoms make formula-level PeTTaChainer tests exercise
+; the MM2 math path without compiling a synthetic rule.
+
+(exec-template
+  (exec 4
+        (, (formula-eval $key (CTVModusPonensFormula (STV $as $ac) (CTV (STV $ps $pc) (STV $ns $nc)))))
+        (O (- (formula-eval $key (CTVModusPonensFormula (STV $as $ac) (CTV (STV $ps $pc) (STV $ns $nc)))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (f64_from_string $as)
+                       (f64_from_string $ps)
+                       (f64_from_string $ns)))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (f64_from_string $as)
+                       (f64_from_string $ac)
+                       (f64_from_string $ps)
+                       (f64_from_string $pc)
+                       (f64_from_string $ns)
+                       (f64_from_string $nc))))))))
+
+(exec-template
+  (exec 4
+        (, (formula-eval $key (AndFormula (STV $s1 $c1) (STV $s2 $c2))))
+        (O (- (formula-eval $key (AndFormula (STV $s1 $c1) (STV $s2 $c2))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string
+                     (product_f64
+                       (f64_from_string $s1)
+                       (f64_from_string $s2)))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (f64_from_string $s1)
+                       (f64_from_string $c1)
+                       (f64_from_string $s2)
+                       (f64_from_string $c2))))))))
+
+(exec-template
+  (exec 4
+        (, (formula-eval $key (OrFormula (STV $s1 $c1) (STV $s2 $c2))))
+        (O (- (formula-eval $key (OrFormula (STV $s1 $c1) (STV $s2 $c2))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string
+                     (sub_f64
+                       (f64_from_string 1.0)
+                       (product_f64
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $s1))
+                         (sub_f64 (f64_from_string 1.0) (f64_from_string $s2)))))
+                   (f64_to_string
+                     (pln_and_confidence_f64
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $s1))
+                       (f64_from_string $c1)
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $s2))
+                       (f64_from_string $c2))))))))
+
+(exec-template
+  (exec 4
+        (, (formula-eval $key (CTVInversionFormula (STV $sa $ca) (STV $sb $cb) (CTV (STV $sb-a $cb-a) (STV $sb-na $cb-na)))))
+        (O (- (formula-eval $key (CTVInversionFormula (STV $sa $ca) (STV $sb $cb) (CTV (STV $sb-a $cb-a) (STV $sb-na $cb-na)))))
+           (pure (formula-result-inversion $key $packed)
+                 $packed
+                 (tuple
+                   (f64_to_string
+                     (pln_inversion_valid_f64
+                       (f64_from_string $sa)
+                       (f64_from_string $ca)
+                       (f64_from_string $sb)
+                       (f64_from_string $cb)
+                       (f64_from_string $sb-a)))
+                   (f64_to_string
+                     (pln_inv_strength_f64
+                       (f64_from_string $sa)
+                       (f64_from_string $sb)
+                       (f64_from_string $sb-a)))
+                   (f64_to_string
+                     (pln_inv_confidence_f64
+                       (f64_from_string $sa)
+                       (f64_from_string $ca)
+                       (f64_from_string $sb)
+                       (f64_from_string $cb)
+                       (f64_from_string $sb-a)
+                       (f64_from_string $cb-a)))
+                   (f64_to_string
+                     (pln_inv_strength_f64
+                       (f64_from_string $sa)
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb))
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb-a))))
+                   (f64_to_string
+                     (pln_inv_confidence_f64
+                       (f64_from_string $sa)
+                       (f64_from_string $ca)
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb))
+                       (f64_from_string $cb)
+                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb-a))
+                       (f64_from_string $cb-a))))))))
