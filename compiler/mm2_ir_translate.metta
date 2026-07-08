@@ -46,6 +46,10 @@
 (= (mm2-ir-dist-pair-atoms $pid (cons ($x $w) $rest))
    (cons (dist-pair $pid $x $w) (mm2-ir-dist-pair-atoms $pid $rest)))
 
+(= (mm2-ir-dist-point-atoms $term $pid (cons ($x $w) ()))
+   ((dist-point-pair $pid $x $w) (dist-point-dist $term $x $w)))
+(= (mm2-ir-dist-point-atoms $_term $_pid $_pairs) ())
+
 (= (mm2-ir-dist-atoms-list ()) ())
 (= (mm2-ir-dist-atoms-list (cons $term $rest))
    (mm2-ir-append (mm2-ir-dist-atoms $term) (mm2-ir-dist-atoms-list $rest)))
@@ -58,7 +62,10 @@
          (if (and (not (is-var $head)) (== $head ParticleDist))
            (case $term
              (((ParticleDist $pid $_scale)
-               (mm2-ir-dist-pair-atoms $pid (ParticlePairs $term)))))
+               (let $pairs (ParticlePairs $term)
+                 (mm2-ir-append
+                   (mm2-ir-dist-pair-atoms $pid $pairs)
+                   (mm2-ir-dist-point-atoms $term $pid $pairs))))))
            (mm2-ir-dist-atoms-list (cdr-atom $term))))
        ())))
 
@@ -73,6 +80,26 @@
       (($scope ($head $arg1 $arg2 $dist-out)) ($scope ($head $arg1 $arg2 $result-dist)))
       (($scope ($head $arg1 $arg2 $arg3 $dist-out)) ($scope ($head $arg1 $arg2 $arg3 $result-dist)))
       ($other (notsupported-ir (dist-map2-conclusion $ctype $dist-out))))))
+
+(= (mm2-ir-dist-avg-rule-data $ctype $dist-out)
+   (case $ctype
+     ((($scope ($head $dist-out))
+       (dist-avg-rule-data
+         ($scope ($head (ParticleDist (dist-average $scope $head) 1.0)))
+         (dist-average $scope $head)))
+      (($scope ($head $arg1 $dist-out))
+       (dist-avg-rule-data
+         ($scope ($head $arg1 (ParticleDist (dist-average $scope $head $arg1) 1.0)))
+         (dist-average $scope $head $arg1)))
+      (($scope ($head $arg1 $arg2 $dist-out))
+       (dist-avg-rule-data
+         ($scope ($head $arg1 $arg2 (ParticleDist (dist-average $scope $head $arg1 $arg2) 1.0)))
+         (dist-average $scope $head $arg1 $arg2)))
+      (($scope ($head $arg1 $arg2 $arg3 $dist-out))
+       (dist-avg-rule-data
+         ($scope ($head $arg1 $arg2 $arg3 (ParticleDist (dist-average $scope $head $arg1 $arg2 $arg3) 1.0)))
+         (dist-average $scope $head $arg1 $arg2 $arg3)))
+      ($other (notsupported-ir (dist-avg-conclusion $ctype $dist-out))))))
 
 ; --- kb scoping --------------------------------------------------------------
 ; Goal-level terms are scoped by the IR's own kb field: ($kb-triple $term).
@@ -202,6 +229,22 @@
          unsupported-foldall))
       ($other unsupported-foldall))))
 
+(= (mm2-ir-foldall-dist-average $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled
+        ($kbid
+         $pat
+         (extract-value $pat2 $value)
+         (SumCount $_zero 0)
+         DistSumCountAcc
+         dist-average
+         result-tv)
+        $out)
+       (if (== $pat $pat2)
+         (let $skb (mm2-ir-scope-kb $kbid) (fold-dist-average ($skb $pat) $value $out))
+         unsupported-foldall))
+      ($other unsupported-foldall))))
+
 (= (mm2-ir-foldall-or $cpu)
    (case $cpu
      (((cpu FoldAllCompiled ($kbid $pat extract-tv (STV 0.0 1.0) OrFormula identity result-tv) $out)
@@ -268,6 +311,18 @@
                           (and (== $ns 0.0) (== $nc 1.0)))))
          (dist-map2-ctv-kind $fun $lhs $rhs $dist-out ($ps $pc) ($ns $nc))
          (unsupported-tail $tail)))
+      ((cons (cpu FoldAllCompiled $fold-args $fold-out)
+         (cons (cpu AndFormula ($prem-tv (STV 1.0 1.0)) $agg)
+           (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())))
+       (case (mm2-ir-foldall-dist-average (cpu FoldAllCompiled $fold-args $fold-out))
+         (((fold-dist-average $pat $value $dist-out)
+           (if (and (== $agg $agg2)
+                    (and (== $ps 1.0)
+                         (and (== $pc 1.0)
+                              (and (== $ns 0.0) (== $nc 1.0)))))
+             (avg-dist-ctv-kind $pat $value $dist-out ($ps $pc) ($ns $nc))
+             (unsupported-tail $tail)))
+          ($other (unsupported-tail $tail)))))
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (if (== $not $not2)
@@ -440,6 +495,16 @@
        $rid
        (dist-map2-ctv $pos (map2 $fun $lhs $rhs $neg))
        $ptypes)))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (avg-dist-ctv-kind $pat $value $dist-out $pos $neg))
+   (case (mm2-ir-dist-avg-rule-data $ctype $dist-out)
+     (((dist-avg-rule-data $result-ctype $result-pid)
+       (ruleN
+         $result-ctype
+         $rid
+         (avg-dist-ctv $pos (avg $result-pid $pat $value $neg))
+         $ptypes))
+      ($other $other))))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (not-ctv-kind $pos $neg))
    (ruleN $ctype $rid (not-ctv $pos $neg) $ptypes))

@@ -56,6 +56,28 @@
                   (let $_run (mm2-exec &mork 200)
                     (mm2-test-equal (mm2-dist-pairs $out) ((32.0 1))))))))))))
 
+; AverageDist over point masses: this covers the deterministic subset of
+; DistSumCountAcc without claiming full convolution for multi-pair inputs.
+!(let $_g (mm2-compileadd avgPointKb (: group1 (Group g1) (STV 1.0 1.0)))
+   (let $_h1 (mm2-compileadd avgPointKb (: h1 (HeightDist g1 alice (PointMass 160.0)) (STV 1.0 1.0)))
+     (let $_h2 (mm2-compileadd avgPointKb (: h2 (HeightDist g1 bob (PointMass 170.0)) (STV 1.0 1.0)))
+       (let $_h3 (mm2-compileadd avgPointKb (: h3 (HeightDist g1 carol (PointMass 180.0)) (STV 1.0 1.0)))
+         (let $_rule
+           (mm2-compileadd avgPointKb
+             (: avgRule
+                (Implication
+                  (Premises
+                    (Group $g)
+                    (AverageDist (HeightDist $g $person $hdist) $hdist -> $avgDist))
+                  (Conclusions (AvgHeightDist $g $avgDist)))
+                (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
+           (let $out (ParticleDist (dist-average (avgPointKb MAIN Nil) AvgHeightDist g1) 1.0)
+             (let $_q
+               (mm2-test-query 40 avgPointKb (: $prf (AvgHeightDist g1 $avgDist) $tv)
+                 ((: $_ (AvgHeightDist g1 $out) (STV 1.0 1.0))))
+               (let $_run (mm2-exec &mork 400)
+                 (mm2-test-equal (mm2-dist-pairs $out) ((170.0 1.0)))))))))))
+
 ; test_implication_inversion.metta
 !(mm2-compileadd invKb (: r (Implication (Premises (P $x)) (Conclusions (Q $x))) (CTV (STV 0.8 0.9) (STV 0.1 0.9))))
 !(mm2-compileadd invKb (: qa (Q alice) (STV 0.9 0.8)))

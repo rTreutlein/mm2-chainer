@@ -462,10 +462,11 @@ Latest corpus snapshot after this adjustment:
    two-premise And adapter queries, OrFormula adapter lowering,
    redundant Or projection scaffold suppression, and ignoring the
    variable-headed grouped-fold output scaffold emitted by `copyPredicate`):
-   pass=95 close=14 fail=0 unsupported-ir=1 skipped=82 flagged-files=0,
+   pass=95 close=14 fail=0 unsupported-ir=0 skipped=82 flagged-files=0,
    wall time about 43 s.
-   No supported failures remain; remaining gaps are unsupported converter/IR
-   coverage and skipped legacy/non-query harness forms.
+   No supported failures or unsupported IR remain; remaining gaps are skipped
+   legacy/non-query harness forms and distribution semantics not yet exercised
+   by converted tests.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is covered as a close result by readback-level factoring of
@@ -478,8 +479,9 @@ Latest corpus snapshot after this adjustment:
    Distributional fact terms now export PeTTa `ParticleDist` pairs as
    `dist-pair` atoms in the MORK space.  Identity-CTV `Map2Dist *` rules now
    derive deterministic output `ParticleDist` ids and materialize their pairs
-   through `fsum`; the remaining distributional IR gap is `DistSumCountAcc`
-   for `AverageDist`.
+   through `fsum`.  `AverageDist`/`DistSumCountAcc` now has a deterministic
+   point-mass path using `dist-point-dist`, `fsum`, and `count`; full
+   convolution for multi-pair distributions is still future work.
 5. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:

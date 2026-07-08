@@ -19,6 +19,47 @@
              $counts
              $value))))
 
+; Point-mass AverageDist support.  This intentionally consumes only
+; dist-point-dist markers, so multi-pair distributions do not get collapsed to
+; an incorrect deterministic average.
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (avg-dist-ctv (1.0 1.0) (avg $result-pid $pat $value (0.0 1.0)))
+             pnil
+             $agg-stv
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+              $g
+              (avg-dist-ctv (1.0 1.0) (avg $result-pid $pat $value (0.0 1.0)))
+              pnil
+              $agg-stv
+              $proof-id
+              $evset))
+           (+ (avg-dist-active $result-pid $pat $value))
+           (+ (open-proof $g $agg-stv $proof-id $evset)))))
+
+(exec-template
+  (exec 2
+        (, (avg-dist-active $result-pid $pat $value)
+           (fact $pat ($s $c))
+           (dist-point-dist $value $x $w))
+        (O (fsum (avg-dist-sum $result-pid $sum) $sum $x)
+           (count (avg-dist-count $result-pid $count) $count $value))))
+
+(exec-template
+  (exec 2
+        (, (avg-dist-sum $result-pid $sum)
+           (avg-dist-count $result-pid $count))
+        (O (pure (dist-pair $result-pid $avg 1.0)
+                 $avg
+                 (f64_to_string
+                   (div_f64
+                     (f64_from_string $sum)
+                     (f64_from_string $count)))))))
+
 ; Existential-disjunction implication queries compile to a FoldAll over the
 ; matching premise facts with OrFormula, followed by CTVModusPonensFormula.
 ; Consume the canonical fact stream plus its matching proof record so the
