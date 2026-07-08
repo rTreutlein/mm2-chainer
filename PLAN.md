@@ -258,8 +258,9 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
   join — tracked as its own task; the classifier marks these tails
   unsupported for now. Same machinery family as member/inheritance tests
   and probably parts of specializing_rule/uniform_prior.
-- **test_math** now segfaults mork_ffi (SIGSEGV, was TIMEOUT) near the end
-  of the file; verdicts before it survive. Compute-heavy recursion suspect.
+- **test_math** no longer times out/segfaults in the current corpus after the
+  expected-aware query runner and query cleanup work; it is 3 pass / 0 fail /
+  0 unsupported in the latest run.
 - **test_best_first_runtime** fails are agenda-order semantics: expected
   values assume PeTTa's best-first agenda finds specific proofs first under
   budget; mm2's wave execution derives all and revises (same family as
@@ -281,9 +282,14 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
    total-implication queries still need a CTV-assembling rule kind: the
    final rule's conclusion TV is `(CTV $pos-tv $neg-tv)` built structurally
    from the two context conclusions' TVs — no CPU formula — and facts can
-   then carry CTV values), (c) NotFormula chains, (d) remaining MP
-   arrangements, then weighted/grouped folds and member machinery. Rerun
+   then carry CTV values), (c) ~~single-premise NotFormula -> CTV MP~~ done
+   via `not-ctv` (remaining NotFormula+AndFormula chain in
+   `test_query_compute_in_compound`), (d) remaining MP arrangements, then
+   weighted/grouped folds and member machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
+   Current corpus snapshot (2026-07-08, after query cleanup, `not-ctv`, and
+   preserved logic-config imports): pass=65 close=3 fail=45 unsupported=127
+   flagged-files=0, wall time about 54 s.
 2. **Proof-store pooling / evidence semantics** (test_lifting_merge,
    test_evidence_semantics, test_negated_evidence_merge): PeTTa pools
    proofs that share a premise but differ in rules by factoring the shared

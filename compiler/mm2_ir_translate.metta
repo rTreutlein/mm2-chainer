@@ -13,6 +13,7 @@
 ;
 ;   [subgoals] AndFormula*                                        -> adapterN
 ;   [subgoals] AndFormula* (MP $agg (CTV ..))                     -> ruleN ctv
+;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> ruleN not-ctv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV ..) Inversion MP          -> ruleN inv
 ;   [compound other*] AndFormula* (AndProjection ..)              -> ruleN (proj and)
@@ -104,6 +105,11 @@
       ((cons (cpu NotFormula ($tvin) $out) ()) (proj-kind not))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
+      ((cons (cpu NotFormula ($tvin) $not)
+         (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
+       (if (== $not $not2)
+         (not-ctv-kind ($ps $pc) ($ns $nc))
+         (unsupported-tail $tail)))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
        (ctvn-kind ($ps $pc) ($ns $nc)))
@@ -156,6 +162,9 @@
 
 (= (mm2-ir-emit-rule $ctype $ptypes (ctv-kind $pos $neg))
    (ruleN $ctype (ctv $pos $neg) $ptypes))
+
+(= (mm2-ir-emit-rule $ctype $ptypes (not-ctv-kind $pos $neg))
+   (ruleN $ctype (not-ctv $pos $neg) $ptypes))
 
 (= (mm2-ir-emit-rule $ctype $ptypes (ctvn-kind $pos $neg))
    (ruleN $ctype (ctvn $pos $neg) $ptypes))
