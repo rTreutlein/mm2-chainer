@@ -888,8 +888,28 @@
           ($notsup (mm2-run-compiled-queries $kb $cqs)))
      (prepared-query $cqs $notsup)))
 
+(= (mm2-result-row-equivalent? $row $other)
+   (case ($row $other)
+     ((((: $_prf $type $tv) (: $_wprf $wtype $wtv))
+       (=alpha ($type $tv) ($wtype $wtv)))
+      ($_ (== $row $other)))))
+
+(= (mm2-result-row-member? () $_row) false)
+(= (mm2-result-row-member? (cons $x $rest) $row)
+   (if (mm2-result-row-equivalent? $x $row)
+     true
+     (mm2-result-row-member? $rest $row)))
+
+(= (mm2-unique-query-results ()) ())
+(= (mm2-unique-query-results (cons $row $rest))
+   (let $tail (mm2-unique-query-results $rest)
+     (if (mm2-result-row-member? $tail $row)
+       $tail
+       (cons $row $tail))))
+
 (= (mm2-query-results $notsup $cqs)
-   (mm2-ir-append $notsup (mm2-readback-queries $cqs)))
+   (mm2-unique-query-results
+     (mm2-ir-append $notsup (mm2-readback-queries $cqs))))
 
 (= (mm2-total-steps $steps)
    (* $steps (mm2-steps-per-round)))

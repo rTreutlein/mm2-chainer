@@ -605,7 +605,12 @@ Latest corpus snapshot after this adjustment:
    again. If this regresses later, the likely fix is bounded premise matching
    (head-style sink on wait-premise instantiation) or PeTTa-style expansion
    accounting.
-21. petta facts: bang results print only at process exit (main.pl collects
+21. **Query readback result normalization**: `mm2-query-results` now
+   deduplicates rows by alpha-equivalent `(type, tv)` keys before comparison.
+   This removes repeated readback rows caused by combining direct canonical
+   fact readback with factoring/lifting readback paths, while preserving one
+   representative result row and all non-result markers.
+22. petta facts: bang results print only at process exit (main.pl collects
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 
