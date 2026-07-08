@@ -162,6 +162,8 @@
       ((cons (cpu OrProjection ($tvin $ev) $out) ()) (proj-kind or))
       ((cons (cpu AndMarginalProjection ($tvin) $out) ()) (proj-kind marg))
       ((cons (cpu NotFormula ($tvin) $out) ()) (proj-kind not))
+      ((cons (cpu MemberInheritanceFormula ($kb $subj $concept) $out) ())
+       (member-inheritance-kind $kb $subj $concept))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
       ((cons (cpu + ($lhs $rhs) $res)
@@ -325,6 +327,11 @@
      (((pcons $prem pnil)
        (ruleN $ctype $rid (total-evidence-ctv $p1 $p2 $fold-scope) $ptypes))
       ($other (notsupported-ir (total-evidence-ctv-premises $ctype $ptypes))))))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (member-inheritance-kind $kb $subj $concept))
+   (case $ptypes
+     ((pnil (member-inheritance-query $ctype $rid $kb $subj $concept))
+      ($other (notsupported-ir (member-inheritance-premises $ctype $ptypes))))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (fold-sum-kind $pat $value $out))
    (case $ptypes

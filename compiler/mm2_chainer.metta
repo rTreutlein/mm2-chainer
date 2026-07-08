@@ -214,6 +214,67 @@
        (mm2-readback-total-implication-adds $goal-type $goal-shape $adds))
       ($other ()))))
 
+(= (mm2-member-consequent-tv $scope $obj $concept)
+   (let $hits
+     (collapse
+       (match &mork
+         (fact ($scope (Member $obj $concept)) ($s $c))
+         (STV $s $c)))
+     (if (== $hits ()) no-evidence (car-atom $hits))))
+
+(= (mm2-member-inheritance-acc $_scope $_concept $acc ()) $acc)
+(= (mm2-member-inheritance-acc $scope $concept $acc (cons (member-ant $obj $atv) $rest))
+   (let $btv (mm2-member-consequent-tv $scope $obj $concept)
+     (mm2-member-inheritance-acc
+       $scope
+       $concept
+       (WeightedBaseRateAcc $acc (WeightedTv $atv $btv))
+       $rest)))
+
+(= (mm2-member-inheritance-tv $kb $evidence)
+   (let $universe-size (kb-universe-size $kb)
+     (if (== $universe-size no-universe-size)
+       (WeightedCountBaseRateTv $evidence)
+       (WeightedUniverseBaseRateTv $universe-size $evidence))))
+
+(= (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
+   (let $ants
+     (collapse
+       (match &mork
+         (fact ($goal-shape (Member $obj $subj)) ($as $ac))
+         (member-ant $obj (STV $as $ac))))
+     (if (== $ants ())
+       ()
+       (let $tv
+         (mm2-member-inheritance-tv
+           $kb
+           (mm2-member-inheritance-acc $goal-shape $concept (BaseRateEvidence 0.0 0.0) $ants))
+         (cons (: mm2-proved $goal-type $tv) ())))))
+
+(= (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl)
+   (case (mm2-ir-collect $prems)
+     (((collected pnil (cons (cpu MemberInheritanceFormula ($kb $subj $concept) $out) ()))
+       (case (mm2-ir-item $ccl)
+         (((subgoal ($goal-shape2 $goal-type2) $out $goal-prf)
+           (if (and (=alpha $goal-type $goal-type2)
+                    (=alpha $goal-shape $goal-shape2))
+             (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
+             ()))
+          ($other ()))))
+      ($other ()))))
+
+(= (mm2-readback-member-inheritance-adds $goal-type $goal-shape $adds)
+   (case $adds
+     (((cons (rules ($prems |- $ccl)) $rest)
+       (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl))
+      ($other ()))))
+
+(= (mm2-readback-member-inheritance $goal-item $adds)
+   (case (mm2-ir-item $goal-item)
+     (((subgoal ($goal-shape $goal-type) $goal-tv $goal-prf)
+       (mm2-readback-member-inheritance-adds $goal-type $goal-shape $adds))
+      ($other ()))))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
@@ -222,12 +283,14 @@
            (mm2-ir-append
              (mm2-readback-total-implication $goal-item $adds)
              (mm2-ir-append
-               (collapse
-                 (match &mork (fact ($shape $type) ($s $c))
-                   (: mm2-merged $readback-type (STV $s $c))))
-               (collapse
-                 (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-                   (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))))))
+               (mm2-readback-member-inheritance $goal-item $adds)
+               (mm2-ir-append
+                 (collapse
+                   (match &mork (fact ($shape $type) ($s $c))
+                     (: mm2-merged $readback-type (STV $s $c))))
+                 (collapse
+                   (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+                     (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
