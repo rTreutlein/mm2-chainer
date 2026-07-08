@@ -456,12 +456,12 @@ Latest corpus snapshot after this adjustment:
    query-materialization budget scaling, backward two-hop compose budget
    scaling, Compute + query-compound lowering, repeated-inversion replacement
    through `revise-proofs`, FoldAll OrFormula MP lowering, total-implication
-   proof-CTV readback, positive-test round-budget scaling, and
-   MemberInheritanceFormula readback):
-   pass=94 close=12 fail=3 unsupported-ir=31 skipped=82 flagged-files=0,
-   wall time about 47 s.
-   Remaining failures: backward_open_query_results 1,
-   inheritance_query_proof 1, uniform_prior 1.
+   proof-CTV readback, positive-test round-budget scaling,
+   MemberInheritanceFormula readback, prior-aware inheritance base rates, and
+   inheritance induction readback):
+   pass=95 close=13 fail=1 unsupported-ir=7 skipped=82 flagged-files=0,
+   wall time about 44 s.
+   Remaining failure: backward_open_query_results 1.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes, but openAndFairKb still
    diverges: PeTTa expects the max-only lifted conjunction at the stronger TV,

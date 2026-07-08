@@ -102,13 +102,24 @@
      logged))
 
 (= (mm2-compileadd $kb $stmt)
-   (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
+   (let* (($added (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
+          ($_refresh (mm2-refresh-prior-base-rates!)))
+     $added))
 
 ; Some PeTTaChainer tests add already-compiled rule IR directly with
 ; add-to-kb. Route those generated harness calls through the MM2 translator
 ; without shadowing PeTTaChainer's own add-to-kb, which compileadd still uses.
 (= (mm2-add-to-kb $stmt)
-   (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
+   (let* (($added (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
+          ($_refresh (mm2-refresh-prior-base-rates!)))
+     $added))
+
+; PeTTa's register-inheritance-induction! installs a rule through its own
+; add-to-kb. Keep a small MM2-side marker so readback can compute the same
+; extensional induction result over the merged fact view.
+(= (register-inheritance-induction! $kb)
+   (let $_mark (add-atom &mork (inheritance-induction-enabled $kb))
+     ()))
 
 ; Remove exact atoms produced by a MORK match. Calling remove-atom with a
 ; variable pattern would remove nothing, so cleanup first materializes the
@@ -160,6 +171,73 @@
            (let $stored (copy_term $pat)
             (let $_set (add-atom &mork (base-rate $stored ($s $c)))
              ())))))))
+
+; Prior-aware inheritance base rates use PeTTaChainer's late-bound
+; ConceptNodePriorRuntime at refresh time, while exposing the same packed
+; (base-rate $pattern ($s $c)) relation consumed by the MM2 runtime.
+(= (mm2-prior-base-rate-support $pat $kb $concept)
+   (superpose (
+     (base-rate-prior-def (copy_term $pat) $kb $concept)
+     (base-rate (copy_term $pat) (0.0 0.0)))))
+
+(= (mm2-prior-inheritance-evidence-stvs $scope $concept)
+   (mm2-ir-append
+     (collapse
+       (match &mork
+         (fact ($scope (Inheritance $subj $concept)) ($s $c))
+         (prior-inheritance-ev $subj (STV $s $c))))
+     (collapse
+       (match &mork
+         (fact ($scope (Inheritance $subj $concept)) (ctvpair ($ps $pc) $neg))
+         (prior-inheritance-ev $subj (STV $ps $pc))))))
+
+(= (mm2-prior-weighted-base-rate-acc $_kb $acc ()) $acc)
+(= (mm2-prior-weighted-base-rate-acc $kb $acc (cons (prior-inheritance-ev $subj $tv) $rest))
+   (mm2-prior-weighted-base-rate-acc
+     $kb
+     (WeightedBaseRateAcc $acc (WeightedTv (inheritance-subject-prior-tv $kb $subj) $tv))
+     $rest))
+
+(= (mm2-prior-weighted-base-rate-evidence-tv $kb $ev)
+   (let $universe-size (kb-universe-size $kb)
+     (if (== $universe-size no-universe-size)
+       (WeightedBaseRateTv $ev)
+       (WeightedUniverseBaseRateTv $universe-size $ev))))
+
+(= (mm2-prior-weighted-base-rate-tv $kb $scope $concept)
+   (let* (($evs (mm2-prior-inheritance-evidence-stvs $scope $concept))
+          ($ev (mm2-prior-weighted-base-rate-acc $kb (BaseRateEvidence 0.0 0.0) $evs)))
+     (BaseRateWithPriorFormula
+       (concept-node-prior-tv $kb $concept)
+       (mm2-prior-weighted-base-rate-evidence-tv $kb $ev))))
+
+(= (mm2-store-prior-base-rate! $pat $newtv)
+   (let $_old (mm2-remove-matches (base-rate $pat $oldtv))
+     (let $stored (copy_term $pat)
+       (case $newtv
+         ((no-evidence (add-atom &mork (base-rate $stored (0.0 0.0))))
+          ((STV $s $c) (add-atom &mork (base-rate $stored ($s $c))))
+          ($other (add-atom &mork (base-rate $stored (0.0 0.0)))))))))
+
+(= (mm2-refresh-prior-base-rate! (base-rate-prior-def $pat $kb $concept))
+   (case $pat
+     ((($scope (Inheritance $subj $concept2))
+       (mm2-store-prior-base-rate!
+         $pat
+         (mm2-prior-weighted-base-rate-tv $kb $scope $concept)))
+      ($other ()))))
+
+(= (mm2-refresh-prior-base-rate-list! ()) ())
+(= (mm2-refresh-prior-base-rate-list! (cons $def $rest))
+   (let $_refresh (mm2-refresh-prior-base-rate! $def)
+     (mm2-refresh-prior-base-rate-list! $rest)))
+
+(= (mm2-refresh-prior-base-rates!)
+   (mm2-refresh-prior-base-rate-list!
+     (collapse
+       (match &mork
+         (base-rate-prior-def $pat $kb $concept)
+         (base-rate-prior-def $pat $kb $concept)))))
 
 ; Query answers are the facts matching each compiled query's own scoped goal
 ; term — usually the kb's MAIN context, or the fresh query context some
@@ -275,6 +353,98 @@
        (mm2-readback-member-inheritance-adds $goal-type $goal-shape $adds))
       ($other ()))))
 
+(= (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)
+   (collapse
+     (match &mork
+       (fact ($pos-shape $pos-type) ($s $c))
+       (: mm2-proved $goal-type (STV $s $c)))))
+
+(= (mm2-readback-inheritance-query-premises $goal-type $goal-shape $prems $ccl)
+   (case (mm2-ir-collect $prems)
+     (((collected (pcons ($pos-shape $pos-type)
+                   (pcons ($neg-shape $neg-type) pnil))
+                  ())
+       (case (mm2-ir-item $ccl)
+         (((subgoal ($goal-shape2 $goal-type2) $goal-tv $goal-prf)
+           (if (and (=alpha $goal-type $goal-type2)
+                    (=alpha $goal-shape $goal-shape2))
+             (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)
+             ()))
+          ($other ()))))
+      ($other ()))))
+
+(= (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds)
+   (case $adds
+     (((cons (rules ($prems |- $ccl)) $rest)
+       (mm2-readback-inheritance-query-premises $goal-type $goal-shape $prems $ccl))
+      ($other ()))))
+
+(= (mm2-readback-inheritance-query $goal-item $adds)
+   (case (mm2-ir-item $goal-item)
+     (((subgoal ($goal-shape $goal-type) $goal-tv (inheritance-query (total-implication $pos-prf $neg-prf)))
+       (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds))
+      ($other ()))))
+
+(= (mm2-base-rate-acc-from-stvs $acc ()) $acc)
+(= (mm2-base-rate-acc-from-stvs $acc (cons $tv $rest))
+   (mm2-base-rate-acc-from-stvs (BaseRateAcc $acc $tv) $rest))
+
+(= (mm2-inheritance-base-rate-tv $scope $concept)
+   (BaseRateTv
+     (mm2-base-rate-acc-from-stvs
+       (BaseRateEvidence 0.0 0.0)
+       (collapse
+         (match &mork
+           (fact ($scope (Inheritance $subj $concept)) ($s $c))
+           (STV $s $c))))))
+
+(= (mm2-inheritance-uniform-prior-tv $scope $concept)
+   (UniformPriorTv
+     (collapse
+       (match &mork
+         (fact ($scope (Inheritance $subj $concept)) ($s $c))
+         $subj))))
+
+(= (mm2-inheritance-induction-tvs $scope $a $b)
+   (let* (($brA (mm2-inheritance-base-rate-tv $scope $a))
+          ($brB (mm2-inheritance-base-rate-tv $scope $b))
+          ($brC (mm2-inheritance-uniform-prior-tv $scope $a)))
+     (collapse
+       (match &mork
+         (fact ($scope (Inheritance $c $a)) ($sCA $cCA))
+         (match &mork
+           (fact ($scope (Inheritance $c $b)) ($sCB $cCB))
+           (InductionFormula
+             $brA
+             $brB
+             $brC
+             (STV $sCA $cCA)
+             (STV $sCB $cCB)))))))
+
+(= (mm2-revise-tv-list $tvs)
+   (case $tvs
+     ((() no-evidence)
+      ((cons $tv ()) $tv)
+      ((cons $tv $rest) (mergetvs $tv (mm2-revise-tv-list $rest))))))
+
+(= (mm2-readback-inheritance-induction-result $goal-type $scope $a $b)
+   (case (mm2-revise-tv-list (mm2-inheritance-induction-tvs $scope $a $b))
+     (((STV $s $c) (cons (: mm2-proved $goal-type (STV $s $c)) ()))
+      ($other ()))))
+
+(= (mm2-readback-inheritance-induction $goal-type $goal-shape)
+   (case ($goal-shape $goal-type)
+     (((($kb MAIN $vars) (Inheritance $a $b))
+       (let $enabled (collapse (match &mork (inheritance-induction-enabled $kb) found))
+         (if (== $enabled ())
+           ()
+           (mm2-readback-inheritance-induction-result
+             $goal-type
+             $goal-shape
+             $a
+             $b))))
+      ($other ()))))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
@@ -283,14 +453,18 @@
            (mm2-ir-append
              (mm2-readback-total-implication $goal-item $adds)
              (mm2-ir-append
-               (mm2-readback-member-inheritance $goal-item $adds)
+               (mm2-readback-inheritance-query $goal-item $adds)
                (mm2-ir-append
-                 (collapse
-                   (match &mork (fact ($shape $type) ($s $c))
-                     (: mm2-merged $readback-type (STV $s $c))))
-                 (collapse
-                   (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-                     (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))))
+                 (mm2-readback-member-inheritance $goal-item $adds)
+                 (mm2-ir-append
+                   (mm2-readback-inheritance-induction $readback-type $shape)
+                   (mm2-ir-append
+                     (collapse
+                       (match &mork (fact ($shape $type) ($s $c))
+                         (: mm2-merged $readback-type (STV $s $c))))
+                     (collapse
+                       (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+                         (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -334,7 +508,8 @@
      (mm2-cleanup-queries $rest)))
 
 (= (mm2-prepare-query $kb (: $prf $type $tv))
-   (let* (($cqs (collapse (mm2compileQuery $kb (: $prf $type $tv))))
+   (let* (($_refresh (mm2-refresh-prior-base-rates!))
+          ($cqs (collapse (mm2compileQuery $kb (: $prf $type $tv))))
           ($notsup (mm2-run-compiled-queries $kb $cqs)))
      (prepared-query $cqs $notsup)))
 

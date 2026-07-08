@@ -55,6 +55,10 @@
    (and (= $pat (Inheritance $subj $concept))
         (and (is-var $subj) (is-var $concept))))
 
+(= (mm2-ir-subject-open-inheritance-pattern? $pat)
+   (and (= $pat (Inheritance $subj $concept))
+        (and (is-var $subj) (not (is-var $concept)))))
+
 ; --- premise/conclusion item classification --------------------------------
 
 (= (mm2-ir-item $item)
@@ -99,7 +103,54 @@
                      (and (== $pat $pat2) (mm2-ir-open-inheritance-pattern? $pat))))
          (let $skb (mm2-ir-scope-kb $kbid) (weighted-brfold ($skb $pat)))
          unsupported-fold))
+      ((cpu FoldAllCompiled
+         ($kbid
+          $pat
+          (extract-inheritance-tv $kbid2 $pat2)
+          (BaseRateEvidenceWithPrior
+            (ConceptNodePriorRuntime $kbid3 $concept)
+            (BaseRateEvidence 0.0 0.0))
+          WeightedBaseRateWithPriorAcc
+          (weighted-base-rate-with-prior-in-universe $kbid4)
+          $resmode)
+         $out)
+       (if (and (== $kbid $kbid2)
+                (and (== $kbid $kbid3)
+                     (and (== $kbid $kbid4)
+                          (and (== $pat $pat2)
+                               (mm2-ir-subject-open-inheritance-pattern? $pat)))))
+         (let $skb (mm2-ir-scope-kb $kbid)
+           (prior-weighted-brfold ($skb $pat) $kbid $concept))
+         unsupported-fold))
       ($other unsupported-fold))))
+
+(= (mm2-ir-stv-fold-supported? $fold)
+   (case $fold
+     (((brfold $_pat) true)
+      ((weighted-brfold $_pat) true)
+      ((prior-weighted-brfold $_pat $_kb $_concept) true)
+      ($other false))))
+
+(= (mm2-ir-inv-fold-supported? $fold)
+   (case $fold
+     (((brfold $_pat) true)
+      ((prior-weighted-brfold $_pat $_kb $_concept) true)
+      ($other false))))
+
+(= (mm2-ir-fold-key $fold)
+   (case $fold
+     (((brfold $pat) $pat)
+      ((weighted-brfold $pat) $pat)
+      ((prior-weighted-brfold $pat $_kb $_concept) $pat)
+      ($other unsupported-fold))))
+
+(= (mm2-ir-fold-support $fold)
+   (case $fold
+     (((brfold $pat) (mm2-base-rate-support $pat))
+      ((weighted-brfold $pat) (base-rate (copy_term $pat) (0.0 0.0)))
+      ((prior-weighted-brfold $pat $kb $concept)
+       (mm2-prior-base-rate-support $pat $kb $concept))
+      ($other (notsupported-ir (fold-support $other))))))
 
 (= (mm2-ir-foldall-sum $cpu)
    (case $cpu
@@ -145,15 +196,16 @@
       ($other unsupported-foldall))))
 
 (= (mm2-ir-stv-kind $pos $fa $fb $tail)
-   (case ($fa $fb)
-     ((((brfold $pa) (brfold $pb)) (stv-kind $pos $pa $pb))
-      (((brfold $pa) (weighted-brfold $pb)) (stv-weighted-kind $pos $pa $pb))
-      ($other (unsupported-tail $tail)))))
+   (if (and (mm2-ir-stv-fold-supported? $fa)
+            (mm2-ir-stv-fold-supported? $fb))
+     (stv-kind $pos $fa $fb)
+     (unsupported-tail $tail)))
 
 (= (mm2-ir-inv-kind $pos $fa $fb $materialize $tail)
-   (case ($fa $fb)
-     ((((brfold $pa) (brfold $pb)) (inv-kind $pos $pa $pb $materialize))
-      ($other (unsupported-tail $tail)))))
+   (if (and (mm2-ir-inv-fold-supported? $fa)
+            (mm2-ir-inv-fold-supported? $fb))
+     (inv-kind $pos $fa $fb $materialize)
+     (unsupported-tail $tail)))
 
 (= (mm2-ir-classify $tail)
    (case $tail
@@ -355,17 +407,11 @@
             ($other (notsupported-ir (foldall-result-copy $ctype)))))))
       ($other (notsupported-ir (foldall-with-premises $ctype $ptypes))))))
 
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-kind $pos $pa $pb))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-kind $pos $fa $fb))
    (superpose (
-     (ruleN $ctype $rid (stv $pos (brpat $pa $pb)) $ptypes)
-     (mm2-base-rate-support $pa)
-     (mm2-base-rate-support $pb))))
-
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-weighted-kind $pos $pa $pb))
-   (superpose (
-     (ruleN $ctype $rid (stv $pos (brpat $pa $pb)) $ptypes)
-     (mm2-base-rate-support $pa)
-     (base-rate (copy_term $pb) (0.0 0.0)))))
+     (ruleN $ctype $rid (stv $pos (brpat (mm2-ir-fold-key $fa) (mm2-ir-fold-key $fb))) $ptypes)
+     (mm2-ir-fold-support $fa)
+     (mm2-ir-fold-support $fb))))
 
 (= (mm2-ir-inv-evidence-id $rid)
    (case $rid
@@ -385,15 +431,18 @@
       ((inverted (bi-backward $base) with $_pa $_pb) true)
       ($other false))))
 
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $pa $pb $materialize))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $fa $fb $materialize))
    (if (mm2-ir-bidirectional-inverse? $rid)
      (empty)
      (superpose (
-       (ruleN $ctype (mm2-ir-inv-evidence-id $rid) (inv $pos (brpat $pa $pb)) $ptypes)
-       (mm2-base-rate-support $pa)
-       (mm2-base-rate-support $pb)
+       (ruleN $ctype
+              (mm2-ir-inv-evidence-id $rid)
+              (inv $pos (brpat (mm2-ir-fold-key $fa) (mm2-ir-fold-key $fb)))
+              $ptypes)
+       (mm2-ir-fold-support $fa)
+       (mm2-ir-fold-support $fb)
        (if (== $materialize yes)
-         (, (Goal (copy_term $pb)))
+         (, (Goal (copy_term (mm2-ir-fold-key $fb))))
          (empty))))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
