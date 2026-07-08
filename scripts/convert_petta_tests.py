@@ -256,6 +256,9 @@ def convert_test(expr):
     helper_value = backward_helper_value_test(queryish)
     if helper_value is not None:
         return ["mm2-test-equal", helper_value, rename_calls(expected)]
+    prior_helper = uniform_prior_helper_test(queryish)
+    if prior_helper is not None:
+        return ["mm2-test-equal", prior_helper, rename_calls(expected)]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
     if head(queryish) == "query-materialize" and len(queryish) == 4:
@@ -354,6 +357,17 @@ def backward_helper_value_test(queryish):
     if head(queryish) == "proof-term-children-mode":
         return rename_calls(queryish)
     if head(queryish) == "once" and contains_head(queryish, "proof-term-evidence-list-mode"):
+        return rename_calls(queryish)
+    return None
+
+
+def uniform_prior_helper_test(queryish):
+    if head(queryish) in {
+        "list-len",
+        "UniformPriorTv",
+        "concept-node-prior-tv",
+        "BaseRateWithPriorFormula",
+    }:
         return rename_calls(queryish)
     return None
 
