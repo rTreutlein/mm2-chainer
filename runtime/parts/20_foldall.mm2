@@ -46,8 +46,8 @@
         (, (avg-dist-active $result-pid $pat $value)
            (fact $pat ($s $c))
            (dist-point-dist $value $x $w))
-        (O (fsum (avg-dist-sum $result-pid $sum) $sum $x)
-           (count (avg-dist-count $result-pid $count) $count $value))))
+        (O (fsum (avg-dist-sum $result-pid $sum) $sum $x $pat)
+           (count (avg-dist-count $result-pid $count) $count $pat))))
 
 (exec-template
   (exec 2

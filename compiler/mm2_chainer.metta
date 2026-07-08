@@ -701,6 +701,71 @@
 (= (mm2-dist-pairs (ParticleDist $pid $_scale))
    (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))
 
+(= (mm2-dist-pairs-stats ()) (Stats 0.0 0.0 0))
+(= (mm2-dist-pairs-stats (cons ($_x $w) $tail))
+   (let (Stats $sum $sumsq $count) (mm2-dist-pairs-stats $tail)
+     (Stats (+ $w $sum) (+ (* $w $w) $sumsq) (+ 1 $count))))
+
+(= (mm2-scale-dist-pairs () $_scale) ())
+(= (mm2-scale-dist-pairs (cons ($x $w) $tail) $scale)
+   (cons ($x (* $w $scale)) (mm2-scale-dist-pairs $tail $scale)))
+
+(= (mm2-normalize-dist-pairs $pairs)
+   (let (Stats $total $_sumsq $_count) (mm2-dist-pairs-stats $pairs)
+     (if (<= $total 0.0) () (mm2-scale-dist-pairs $pairs (/ 1.0 $total)))))
+
+(= (mm2-dist-effective-n $pairs)
+   (let* (($norm (mm2-normalize-dist-pairs $pairs))
+          ((Stats $_sum $sumsq $_count) (mm2-dist-pairs-stats $norm)))
+     (if (<= $sumsq 0.0) 0.0 (/ 1.0 $sumsq))))
+
+(= (mm2-dist-confidence $pairs)
+   (let $neff (mm2-dist-effective-n $pairs)
+     (if (<= $neff 0.0) 0.0 (/ $neff (+ $neff 20.0)))))
+
+(= (mm2-dist-prob-gt () $_threshold) 0.0)
+(= (mm2-dist-prob-gt (cons ($x $w) $tail) $threshold)
+   (+ (if (> $x $threshold) $w 0.0) (mm2-dist-prob-gt $tail $threshold)))
+
+; The runtime's dist-pair stream already carries the observable pair mass, so
+; the strength is computed directly from those pairs.
+(= (mm2-DistGreaterThanFormula $dist $threshold)
+   (let $pairs (mm2-dist-pairs $dist)
+     (STV (mm2-dist-prob-gt $pairs $threshold)
+          (mm2-dist-confidence $pairs))))
+
+(= (mm2-last-list-item (cons $x ())) $x)
+(= (mm2-last-list-item (cons $_x $rest)) (mm2-last-list-item $rest))
+(= (mm2-last-arg $term)
+   (if (is-expr $term) (mm2-last-list-item (cdr-atom $term)) $term))
+
+(= (mm2-test-query-dist-gt-strength $steps $kb $query $threshold $expected)
+   (let* (($results (mm2-query $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $s $_c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+           (mm2-test-equal $s $expected)))
+        ($other (mm2-test-equal no-result $expected))))))
+
+(= (mm2-test-query-dist-gt-strength-between $steps $kb $query $threshold $lo $hi)
+   (let* (($results (mm2-query $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $s $_c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+           (mm2-test-equal (and (> $s $lo) (< $s $hi)) true)))
+        ($other (mm2-test-equal no-result true))))))
+
+(= (mm2-test-query-dist-gt-strength-confidence-over $steps $kb $query $threshold $slo $clo)
+   (let* (($results (mm2-query $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $s $c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+           (mm2-test-equal (and (> $s $slo) (> $c $clo)) true)))
+        ($other (mm2-test-equal no-result true))))))
+
 (= (mm2-test-query $steps $kb (: $prf $type $tv) $expected)
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($want (mm2-result-keys $expected))

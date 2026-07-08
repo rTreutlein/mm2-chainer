@@ -375,6 +375,7 @@
            (dist-pair $pidb $xb $wb))
         (O (pure (dist-map2-contrib
                    (dist-map2 * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
+                   (dist-map2-source $xa $xb)
                    $pair)
                  $pair
                  (tuple
@@ -393,8 +394,8 @@
 
 (exec-template
   (exec 2
-        (, (dist-map2-contrib $pid ($y $mass)))
-        (O (fsum (dist-pair $pid $y $sum) $sum $mass))))
+        (, (dist-map2-contrib $pid $source ($y $mass)))
+        (O (fsum (dist-pair $pid $y $sum) $sum $mass $source))))
 
 ; Evidence-aware conjunction adapter.  It carries pool state for same-source
 ; marginal projections so a query over several projections of one (And ...)

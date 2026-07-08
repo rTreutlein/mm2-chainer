@@ -460,13 +460,16 @@ Latest corpus snapshot after this adjustment:
    MemberInheritanceFormula readback, prior-aware inheritance base rates,
    inheritance induction readback, and readback-level lifting merge for
    two-premise And adapter queries, OrFormula adapter lowering,
-   redundant Or projection scaffold suppression, and ignoring the
-   variable-headed grouped-fold output scaffold emitted by `copyPredicate`):
-   pass=95 close=14 fail=0 unsupported-ir=0 skipped=82 flagged-files=0,
-   wall time about 43 s.
+   redundant Or projection scaffold suppression, ignoring the
+   variable-headed grouped-fold output scaffold emitted by `copyPredicate`,
+   point-mass `AverageDist`, product-distribution `Map2Dist *`, guarded
+   distribution pair summing, and generated `DistGreaterThanFormula`
+   assertions for rectangle area / point-mass average height):
+   pass=110 close=14 fail=0 unsupported-ir=0 skipped=76 flagged-files=0,
+   wall time about 34 s.
    No supported failures or unsupported IR remain; remaining gaps are skipped
-   legacy/non-query harness forms and distribution semantics not yet exercised
-   by converted tests.
+   legacy/non-query harness forms plus the multi-pair `AverageDist`
+   convolution case still left as a converter-level skip.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is covered as a close result by readback-level factoring of
@@ -479,9 +482,12 @@ Latest corpus snapshot after this adjustment:
    Distributional fact terms now export PeTTa `ParticleDist` pairs as
    `dist-pair` atoms in the MORK space.  Identity-CTV `Map2Dist *` rules now
    derive deterministic output `ParticleDist` ids and materialize their pairs
-   through `fsum`.  `AverageDist`/`DistSumCountAcc` now has a deterministic
-   point-mass path using `dist-point-dist`, `fsum`, and `count`; full
-   convolution for multi-pair distributions is still future work.
+   through guarded `fsum`, so duplicate product values are summed instead of
+   deduplicated.  `AverageDist`/`DistSumCountAcc` now has a deterministic
+   point-mass path using `dist-point-dist`, guarded `fsum`, and `count`; full
+   convolution for multi-pair distributions is still future work.  Converted
+   `DistGreaterThanFormula` assertions now cover rectangle-area product
+   distributions and point-mass average-height distributions.
 5. **Frontier bounding for self-feeding rules**: PeTTa's query budget counts
    agenda pops, so a rule whose conclusion matches its own premises (e.g.
    test_backward_open_query_results' openTimeKb:
