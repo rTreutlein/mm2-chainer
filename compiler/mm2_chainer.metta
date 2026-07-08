@@ -632,11 +632,26 @@
        (mm2-readback-member-inheritance-adds $goal-type $goal-shape $adds))
       ($other ()))))
 
-(= (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)
+(= (mm2-readback-inheritance-query-direct-proofs $goal-type $pos-shape $pos-type)
    (collapse
      (match &mork
        (fact ($pos-shape $pos-type) ($s $c))
        (: mm2-proved $goal-type (STV $s $c)))))
+
+(= (mm2-readback-inheritance-query-merged-proofs $goal-type $pos-shape $pos-type)
+   (collapse
+     (match &mork
+       (fact ($pos-shape $pos-type) ($fs $fc))
+       (match &mork
+         (proved ($pos-shape $pos-type) ($ps $pc) (scheduledN $pg $rule $premises) $evset)
+         (case (mergetvs (STV $fs $fc) (STV $ps $pc))
+           (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
+            ($other empty)))))))
+
+(= (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)
+   (mm2-ir-append
+     (mm2-readback-inheritance-query-direct-proofs $goal-type $pos-shape $pos-type)
+     (mm2-readback-inheritance-query-merged-proofs $goal-type $pos-shape $pos-type)))
 
 (= (mm2-readback-inheritance-query-premises $goal-type $goal-shape $prems $ccl)
    (case (mm2-ir-collect $prems)

@@ -434,6 +434,19 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=88 close=9 fail=12 unsupported-ir=34 skipped=82 flagged-files=0
 
+## Inheritance-query branch readback (DONE 2026-07-09)
+
+Concrete inheritance queries now read back PeTTa's merged branch candidate for
+the `inheritance-query (total-implication POS NEG)` scaffold.  The harness keeps
+the direct positive-context fact candidate, and also adds the PeTTa proof-store
+candidate obtained by revising that positive fact with each scheduled positive
+branch proof.  This makes `test_inheritance_query_proof` exact instead of close
+without changing runtime scheduling.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=180 close=11 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -475,9 +488,9 @@ Latest corpus snapshot after this adjustment:
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
    coverage):
-   pass=172 close=19 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   pass=180 close=11 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
-   `HARNESS: 9 pass, 0 close, 0 fail`.
+   `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped
    legacy/non-query harness forms.
 2. **Open-query fair expansion/result semantics**:
