@@ -642,6 +642,10 @@ Latest corpus snapshot after this adjustment:
    deduplicating by `(tv, evidence)` records rather than TV alone.  This keeps
    open-query groups like openAndFair from losing distinct equal-TV distractor
    evidence before the lower-strength residual is revised in.
+   Query-compound readback detects rules whose tail ends in PeTTa's identity
+   `CTVModusPonensFormula` wrapper and emits that wrapped TV over factored `And`
+   candidates, matching the `Not` compound query proof-store output without
+   changing global `AndFormula` behavior.
 22. **Total-implication branch readback**: total-implication queries now read
    back proof/proof, revised-positive/proof-negative, and
    proof-positive/revised-negative branch combinations. This matches PeTTa's

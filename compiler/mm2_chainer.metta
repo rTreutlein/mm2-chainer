@@ -840,6 +840,47 @@
          (mm2-readback-factored-and-right $goal-type $shape $left $right)))
       ($other ()))))
 
+(= (mm2-rule-prems-have-identity-mp? ()) false)
+(= (mm2-rule-prems-have-identity-mp? (cons $prem $rest))
+   (case $prem
+     (((CPU CTVModusPonensFormula
+            ($_agg (CTV (STV 1.0 1.0) (STV 0.0 1.0)))
+            $_out)
+       true)
+      ($other (mm2-rule-prems-have-identity-mp? $rest)))))
+
+(= (mm2-query-compound-identity-add? $goal-type $add)
+   (case $add
+     (((rules ($prems |- ($ctype $_shape (query-compound $_proof) $_tv)))
+       (and (=alpha $ctype $goal-type)
+            (mm2-rule-prems-have-identity-mp? $prems)))
+      ($other false))))
+
+(= (mm2-query-compound-identity-adds? $_goal-type ()) false)
+(= (mm2-query-compound-identity-adds? $goal-type (cons $add $rest))
+   (if (mm2-query-compound-identity-add? $goal-type $add)
+     true
+     (mm2-query-compound-identity-adds? $goal-type $rest)))
+
+(= (mm2-readback-identity-mp-rows ()) ())
+(= (mm2-readback-identity-mp-rows (cons $row $rest))
+   (case $row
+     (((: $prf $type (STV $s $c))
+       (case (CTVModusPonensFormula
+               (STV $s $c)
+               (CTV (STV 1.0 1.0) (STV 0.0 1.0)))
+         (((STV $ms $mc)
+           (cons (: $prf $type (STV $ms $mc))
+                 (mm2-readback-identity-mp-rows $rest)))
+          ($other (mm2-readback-identity-mp-rows $rest)))))
+      ($other (mm2-readback-identity-mp-rows $rest)))))
+
+(= (mm2-readback-query-compound-factored-and $goal-type $shape $adds)
+   (if (mm2-query-compound-identity-adds? $goal-type $adds)
+     (mm2-readback-identity-mp-rows
+       (mm2-readback-factored-and $goal-type $shape))
+     ()))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
@@ -852,7 +893,9 @@
                (mm2-ir-append
                  (mm2-readback-member-inheritance $goal-item $adds)
                  (mm2-ir-append
-                   (mm2-readback-factored-and $readback-type $shape)
+                   (mm2-ir-append
+                     (mm2-readback-factored-and $readback-type $shape)
+                     (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
                    (mm2-ir-append
                      (mm2-readback-inheritance-induction $readback-type $shape)
                      (mm2-ir-append
