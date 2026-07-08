@@ -366,14 +366,28 @@
       ((inverted $base with $_pa $_pb) $base)
       ($other $other))))
 
+; BiImplication compileadd already emits both direct directional rules
+; (bi-forward and bi-backward). Inverting those generated directions adds a
+; redundant, weaker proof path that can race ahead of the direct proof in
+; query-assumption contexts.
+(= (mm2-ir-bidirectional-inverse? $rid)
+   (case $rid
+     ((((inverted (bi-forward $base) with $_pa $_pb) $_wit) true)
+      (((inverted (bi-backward $base) with $_pa $_pb) $_wit) true)
+      ((inverted (bi-forward $base) with $_pa $_pb) true)
+      ((inverted (bi-backward $base) with $_pa $_pb) true)
+      ($other false))))
+
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $pa $pb $materialize))
-   (superpose (
-     (ruleN $ctype (mm2-ir-inv-evidence-id $rid) (inv $pos (brpat $pa $pb)) $ptypes)
-     (mm2-base-rate-support $pa)
-     (mm2-base-rate-support $pb)
-     (if (== $materialize yes)
-       (, (Goal (copy_term $pb)))
-       (empty)))))
+   (if (mm2-ir-bidirectional-inverse? $rid)
+     (empty)
+     (superpose (
+       (ruleN $ctype (mm2-ir-inv-evidence-id $rid) (inv $pos (brpat $pa $pb)) $ptypes)
+       (mm2-base-rate-support $pa)
+       (mm2-base-rate-support $pb)
+       (if (== $materialize yes)
+         (, (Goal (copy_term $pb)))
+         (empty))))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
    (notsupported-ir (rule-tail $ctype $tail)))
