@@ -271,7 +271,9 @@ Corpus totals: after ctvn + =alpha keys 55/10/46/107; guard fixes rerunning.
   observable result. The generated harness test now checks the same intent in
   mm2 terms: zero budget gives no answer, enough budget yields the revised
   result in a fresh KB, and dropped/weak standalone proof shapes are absent.
-  Current file verdict: 12 pass / 0 close / 0 fail.
+  Current file verdict: 12 pass / 0 close / 0 fail. The SwitchGoal expectation
+  uses the current broad-revision value, which also matches PeTTa's original
+  broad query result to the printed precision.
 - **Lifting-merge pooling algorithm** (backward_proof_store.metta:265-425)
   is now understood: group proofs of one grounded output; shared = evidence
   intersection (fact-ev only); guards = all proofs implication-shaped +
@@ -447,6 +449,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=180 close=11 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Best-first SwitchGoal expectation refresh (DONE 2026-07-09)
+
+The generated mm2-intent rewrite for the first `test_best_first_runtime`
+SwitchGoal case had a stale broad-revision confidence.  The runtime currently
+returns `0.7094641445679877`, matching PeTTa's original broad query result to
+printed precision, so the converter rewrite and generated test now pin that
+value.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=181 close=10 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -488,7 +502,7 @@ Latest corpus snapshot after this adjustment:
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
    coverage):
-   pass=180 close=11 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   pass=181 close=10 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures or unsupported IR remain; remaining gaps are skipped

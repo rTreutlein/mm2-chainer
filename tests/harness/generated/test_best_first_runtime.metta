@@ -8,7 +8,7 @@
 !(mm2-compileadd kb (: ruleHighThenDrop (Implication (Premises (WeakPremise) (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.9) (STV 0.0 1.0))))
 !(mm2-compileadd kb (: ruleStable (Implication (Premises (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
 !(mm2-test-query 0 kb (: $prf (SwitchGoal) $tv) ())
-!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: mm2-merged (SwitchGoal) (STV 1 0.7095145336156212))))
+!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: mm2-merged (SwitchGoal) (STV 1 0.7094641445679877))))
 !(mm2-test-query 30 kb (: (ruleHighThenDrop (conjunction weakFact baseFact)) (SwitchGoal) (STV 1.0 0.1)) ())
 !(mm2-compileadd priorityStrengthKb (: weakInput (WeakInput) (STV 0.2 1.0)))
 !(mm2-compileadd priorityStrengthKb (: strongInput (StrongInput) (STV 0.8 1.0)))
