@@ -152,8 +152,28 @@ def convert_test(expr):
     if head(expr) != "test" or len(expr) != 3:
         return None
     queryish, expected = expr[1], expr[2]
+    materialized = materialized_match(queryish)
+    if materialized is not None:
+        kb, typ = materialized
+        return ["mm2-test-equal", ["mm2-materialized-list", kb, typ], rename_calls(expected)]
+    materialized_present = materialized_present_test(queryish)
+    if materialized_present is not None:
+        kb, typ = materialized_present
+        return [
+            "mm2-test-equal",
+            ["not", ["==", ["mm2-materialized-list", kb, typ], []]],
+            rename_calls(expected),
+        ]
     if head(queryish) == "collapse" and len(queryish) == 2:
         queryish = queryish[1]
+    if head(queryish) == "query-materialize" and len(queryish) == 4:
+        return [
+            "mm2-test-query-materialize",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(queryish[3]),
+            normalize_expected(rename_calls(expected)),
+        ]
     if head(queryish) != "query" or len(queryish) != 4:
         return None  # unsupported test form; caller passes through
     return [
@@ -163,6 +183,33 @@ def convert_test(expr):
         rename_calls(queryish[3]),
         normalize_expected(rename_calls(expected)),
     ]
+
+
+def materialized_match(queryish):
+    if head(queryish) == "collapse" and len(queryish) == 2:
+        queryish = queryish[1]
+    if head(queryish) != "match" or len(queryish) != 4:
+        return None
+    if queryish[1] != "&kb" or queryish[3] != "true":
+        return None
+    pat = queryish[2]
+    if not isinstance(pat, list) or len(pat) != 4:
+        return None
+    typ, kb = pat[0], pat[1]
+    if not isinstance(typ, list) or len(typ) != 1:
+        return None
+    if not isinstance(kb, list):
+        return None
+    return kb, typ
+
+
+def materialized_present_test(queryish):
+    if head(queryish) != "not" or len(queryish) != 2:
+        return None
+    eq = queryish[1]
+    if head(eq) != "==" or len(eq) != 3 or eq[2] != []:
+        return None
+    return materialized_match(eq[1])
 
 
 def convert_import(expr):

@@ -533,6 +533,23 @@
 (= (mm2-readback-queries (cons $cq $rest))
    (mm2-ir-append (mm2-readback-query $cq) (mm2-readback-queries $rest)))
 
+(= (mm2-materialize-proved-list $_scope ()) ())
+(= (mm2-materialize-proved-list $scope (cons ($type $stv $proof-id $evset) $rest))
+   (let $_mark (add-atom &mork (mm2-materialized $scope $type))
+     (mm2-materialize-proved-list $scope $rest)))
+
+(= (mm2-materialize-scope $scope)
+   (mm2-materialize-proved-list
+     $scope
+     (collapse
+       (match &mork
+         (proved ($scope $type) $stv $proof-id $evset)
+         ($type $stv $proof-id $evset)))))
+
+(= (mm2-materialized-list $kb $type)
+   (let $scope (mm2-ir-scope-kb $kb)
+     (collapse (match &mork (mm2-materialized $scope $type) true))))
+
 (= (mm2-run-compiled-queries $kb ()) ())
 (= (mm2-run-compiled-queries $kb (cons $cq $rest))
    (mm2-ir-append (mm2-add-compiled $kb (mm2-translate-query $cq))
@@ -607,6 +624,13 @@
 (= (mm2-query $steps $kb (: $prf $type $tv))
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
+
+(= (mm2-query-materialize $steps $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_materialized (mm2-materialize-scope (mm2-ir-scope-kb $kb)))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        $results)))
 
@@ -773,5 +797,16 @@
               (if (== $want ())
                 (mm2-run-query-full $steps $notsup $cqs)
                 (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       (mm2-test $results $expected))))
+
+(= (mm2-test-query-materialize $steps $kb (: $prf $type $tv) $expected)
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($want (mm2-result-keys $expected))
+            ($results
+              (if (== $want ())
+                (mm2-run-query-full $steps $notsup $cqs)
+                (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
+            ($_materialized (mm2-materialize-scope (mm2-ir-scope-kb $kb)))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        (mm2-test $results $expected))))
