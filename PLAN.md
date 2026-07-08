@@ -506,6 +506,22 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=190 close=1 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Self-dependent proof revision parity (DONE 2026-07-09)
+
+MORK's `revise-proofs` fallback merge now treats a proof whose evidence expands
+back to the target fact as dependent on that fact. This prevents inverse proofs
+derived from an existing canonical fact from revising back into the same fact
+and converting literal `1.0` confidence through the capped evidence-count
+formula.
+
+This fixed the final `test_lifting_merge` close: `Bp i` stays at its direct
+`(STV 0.5 1.0)` value, so the shared conjunction and the final factored `D i`
+merge match PeTTa exactly.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=191 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -546,12 +562,12 @@ Latest corpus snapshot after this adjustment:
    specializing-rule compiler-space match coverage, and `chainer-add-atom`
    cyclic guard coverage, backward helper bookkeeping coverage, and
    uniform-prior helper coverage, and forward-chain materialization-query
-   coverage):
-   pass=190 close=1 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   coverage, and self-dependent proof revision suppression):
+   pass=191 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
-   No supported failures or unsupported IR remain; the only remaining close is
-   `test_lifting_merge`.
+   No supported failures, closes, or unsupported IR remain in the generated
+   corpus.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is exact after readback-level factoring of raw two-premise And
