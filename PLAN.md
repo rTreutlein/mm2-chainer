@@ -1025,6 +1025,27 @@ A focused `MM2_BENCH_RUNS=5` sample measured `test_particle_values` at
 961 ms net, `test_distribution_values` at 578 ms net, `test_rectangle_area` at
 228 ms net, and `test_height_average` at 227 ms net.
 
+Rejected performance experiments:
+
+- Empty-result query quiescence: trying to stop negative `mm2-test-query`
+  checks when goal-scoped runtime atoms disappeared did not preserve harness
+  verdict output; the internal query helpers do not reduce reliably in that
+  shape.
+- Forward-chain mergekb grouping: replacing three `forward-chain 50 mergekb`
+  assertions with one standalone forward run changed MeTTa evaluation behavior
+  and dropped the fixture pass count from 30 to 27.
+- Forward selected-goal reuse: reusing precomputed forward goal atoms in
+  `mm2-forward-chain-one-step` skipped the fact-normalization path used by
+  `mm2-forward-chain-from-facts-steps-no-sync`, producing 28 pass / 2 fail in
+  `test_forward_chainer`.
+- Query chunk-size tuning: 100 and 75 step chunks were mixed/noisy across the
+  current top fixtures, while 60 broke `test_forward_backward_compose`
+  coverage. Keep `mm2-query-chunk-size` at 50 unless a broader benchmark shows
+  a clear win.
+- Factored-And single-scan readback was semantically clean on the focused
+  fixtures, but `MM2_BENCH_RUNS=5` did not show an improvement for
+  `test_frontier_pooling`, so the refactor was not kept.
+
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that
