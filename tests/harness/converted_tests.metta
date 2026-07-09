@@ -37,6 +37,43 @@
                    $stv))
                ((0.7117645040873257 0.002120491681932299)))))))))
 
+; User base-rate overrides should also reach role-keyed STV base-rate folds.
+!(let $_set (mm2-set-base-rate stvOverrideBeforeKb (P $x) (STV 0.2 0.5))
+   (let $_r
+     (mm2-compileadd stvOverrideBeforeKb
+       (: r
+          (Implication (Premises (P $x)) (Conclusions (Q $x)))
+          (STV 0.8 0.9)))
+     (mm2-test-equal
+       (collapse
+         (match &mork
+           (base-rate
+             (guarded-base-rate
+               (r $rv)
+               antecedent
+               ((stvOverrideBeforeKb MAIN Nil) (P $x)))
+             $stv)
+           $stv))
+       ((0.2 0.5)))))
+
+!(let $_r
+   (mm2-compileadd stvOverrideAfterKb
+     (: r
+        (Implication (Premises (P $x)) (Conclusions (Q $x)))
+        (STV 0.8 0.9)))
+   (let $_set (mm2-set-base-rate stvOverrideAfterKb (Q $x) (STV 0.4 0.6))
+     (mm2-test-equal
+       (collapse
+         (match &mork
+           (base-rate
+             (guarded-base-rate
+               (r $rv)
+               consequent
+               ((stvOverrideAfterKb MAIN Nil) (Q $x)))
+             $stv)
+           $stv))
+       ((0.4 0.6)))))
+
 ; test_nary_conjuction.metta
 !(mm2-compileadd nAryKb (: a A (STV 1.0 1.0)))
 !(mm2-compileadd nAryKb (: b B (STV 1.0 1.0)))

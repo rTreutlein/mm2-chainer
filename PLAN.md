@@ -100,7 +100,7 @@ against the mm2 runtime **in one petta process**, via PeTTa's mork_ffi
   relative) / `FAIL`; the current hand harness is exact.
 - Converted tests live in `tests/harness/converted_tests.metta`; run with
   `scripts/run-harness-tests.sh` (wired into the suite, currently
-  12 pass / 0 close / 0 fail).
+  14 pass / 0 close / 0 fail).
 - Setup facts: petta wrapper LD_PRELOADs
   `PeTTa/mork_ffi/target/release/libmork_ffi.so`, which path-depends on our
   `../../MORK` — rebuild with `cargo build -p mork_ffi --release` in

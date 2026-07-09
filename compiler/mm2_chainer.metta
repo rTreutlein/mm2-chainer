@@ -71,6 +71,60 @@
                         (mm2-add-compiled $kb $rest)))
         ($other (mm2-add-compiled $kb $rest))))))
 
+(= (mm2-set-base-rate-key! $key ($s $c))
+   (let $_old (mm2-remove-matches (base-rate $key $old))
+     (let $stored (copy_term $key)
+       (add-atom &mork (base-rate $stored ($s $c))))))
+
+(= (mm2-reset-base-rate-key! $key)
+   (let $_old (mm2-remove-matches (base-rate $key $old))
+     (let $stored (copy_term $key)
+       (add-atom &mork (base-rate $stored (0.0 0.0))))))
+
+(= (mm2-apply-base-rate-value-if-alpha! $pat ($s $c) $key $match)
+   (if (=alpha $match $pat)
+     (mm2-set-base-rate-key! $key ($s $c))
+     ()))
+
+(= (mm2-reset-base-rate-value-if-alpha! $pat $key $match)
+   (if (=alpha $match $pat)
+     (mm2-reset-base-rate-key! $key)
+     ()))
+
+(= (mm2-apply-base-rate-value-to-defs! $pat ($s $c))
+   (let* (($_plain
+            (collapse
+              (match &mork
+                (base-rate-def $key $match)
+                (mm2-apply-base-rate-value-if-alpha! $pat ($s $c) $key $match))))
+          ($_guarded
+            (collapse
+              (match &mork
+                (base-rate-def-guarded $key $match $guard)
+                (mm2-apply-base-rate-value-if-alpha! $pat ($s $c) $key $match)))))
+     ()))
+
+(= (mm2-reset-base-rate-value-in-defs! $pat)
+   (let* (($_plain
+            (collapse
+              (match &mork
+                (base-rate-def $key $match)
+                (mm2-reset-base-rate-value-if-alpha! $pat $key $match))))
+          ($_guarded
+            (collapse
+              (match &mork
+                (base-rate-def-guarded $key $match $guard)
+                (mm2-reset-base-rate-value-if-alpha! $pat $key $match)))))
+     ()))
+
+(= (mm2-apply-user-base-rate-overrides!)
+   (let $_apply
+        (collapse
+          (match &mork
+            (base-rate-cache-entry $pat user (STV $s $c) $mode)
+            (mm2-apply-base-rate-value-to-defs! $pat ($s $c))))
+     ()))
+
 ; Eagerly compile the total-implication query scaffold for an
 ; implication-typed rule premise (PeTTa does this lazily at chain time). The
 ; (ti-compiled ...) guard atom keeps one scaffold per (kb, type) -- each
@@ -114,6 +168,7 @@
 (= (mm2-compileadd $kb $stmt)
    (let* (($added (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
           ($_forward-dirty (mm2-clear-forward-agenda $kb))
+          ($_user-br (mm2-apply-user-base-rate-overrides!))
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
 
@@ -123,6 +178,7 @@
 (= (mm2-add-to-kb $stmt)
    (let* (($added (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
           ($_forward-dirty (mm2-clear-forward-agenda kb))
+          ($_user-br (mm2-apply-user-base-rate-overrides!))
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
 
@@ -426,12 +482,15 @@
        (let* (($stored (copy_term $pat))
               ($cache-pat (copy_term $pat))
               ($_set (add-atom &mork (base-rate $stored ($s $c))))
-              ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat user (STV $s $c) manual))))
+              ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat user (STV $s $c) manual)))
+              ($_keyed (mm2-apply-base-rate-value-to-defs! $pat ($s $c))))
          ()))))
 
 (= (mm2-clear-base-rate $kb $pattern)
-   (let $_clear (mm2-remove-base-rate-state $kb $pattern)
-     (mm2-add-base-rate-support $kb $pattern)))
+   (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+     (let* (($_clear (mm2-remove-base-rate-state $kb $pattern))
+            ($_keyed (mm2-reset-base-rate-value-in-defs! $pat)))
+       (mm2-add-base-rate-support $kb $pattern))))
 
 (= (mm2-store-computed-base-rate! $kb $pattern (STV $s $c) $mode)
    (let $_clear (mm2-remove-base-rate-state $kb $pattern)
