@@ -22,6 +22,8 @@ chain_depths="${MM2_QUERY_BENCH_CHAIN_DEPTHS:-4 8 12}"
 and_widths="${MM2_QUERY_BENCH_AND_WIDTHS:-4 8}"
 summary_report="${MM2_QUERY_BENCH_OUT:-outputs/query_scale_bench.tsv}"
 runs_report="${MM2_QUERY_BENCH_RUNS_OUT:-outputs/query_scale_bench_runs.tsv}"
+lock_dir="outputs/.bench-query-scale.lock"
+tmp_dir=""
 
 require_positive_int() {
   local name="$1"
@@ -79,6 +81,13 @@ min_ms() {
 
 max_ms() {
   printf '%s\n' "$@" | sort -n | awk 'END { print $1 }'
+}
+
+cleanup() {
+  if [ -n "$tmp_dir" ]; then
+    rm -rf "$tmp_dir"
+  fi
+  rm -rf "$lock_dir"
 }
 
 emit_header() {
@@ -169,11 +178,17 @@ require_positive_int MM2_QUERY_BENCH_TIMEOUT "$timeout_s"
 require_positive_int_list MM2_QUERY_BENCH_CHAIN_DEPTHS "$chain_depths"
 require_positive_int_list MM2_QUERY_BENCH_AND_WIDTHS "$and_widths"
 
+mkdir -p outputs
+if ! mkdir "$lock_dir" 2>/dev/null; then
+  echo "another query scale benchmark appears to be running; remove $lock_dir if this is stale" >&2
+  exit 2
+fi
+trap cleanup EXIT
+
 mkdir -p outputs/query_scale_bench_logs "$(dirname "$summary_report")" "$(dirname "$runs_report")"
 bash scripts/build-runtime.sh outputs/harness_runtime.mm2
 
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
 
 baseline_file="$tmp_dir/baseline.metta"
 generate_baseline_fixture "$baseline_file"
