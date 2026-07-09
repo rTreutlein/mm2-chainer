@@ -1104,6 +1104,12 @@ Rejected performance experiments:
   versus the prior 1746 ms sample, and the focused harness benchmark regressed
   to `test_forward_chainer` 2165 ms net and `test_forward_backward_compose`
   1806 ms net.
+- No-goal forward source exec skip: marking a selected source fact as processed
+  but skipping `mm2-exec` when `forward-trigger` returned no goals changed
+  observable forward fixture behavior. Focused corpus output dropped
+  `test_forward_chainer` from 30 pass / 0 fail to 28 pass / 2 fail, so even
+  apparently empty source rounds can advance durable runtime work that the
+  harness observes.
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
