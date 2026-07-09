@@ -804,6 +804,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
+## Corpus regression gate (DONE 2026-07-09)
+
+Now that the generated corpus has zero supported failures, unsupported IR,
+converter skips, generated omissions, and timeout/error files,
+`scripts/run-harness-corpus.sh` exits nonzero if any of those counts reappear.
+Explicit `ADAPTED` notes remain informational so the MM2-specific parity
+surface stays visible without failing the run.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
