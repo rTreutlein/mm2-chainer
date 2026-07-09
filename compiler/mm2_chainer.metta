@@ -125,6 +125,19 @@
             (mm2-apply-base-rate-value-to-defs! $pat ($s $c))))
      ()))
 
+(= (mm2-apply-computed-base-rate-entry! $pat (STV $s $c))
+   (case (mm2-computed-cached-base-rate $pat (STV $s $c))
+     (((STV $es $ec) (mm2-apply-base-rate-value-to-defs! $pat ($es $ec)))
+      ($other ()))))
+
+(= (mm2-apply-computed-base-rate-overrides!)
+   (let $_apply
+        (collapse
+          (match &mork
+            (base-rate-cache-entry $pat computed (STV $s $c) $mode)
+            (mm2-apply-computed-base-rate-entry! $pat (STV $s $c))))
+     ()))
+
 ; Eagerly compile the total-implication query scaffold for an
 ; implication-typed rule premise (PeTTa does this lazily at chain time). The
 ; (ti-compiled ...) guard atom keeps one scaffold per (kb, type) -- each
@@ -168,6 +181,7 @@
 (= (mm2-compileadd $kb $stmt)
    (let* (($added (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
           ($_forward-dirty (mm2-clear-forward-agenda $kb))
+          ($_computed-br (mm2-apply-computed-base-rate-overrides!))
           ($_user-br (mm2-apply-user-base-rate-overrides!))
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
@@ -178,6 +192,7 @@
 (= (mm2-add-to-kb $stmt)
    (let* (($added (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
           ($_forward-dirty (mm2-clear-forward-agenda kb))
+          ($_computed-br (mm2-apply-computed-base-rate-overrides!))
           ($_user-br (mm2-apply-user-base-rate-overrides!))
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
@@ -500,7 +515,8 @@
            (let* (($stored (copy_term $pat))
                   ($cache-pat (copy_term $pat))
                   ($_set (add-atom &mork (base-rate $stored ($s $c))))
-                  ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat computed (STV $s $c) $mode))))
+                  ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat computed (STV $s $c) $mode)))
+                  ($_keyed (mm2-apply-computed-base-rate-entry! $pat (STV $s $c))))
              ()))))))
 
 (= (mm2-live-cached-base-rate $pat)

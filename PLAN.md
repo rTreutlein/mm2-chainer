@@ -1049,7 +1049,7 @@ path during normal test runs.
    pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
-   `HARNESS: 12 pass, 0 close, 0 fail`.
+   `HARNESS: 16 pass, 0 close, 0 fail`.
    No supported failures, closes, unsupported IR, converter-level skipped
    forms, explicit adaptations, or generated omissions remain in the generated
    corpus.

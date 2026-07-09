@@ -74,6 +74,47 @@
            $stv))
        ((0.4 0.6)))))
 
+; Computed base-rate cache entries should replay into role-keyed STV folds even
+; when the cache entry is written before the rule creates the keyed definition.
+!(let $_set (mm2-store-computed-base-rate! stvComputedBeforeKb (P $x) (STV 0.5 0.9) base-rate)
+   (let $_r
+     (mm2-compileadd stvComputedBeforeKb
+       (: r
+          (Implication (Premises (P $x)) (Conclusions (Q $x)))
+          (STV 0.8 0.9)))
+     (mm2-test-equal
+       (collapse
+         (match &mork
+           (base-rate
+             (guarded-base-rate
+               (r $rv)
+               antecedent
+               ((stvComputedBeforeKb MAIN Nil) (P $x)))
+             $stv)
+           $stv))
+       ((0.5 0.9)))))
+
+; Lower-confidence computed cache entries should propagate the effective
+; direct-fact base rate to keyed folds, matching mm2-cached-base-rate.
+!(let $_r
+   (mm2-compileadd stvComputedLowKb
+     (: r
+        (Implication (Premises (P $x)) (Conclusions (Q $x)))
+        (STV 0.8 0.9)))
+   (let $_pb (mm2-compileadd stvComputedLowKb (: pb (P bob) (STV 0.7 0.8)))
+     (let $_set (mm2-store-computed-base-rate! stvComputedLowKb (P $x) (STV 0.2 0.0001) base-rate)
+       (mm2-test-equal
+         (collapse
+           (match &mork
+             (base-rate
+               (guarded-base-rate
+                 (r $rv)
+                 antecedent
+                 ((stvComputedLowKb MAIN Nil) (P $x)))
+               $stv)
+             $stv))
+         ((0.6999999999999998 0.0009990009990009992))))))
+
 ; test_nary_conjuction.metta
 !(mm2-compileadd nAryKb (: a A (STV 1.0 1.0)))
 !(mm2-compileadd nAryKb (: b B (STV 1.0 1.0)))
