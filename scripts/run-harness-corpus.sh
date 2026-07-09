@@ -31,6 +31,7 @@ vlog="outputs/harness_verdicts.log"
 : > "$report"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0
+min_total_pass=241
 
 for f in tests/harness/generated/*.metta; do
   name="$(basename "$f" .metta)"
@@ -82,6 +83,10 @@ if [ "$total_fail" -ne 0 ] ||
    [ "$total_unsup_ir" -ne 0 ] ||
    [ "$total_skipped" -ne 0 ] ||
    [ "$total_omitted" -ne 0 ] ||
-   [ "$total_err" -ne 0 ]; then
+   [ "$total_err" -ne 0 ] ||
+   [ "$total_pass" -lt "$min_total_pass" ]; then
+  if [ "$total_pass" -lt "$min_total_pass" ]; then
+    echo "corpus pass count regressed: got $total_pass, expected at least $min_total_pass" >&2
+  fi
   exit 1
 fi
