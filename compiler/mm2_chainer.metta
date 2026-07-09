@@ -1296,7 +1296,7 @@
      (if (== $fact ())
        false
        (let* (($_mark (add-atom &mork (mm2-forward-processed $scope $fact)))
-              ($_run (mm2-forward-chain-from-facts-steps
+              ($_run (mm2-forward-chain-from-facts-steps-no-sync
                        (mm2-forward-chain-steps-per-round)
                        $kb
                        (cons $fact ()))))
@@ -1304,14 +1304,18 @@
 
 (= (mm2-forward-chain-loop $rounds $kb)
    (if (<= $rounds 0)
-     ()
+     false
      (let $advanced (mm2-forward-chain-one-step $kb)
        (if (== $advanced false)
-         ()
-         (mm2-forward-chain-loop (- $rounds 1) $kb)))))
+         false
+         (let $_rest (mm2-forward-chain-loop (- $rounds 1) $kb)
+           true)))))
 
 (= (mm2-forward-chain $rounds $kb)
-   (mm2-forward-chain-loop $rounds $kb))
+   (let $advanced (mm2-forward-chain-loop $rounds $kb)
+     (if (== $advanced false)
+       ()
+       (mm2-forward-sync-kb (mm2-ir-scope-kb $kb)))))
 
 (= (mm2-forward-target-type (: $_name $type $_tv)) $type)
 (= (mm2-forward-target-type ($type $_scope $_prf $_tv)) $type)
@@ -1368,8 +1372,21 @@
           ($_sync (mm2-forward-sync-kb $scope)))
      ()))
 
+; Internal forward-loop steps only need MORK facts for later agenda selection.
+; Public entry points still sync once before returning to preserve &kb readback.
+(= (mm2-forward-chain-from-facts-steps-raw-no-sync $steps $kb $facts)
+   (let* (($fact-keys (mm2-forward-fact-keys $facts))
+          ($_clear (mm2-clear-runtime-queue))
+          ($_goals (mm2-add-compiled $kb (mm2-forward-goals-from-facts $fact-keys)))
+          ($_run (mm2-exec &mork $steps)))
+     ()))
+
 (= (mm2-forward-chain-from-facts-steps $steps $kb $facts)
    (let $_done (collapse (mm2-forward-chain-from-facts-steps-raw $steps $kb $facts))
+     ()))
+
+(= (mm2-forward-chain-from-facts-steps-no-sync $steps $kb $facts)
+   (let $_done (collapse (mm2-forward-chain-from-facts-steps-raw-no-sync $steps $kb $facts))
      ()))
 
 (= (mm2-forward-chain-from-facts $rounds $kb $facts)

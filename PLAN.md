@@ -1002,6 +1002,14 @@ hand-harness assertion covers the repeated-export invariant; the
 `test_particle_values` at 1944 ms net and `test_distribution_values` at
 1044 ms net.
 
+Forward chaining now syncs materialized MORK facts into the harness `&kb`
+readback space once per public `mm2-forward-chain` call instead of once after
+each internal source-fact step. The internal loop still selects subsequent
+facts from MORK, so the observable `&kb` readback side effect is preserved at
+the API boundary while avoiding repeated whole-scope sync work. A focused
+`MM2_BENCH_RUNS=5` sample measured `test_forward_chainer` at 2279 ms net and
+`test_forward_backward_compose` at 1771 ms net.
+
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that
