@@ -1248,6 +1248,20 @@
             ($_cleanup (mm2-cleanup-queries $cqs)))
        $results)))
 
+(= (mm2-run-query-first $steps $notsup $cqs)
+   (let $existing (mm2-query-results $notsup $cqs)
+     (if (== $existing ())
+       (let* (($_run (mm2-exec &mork (mm2-total-steps $steps)))
+              ($results (mm2-query-results $notsup $cqs)))
+         $results)
+       $existing)))
+
+(= (mm2-query-first $steps $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-first $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
+
 (= (mm2-query-materialize $steps $kb (: $prf $type $tv))
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
@@ -1788,13 +1802,13 @@
    (if (is-expr $term) (mm2-last-list-item (cdr-atom $term)) $term))
 
 (= (mm2-test-query-tv-strength $steps $kb $query $expected)
-   (case (mm2-query $steps $kb $query)
+   (case (mm2-query-first $steps $kb $query)
      (((cons (: $_prf $_type (STV $s $_c)) $_rest)
        (mm2-test-float-value $s $expected))
       ($other (mm2-test-equal no-result $expected)))))
 
 (= (mm2-test-query-tv-confidence $steps $kb $query $expected)
-   (case (mm2-query $steps $kb $query)
+   (case (mm2-query-first $steps $kb $query)
      (((cons (: $_prf $_type (STV $_s $c)) $_rest)
        (mm2-test-float-value $c $expected))
       ($other (mm2-test-equal no-result $expected)))))

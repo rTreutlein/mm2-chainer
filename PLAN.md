@@ -1024,6 +1024,11 @@ same fixture already materialized the derived distribution. The full
 A focused `MM2_BENCH_RUNS=5` sample measured `test_particle_values` at
 961 ms net, `test_distribution_values` at 578 ms net, `test_rectangle_area` at
 228 ms net, and `test_height_average` at 227 ms net.
+Scalar query-TV helper probes now use the same existing-result fast path as the
+distribution assertion helpers, but with the original query budget when no
+result has been materialized yet. This lets the strength/confidence pair in
+`test_particle_values` share the first query result; a focused
+`MM2_BENCH_RUNS=5` sample measured `test_particle_values` at 919 ms net.
 
 `scripts/bench-harness-corpus.sh` now also requires each repeated run of a
 sampled fixture to produce the same pass/close/fail/unsupported/skipped/
