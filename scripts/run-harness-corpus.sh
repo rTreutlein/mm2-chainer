@@ -75,7 +75,7 @@ min_pass_for_file() {
   esac
 }
 
-for f in tests/harness/generated/*.metta; do
+for f in tests/harness/generated/test_*.metta; do
   name="$(basename "$f" .metta)"
   log="outputs/harness_logs/$name.log"
   : > "$vlog"

@@ -851,6 +851,17 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
+## Generated corpus managed-file guard (DONE 2026-07-09)
+
+The generated corpus runner now only executes managed `test_*.metta` fixtures,
+matching the converter output set. `scripts/check-generated-corpus.sh` also
+fails if any other `.metta` file appears under `tests/harness/generated/`, so
+ad hoc files cannot silently enter or shadow the generated corpus.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
