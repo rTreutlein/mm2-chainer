@@ -510,7 +510,9 @@
    (ruleN $ctype (proj $op $rid) $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (ctv-kind $pos $neg))
-   (ruleN $ctype $rid (ctv $pos $neg) $ptypes))
+   (superpose (
+     (ruleN $ctype $rid (ctv $pos $neg) $ptypes)
+     (mm2-ir-forward-chain-goal-marker $ctype))))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (compute-plus-ctv-kind $lhs $rhs $res $pos $neg))
    (ruleN $ctype $rid (compute-plus-ctv $pos ($lhs $rhs $res $neg)) $ptypes))

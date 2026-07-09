@@ -1126,6 +1126,14 @@
           ($_run (mm2-exec &mork (* $rounds (mm2-forward-chain-steps-per-round)))))
      ()))
 
+(= (mm2-forward-derived? $kb $type)
+   (let $g ((mm2-ir-scope-kb $kb) $type)
+     (not (== (collapse (match &mork (fact $g ($s $c)) true)) ()))))
+
+(= (mm2-test-forward-has-derived $rounds $kb $type $expected)
+   (let $_forward (mm2-forward-chain $rounds $kb)
+     (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
+
 ; --- test comparison --------------------------------------------------------
 ; Compare (type, tv) sets; proof tokens intentionally differ from PeTTa.
 ; Both arguments are lists of (: $prf $type $tv) results.

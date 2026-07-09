@@ -32,7 +32,6 @@ HARNESS = "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer"
 
 SKIP_FILES = {
     "test.metta",                     # top-level umbrella, not a query test file
-    "test_forward_chainer.metta",     # forward chaining out of scope
     "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
 }
 
@@ -43,6 +42,10 @@ PARTIAL_DIRECT_DIST_FILES = {
 
 PARTIAL_PREFIX_FILES = {
     "test_numeric_pattern_dist.metta",
+}
+
+PARTIAL_FORWARD_FILES = {
+    "test_forward_chainer.metta",
 }
 
 def tokenize(text):
@@ -239,6 +242,9 @@ def convert_test(expr):
     forward_query = forward_chain_query_test(queryish, expected)
     if forward_query is not None:
         return forward_query
+    forward_derived = forward_has_derived_test(queryish, expected)
+    if forward_derived is not None:
+        return forward_derived
     if head(queryish) == "known-concept-node?" and len(queryish) == 3:
         return [
             "mm2-test-known-concept-node",
@@ -497,6 +503,25 @@ def forward_chain_query_test(queryish, expected):
     ]
 
 
+def forward_has_derived_test(queryish, expected):
+    if head(queryish) != "let" or len(queryish) != 4:
+        return None
+    _binding, forward, derived = queryish[1], queryish[2], queryish[3]
+    if head(forward) != "forward-chain" or len(forward) != 3:
+        return None
+    if head(derived) != "forward-has-derived?" or len(derived) != 3:
+        return None
+    if forward[2] != derived[1]:
+        return None
+    return [
+        "mm2-test-forward-has-derived",
+        rename_calls(forward[1]),
+        rename_calls(forward[2]),
+        rename_calls(derived[2]),
+        rename_calls(expected),
+    ]
+
+
 def cached_base_rate_test(queryish):
     if head(queryish) != "let" or len(queryish) != 4:
         return None
@@ -626,10 +651,13 @@ def convert_file(path):
     ]
     direct_dist_only = path.name in PARTIAL_DIRECT_DIST_FILES
     prefix_only = path.name in PARTIAL_PREFIX_FILES
+    forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
     if direct_dist_only:
         out.insert(1, "; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet")
     if prefix_only:
         out.insert(1, "; supported query-prefix subset; later numeric distribution helpers are not generated yet")
+    if forward_prefix_only:
+        out.insert(1, "; forward materialization subset; PeTTa forward agenda/proof bookkeeping is not generated yet")
     unsupported = 0
     for kind, expr in forms:
         if direct_dist_only and kind == "bang" and head(expr) == "compileadd":
@@ -641,6 +669,13 @@ def convert_file(path):
                 out.append("!" + show(converted))
             continue
         if kind == "bang" and head(expr) == "test":
+            if forward_prefix_only:
+                converted = forward_has_derived_test(expr[1], expr[2])
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
+                out.append("; Remaining source forms start at PeTTa forward agenda/proof bookkeeping coverage and are intentionally omitted here.")
+                break
             converted = convert_test(expr)
             if converted is not None:
                 out.append("!" + show(converted))

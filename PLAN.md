@@ -128,7 +128,7 @@ Unrecognized IR -> `(notsupported-ir ...)` markers in the transcript and the
 space. Hand-converted tests keep identical verdicts through the real
 compiler (3 pass, 1 close).
 
-Corpus: `scripts/convert_petta_tests.py` converted 35 test files into
+Corpus: `scripts/convert_petta_tests.py` converted 36 test files into
 `tests/harness/generated/`; `scripts/run-harness-corpus.sh` runs them
 (one petta process per file, 180 s timeout) into
 `outputs/harness_report.txt` (per-file pass/close/fail/unsupported-ir/skipped/ERROR).
@@ -575,6 +575,22 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=204 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Forward materialization prefix coverage (DONE 2026-07-09)
+
+`test_forward_chainer.metta` now has a generated prefix file covering its first
+`forward-has-derived?` materialization check. Ordinary `ctv` rules now emit
+forward-chain goal markers for their conclusions, so `mm2-forward-chain` can
+materialize rule conclusions beyond the inverse/base-rate cases it already
+covered.
+
+The rest of the PeTTa forward-chainer file remains omitted because it checks
+PeTTa-specific agenda/proof bookkeeping and selected/from-facts helpers that are
+not modeled by the MM2 forward approximation.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=205 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -617,8 +633,9 @@ Latest corpus snapshot after this adjustment:
    uniform-prior helper coverage, and forward-chain materialization-query
    coverage, self-dependent proof revision suppression, generated coverage for
    the older hand-ported query tests, direct distribution-helper coverage, and
-   numeric-pattern query-prefix coverage):
-   pass=204 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   numeric-pattern query-prefix coverage, and forward materialization prefix
+   coverage):
+   pass=205 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -717,11 +734,13 @@ Latest corpus snapshot after this adjustment:
    fold includes another rule's `Q` conclusion while excluding conclusions
    derived by the same STV rule.
 19. Converter gaps: no generated corpus tests are currently skipped. The only
-   upstream `test_*.metta` files not generated are the explicit out-of-scope
-   benchmark and forward-chainer files. Two distribution files are generated as
-   direct-helper subsets, and the numeric-pattern distribution file is generated
-   as a query-prefix subset; omitted helper/query-tail sections are documented in
-   the generated files. Keep any future non-query harness additions explicit
+   upstream `test_*.metta` file not generated is the explicit out-of-scope
+   benchmark generator. `test_forward_chainer` is generated as a forward
+   materialization subset; its PeTTa-specific agenda/proof bookkeeping tail is
+   intentionally omitted in the generated file. Two distribution files are
+   generated as direct-helper subsets, and the numeric-pattern distribution file
+   is generated as a query-prefix subset; omitted helper/query-tail sections are
+   documented in the generated files. Keep any future non-query harness additions explicit
    about whether they exercise MM2 runtime behavior or PeTTa helper/compiler
    state.
    The converter now also preserves the known MM2-specific generated-fixture
