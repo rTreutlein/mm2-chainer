@@ -828,12 +828,13 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
-## Corpus pass-count floor (DONE 2026-07-09)
+## Corpus pass-count floors (DONE 2026-07-09)
 
 `scripts/run-harness-corpus.sh` now also fails if the generated corpus produces
-fewer than 241 passing assertions. This keeps a green run from silently losing
+fewer than 241 passing assertions, or if any generated file drops below its
+current per-file pass count. This keeps a green run from silently losing
 coverage by deleting or de-generating tests; future corpus expansions can raise
-the floor with the same commit that adds coverage.
+the floors with the same commit that adds coverage.
 
 Latest corpus snapshot after this adjustment:
 

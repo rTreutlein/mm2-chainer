@@ -55,7 +55,8 @@ PeTTaChainer corpus is in sync with `scripts/convert_petta_tests.py`, and then
 runs the corpus gate. The corpus gate fails if generated tests produce close or
 fail verdicts, unsupported IR, converter skips, omitted forms, or timeout/error
 files, and it also fails if the total pass count drops below the current
-coverage floor.
+coverage floor or an individual generated file drops below its current pass
+count.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 

@@ -30,8 +30,50 @@ report="outputs/harness_report.txt"
 vlog="outputs/harness_verdicts.log"
 : > "$report"
 
-total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0
+total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0
 min_total_pass=241
+
+min_pass_for_file() {
+  case "$1" in
+    test_backward_dag_helpers) echo 34 ;;
+    test_backward_open_query_results) echo 3 ;;
+    test_base_rate_cache) echo 10 ;;
+    test_best_first_runtime) echo 12 ;;
+    test_chainer_add_atom) echo 2 ;;
+    test_distribution_values) echo 6 ;;
+    test_evidence_semantics) echo 2 ;;
+    test_foldall_merged_outputs) echo 2 ;;
+    test_foldall_query_goal) echo 3 ;;
+    test_forward_backward_compose) echo 17 ;;
+    test_forward_chainer) echo 14 ;;
+    test_frontier_pooling) echo 6 ;;
+    test_height_average) echo 4 ;;
+    test_idealized_confidence) echo 12 ;;
+    test_implication_inversion) echo 1 ;;
+    test_implication_premise) echo 16 ;;
+    test_inheritance_query_proof) echo 1 ;;
+    test_lifting_merge) echo 6 ;;
+    test_logic_config) echo 10 ;;
+    test_math) echo 3 ;;
+    test_member_compat) echo 3 ;;
+    test_member_concept_node) echo 2 ;;
+    test_merged_subgoal_rule_application) echo 2 ;;
+    test_nary_conjuction) echo 1 ;;
+    test_negated_evidence_merge) echo 5 ;;
+    test_numeric_pattern_dist) echo 5 ;;
+    test_particle_values) echo 22 ;;
+    test_query_adds) echo 5 ;;
+    test_query_compute_in_compound) echo 3 ;;
+    test_query_materialize) echo 8 ;;
+    test_rectangle_area) echo 3 ;;
+    test_specializing_rule) echo 5 ;;
+    test_stv_implication_derived_ctv) echo 1 ;;
+    test_total_implication_aggregate) echo 1 ;;
+    test_uniform_prior) echo 9 ;;
+    test_var_head) echo 2 ;;
+    *) echo 0 ;;
+  esac
+}
 
 for f in tests/harness/generated/*.metta; do
   name="$(basename "$f" .metta)"
@@ -59,6 +101,12 @@ for f in tests/harness/generated/*.metta; do
     flag="ERROR"
     total_err=$((total_err + 1))
   fi
+  min_pass="$(min_pass_for_file "$name")"
+  if [ "$pass" -lt "$min_pass" ]; then
+    flag="${flag:+$flag,}COVERAGE"
+    total_coverage_err=$((total_coverage_err + 1))
+    echo "corpus pass count regressed for $name: got $pass, expected at least $min_pass" >&2
+  fi
   total_pass=$((total_pass + pass))
   total_close=$((total_close + close))
   total_fail=$((total_fail + fail))
@@ -73,7 +121,7 @@ done
 
 {
   echo "---"
-  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted flagged-files=$total_err"
+  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted flagged-files=$((total_err + total_coverage_err))"
 } >> "$report"
 
 cat "$report"
@@ -84,6 +132,7 @@ if [ "$total_fail" -ne 0 ] ||
    [ "$total_skipped" -ne 0 ] ||
    [ "$total_omitted" -ne 0 ] ||
    [ "$total_err" -ne 0 ] ||
+   [ "$total_coverage_err" -ne 0 ] ||
    [ "$total_pass" -lt "$min_total_pass" ]; then
   if [ "$total_pass" -lt "$min_total_pass" ]; then
     echo "corpus pass count regressed: got $total_pass, expected at least $min_total_pass" >&2
