@@ -1178,6 +1178,10 @@
    (let $g ((mm2-ir-scope-kb $kb) $type)
      (mm2-list-count (collapse (match &mork (fact $g ($s $c)) true)))))
 
+(= (mm2-result-proofs ()) ())
+(= (mm2-result-proofs (cons (: $prf $_type $_tv) $rest))
+   (cons $prf (mm2-result-proofs $rest)))
+
 (= (mm2-test-forward-has-derived $rounds $kb $type $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
      (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
@@ -1185,6 +1189,10 @@
 (= (mm2-test-forward-fact-count $rounds $kb $type $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
      (mm2-test-equal (mm2-forward-fact-count $kb $type) $expected)))
+
+(= (mm2-test-forward-query-proofs $rounds $steps $kb (: $prf $type $tv) $expected)
+   (let $_forward (mm2-forward-chain $rounds $kb)
+     (mm2-test-equal (mm2-result-proofs (mm2-query $steps $kb (: $prf $type $tv))) $expected)))
 
 (= (mm2-test-forward-has-goals $kb $expected)
    (mm2-test-equal (mm2-forward-has-goals? $kb) $expected))

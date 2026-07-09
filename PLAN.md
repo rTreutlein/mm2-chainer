@@ -766,6 +766,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=238 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=3 adapted=14 flagged-files=0
 
+## Forward proof-token readback adapter (DONE 2026-07-09)
+
+PeTTa's forward merge-shape check asserts that the materialized `SwitchGoal`
+row is not stored with a raw `merge/revision` proof token. MM2's comparable
+readback surface is the canonical `mm2-merged` token for materialized facts, so
+the generated harness now extracts forward-query proof tokens exactly instead
+of using the normal proof-insensitive result comparator.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=239 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=2 adapted=15 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -815,15 +827,15 @@ Latest corpus snapshot after this adjustment:
    distribution `GreaterThan` rule-premise coverage, and selective
    forward-materialization tail coverage, adapted ParticleStore helper
    coverage, and adapted forward
-   source-materialization checks, forward fact-count adapters, and forward
-   agenda marker adaptation):
-   pass=238 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=3 adapted=14
+   source-materialization checks, forward fact-count adapters, forward
+   agenda marker adaptation, and forward proof-token readback adaptation):
+   pass=239 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=2 adapted=15
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, unsupported IR, or converter-level skipped
-   forms remain in the generated corpus; the remaining coverage notes are 3
-   explicit omissions and 14 explicit adaptations.
+   forms remain in the generated corpus; the remaining coverage notes are 2
+   explicit omissions and 15 explicit adaptations.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is exact after readback-level factoring of raw two-premise And
@@ -919,7 +931,8 @@ Latest corpus snapshot after this adjustment:
    dedupe CPU-placeholder cleanup's reachable-output side. PeTTa's proof-count
    assertions in the same file are adapted to MM2 materialized fact-count
    checks, and PeTTa's agenda-dirty check is adapted to an MM2 forward-goal
-   availability check.
+   availability check. PeTTa's forward merge-shape assertion is adapted to an
+   exact MM2 readback proof-token check for `mm2-merged`.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
@@ -929,9 +942,10 @@ Latest corpus snapshot after this adjustment:
 19. Converter gaps: no generated corpus tests are currently skipped. The only
    upstream `test_*.metta` file not generated is the explicit out-of-scope
    benchmark generator. `test_forward_chainer` is generated as a forward
-   materialization subset; its PeTTa-specific agenda/proof bookkeeping checks
-   are intentionally omitted inline while later materialization-compatible
-   assertions continue to be converted. `test_distribution_values` now
+   materialization subset; its remaining PeTTa-specific agenda/proof-store
+   bookkeeping checks are intentionally omitted inline while later
+   materialization-compatible assertions continue to be converted.
+   `test_distribution_values` now
    includes the downstream `PlayTogetherIn` `GreaterThan` rule, and
    `test_particle_values` now generates the country-height `Taller` rule plus
    the FoldAllValue particle-count query/helper tail. Its PeTTa
