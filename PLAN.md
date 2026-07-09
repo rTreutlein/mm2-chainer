@@ -1093,6 +1093,13 @@ Rejected performance experiments:
   (focused run: 26 pass / 4 fail), while 225 and 200 failed more broadly.
   Keep the current budget unless the forward materialization internals become
   less step-sensitive.
+- Single-source internal forward helper: specializing the internal
+  `mm2-forward-chain-one-step` path to avoid the public multi-fact helper kept
+  focused semantics clean, but did not improve repeated timings. A
+  `MM2_FORWARD_BENCH_RUNS=5` sample measured `forward_chain_16` at 1756 ms net
+  versus the prior 1746 ms sample, and the focused harness benchmark regressed
+  to `test_forward_chainer` 2165 ms net and `test_forward_backward_compose`
+  1806 ms net.
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
