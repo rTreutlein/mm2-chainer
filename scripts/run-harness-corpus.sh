@@ -78,6 +78,7 @@ done
 cat "$report"
 
 if [ "$total_fail" -ne 0 ] ||
+   [ "$total_close" -ne 0 ] ||
    [ "$total_unsup_ir" -ne 0 ] ||
    [ "$total_skipped" -ne 0 ] ||
    [ "$total_omitted" -ne 0 ] ||

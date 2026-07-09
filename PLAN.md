@@ -806,7 +806,7 @@ Latest corpus snapshot after this adjustment:
 
 ## Corpus regression gate (DONE 2026-07-09)
 
-Now that the generated corpus has zero supported failures, unsupported IR,
+Now that the generated corpus has zero close/fail verdicts, unsupported IR,
 converter skips, generated omissions, and timeout/error files,
 `scripts/run-harness-corpus.sh` exits nonzero if any of those counts reappear.
 Explicit `ADAPTED` notes remain informational so the MM2-specific parity
@@ -819,8 +819,8 @@ Latest corpus snapshot after this adjustment:
 ## Full test entry point includes corpus (DONE 2026-07-09)
 
 `scripts/test.sh` now runs both `tests/test_runtime.sh` and the generated
-corpus gate. This makes the zero-failure/zero-unsupported/zero-skip/zero-
-omission corpus state part of the normal regression command rather than a
+corpus gate. This makes the zero-close/zero-failure/zero-unsupported/zero-skip/
+zero-omission corpus state part of the normal regression command rather than a
 separate manual check.
 
 Latest corpus snapshot after this adjustment:
