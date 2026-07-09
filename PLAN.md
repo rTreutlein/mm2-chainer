@@ -638,6 +638,19 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=212 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## FoldAllValue distribution CTVMP helper tail (DONE 2026-07-09)
+
+The remaining two helper assertions in `test_distribution_values.metta` now run
+through generated harness coverage. They query the `CntKidIn` FoldAllValue
+distribution, compute `DistGreaterThanFormula $cnt 1`, apply the downstream
+rule CTV with `CTVModusPonensFormula`, and check the PeTTa strength/confidence
+ranges. This covers the helper tail without pretending the omitted
+`PlayTogetherIn` rule has runtime `GreaterThan` premise support.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=214 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -682,8 +695,9 @@ Latest corpus snapshot after this adjustment:
    the older hand-ported query tests, direct distribution-helper coverage, and
    numeric-pattern query-prefix coverage, and forward materialization prefix
    coverage, and dist-vs-dist helper coverage, and numeric-pattern helper
-   completion, and FoldAllValue distribution-query prefix coverage):
-   pass=212 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   completion, FoldAllValue distribution-query prefix coverage, and
+   FoldAllValue distribution CTVMP helper-tail coverage):
+   pass=214 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -786,7 +800,9 @@ Latest corpus snapshot after this adjustment:
    benchmark generator. `test_forward_chainer` is generated as a forward
    materialization subset; its PeTTa-specific agenda/proof bookkeeping tail is
    intentionally omitted in the generated file. `test_distribution_values` is
-   generated as a FoldAllValue distribution-query prefix,
+   generated through the FoldAllValue distribution query plus local CTVMP helper
+   tail; its `PlayTogetherIn` rule with a `GreaterThan` premise remains omitted
+   because that rule path is not asserted by the source test.
    `test_particle_values` remains a direct-helper subset, and the
    numeric-pattern distribution file is now fully generated. Omitted
    helper/query-tail sections are documented in the generated files. Keep any

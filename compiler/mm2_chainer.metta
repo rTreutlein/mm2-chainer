@@ -1414,6 +1414,22 @@
            (mm2-test-equal (and (> $s $slo) (> $c $clo)) true)))
         ($other (mm2-test-equal no-result true))))))
 
+(= (mm2-test-query-dist-gt-mp-between $steps $kb $query $threshold $ctv $slo $shi $clo $chi)
+   (let* (($results (mm2-query $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $s $c)
+              (mm2-formula-mp
+                (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+                $ctv)
+           (mm2-test-equal
+             (and (> $s $slo)
+                  (and (< $s $shi)
+                       (and (> $c $clo) (< $c $chi))))
+             true)))
+        ($other (mm2-test-equal no-result true))))))
+
 (= (mm2-test-query-particle-pairs $steps $kb $query $expected)
    (let* (($results (mm2-query $steps $kb $query))
           ($_run (mm2-exec &mork 400)))

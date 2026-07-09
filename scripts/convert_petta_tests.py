@@ -179,6 +179,9 @@ def convert_test(expr):
     dist_gt = dist_greater_than_test(queryish, expected)
     if dist_gt is not None:
         return dist_gt
+    dist_gt_mp = dist_greater_than_mp_test(queryish, expected)
+    if dist_gt_mp is not None:
+        return dist_gt_mp
     particle_pairs = query_particle_pairs_test(queryish, expected)
     if particle_pairs is not None:
         return particle_pairs
@@ -486,6 +489,57 @@ def dist_greater_than_test(queryish, expected):
     return None
 
 
+def stv_condition_ranges(condition):
+    lowers = {}
+    uppers = {}
+    for clause in flatten_and(condition):
+        if head(clause) == ">" and len(clause) == 3 and clause[1] in {"$s", "$c"}:
+            lowers[clause[1]] = clause[2]
+        elif head(clause) == "<" and len(clause) == 3 and clause[1] in {"$s", "$c"}:
+            uppers[clause[1]] = clause[2]
+    if "$s" not in lowers or "$s" not in uppers or "$c" not in lowers or "$c" not in uppers:
+        return None
+    return lowers["$s"], uppers["$s"], lowers["$c"], uppers["$c"]
+
+
+def dist_greater_than_mp_test(queryish, expected):
+    if expected != "true" or head(queryish) != "let" or len(queryish) != 4:
+        return None
+    binding, query, body = queryish[1], queryish[2], queryish[3]
+    if head(binding) != ":" or len(binding) != 4:
+        return None
+    if head(query) != "query" or len(query) != 4 or query[3] != binding:
+        return None
+    if head(body) != "let" or len(body) != 4:
+        return None
+    stv_binding, formula, condition = body[1], body[2], body[3]
+    if stv_binding != ["STV", "$s", "$c"]:
+        return None
+    if head(formula) != "CTVModusPonensFormula" or len(formula) != 3:
+        return None
+    premise, ctv = formula[1], formula[2]
+    if head(premise) != "DistGreaterThanFormula" or len(premise) != 3:
+        return None
+    if premise[1] != mm2_last_arg(binding[2]):
+        return None
+    ranges = stv_condition_ranges(condition)
+    if ranges is None:
+        return None
+    slo, shi, clo, chi = ranges
+    return [
+        "mm2-test-query-dist-gt-mp-between",
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        rename_calls(premise[2]),
+        rename_calls(ctv),
+        slo,
+        shi,
+        clo,
+        chi,
+    ]
+
+
 def flatten_and(expr):
     if head(expr) == "and" and len(expr) == 3:
         return flatten_and(expr[1]) + flatten_and(expr[2])
@@ -735,7 +789,7 @@ def convert_file(path):
     if direct_dist_only:
         out.insert(1, "; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet")
     if fold_value_only:
-        out.insert(1, "; FoldAllValue distribution-query subset; downstream GreaterThan rule checks are not generated yet")
+        out.insert(1, "; FoldAllValue distribution-query subset; PlayTogether GreaterThan rule is not generated yet")
     if prefix_only:
         out.insert(1, "; supported query-prefix subset; later numeric distribution helpers are not generated yet")
     if forward_prefix_only:
@@ -766,7 +820,7 @@ def convert_file(path):
                 out.append("!" + show(converted))
                 continue
             if fold_value_only:
-                out.append("; Remaining source forms start at CTVMP helper coverage over FoldAllValue distributions and are intentionally omitted here.")
+                out.append("; Remaining source forms start at unsupported FoldAllValue distribution coverage and are intentionally omitted here.")
                 break
             if prefix_only:
                 out.append("; Remaining source forms start at numeric distribution helper coverage and are intentionally omitted here.")

@@ -1,5 +1,5 @@
 ; generated from PeTTaChainer tests/test_distribution_values.metta by convert_petta_tests.py
-; FoldAllValue distribution-query subset; downstream GreaterThan rule checks are not generated yet
+; FoldAllValue distribution-query subset; PlayTogether GreaterThan rule is not generated yet
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
 !(mm2-test-ParticlePairs (ParticleAddBernoulliFromSTV (ParticleFromPairs ((0 1.0))) (STV 0.5 1.0)) ((0 0.5) (1 0.5)))
@@ -16,4 +16,5 @@
 ; OMITTED downstream GreaterThan rule over FoldAllValue output: (compileadd kb (: playTogetherRule (Implication (Premises (Room $room) (CntKidIn $room $cnt) (GreaterThan $cnt 1)) (Conclusions (PlayTogetherIn $room))) (CTV (S
 !(mm2-test-query-particle-pairs-between 40 kb (: $prf (CntKidIn room1 $cnt) $tv) ((0 0.2499 0.2501) (1 0.4999 0.5001) (2 0.2499 0.2501)))
 !(mm2-test-query-particle-pairs-between 40 kb (: $prf (CntKidIn room2 $cnt) $tv) ((0 0.5599 0.5601) (1 0.3799 0.3801) (2 0.0599 0.0601)))
-; Remaining source forms start at CTVMP helper coverage over FoldAllValue distributions and are intentionally omitted here.
+!(mm2-test-query-dist-gt-mp-between 40 kb (: $prf (CntKidIn room1 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.2499 0.2501 0.09 0.13)
+!(mm2-test-query-dist-gt-mp-between 40 kb (: $prf (CntKidIn room2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0599 0.0601 0.09 0.13)
