@@ -982,6 +982,13 @@ baseline median; the top net medians were `test_forward_chainer` 2338 ms,
 `test_particle_values` 1966 ms, `test_forward_backward_compose` 1811 ms,
 `test_distribution_values` 1047 ms, and `test_frontier_pooling` 939 ms.
 
+The particle facade now marks exported `ParticleDist` ids so repeated helper
+probes do not duplicate the same `(dist-pair ...)` rows in MORK. A focused
+hand-harness assertion covers the repeated-export invariant; the
+`MM2_BENCH_RUNS=5` sample after this change measured
+`test_particle_values` at 1944 ms net and `test_distribution_values` at
+1044 ms net.
+
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that
@@ -1061,7 +1068,7 @@ path during normal test runs.
    pass=282 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
-   `HARNESS: 16 pass, 0 close, 0 fail`.
+   `HARNESS: 17 pass, 0 close, 0 fail`.
    No supported failures, closes, unsupported IR, converter-level skipped
    forms, explicit adaptations, or generated omissions remain in the generated
    corpus.

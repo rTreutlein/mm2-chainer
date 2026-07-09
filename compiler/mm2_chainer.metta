@@ -1651,6 +1651,7 @@
 
 (= (mm2-particle-store-clear)
    (let* (($_pairs (mm2-remove-matches (dist-pair $pid $x $w)))
+          ($_exported (mm2-remove-matches (dist-exported $pid)))
           ($_dist (mm2-remove-matches (dist-particle-dist $term $pid)))
           ($_point-pair (mm2-remove-matches (dist-point-pair $pid $x $w)))
           ($_point-dist (mm2-remove-matches (dist-point-dist $term $x $w))))
@@ -1679,7 +1680,12 @@
 (= (mm2-export-dist $dist)
    (case $dist
      (((ParticleDist $pid $_scale)
-       (mm2-export-dist-pairs $pid (ParticlePairs $dist)))
+       (let $seen (collapse (match &mork (dist-exported $pid) true))
+         (if (== $seen ())
+           (let* (($_mark (add-atom &mork (dist-exported $pid)))
+                  ($_pairs (mm2-export-dist-pairs $pid (ParticlePairs $dist))))
+             ())
+           ())))
       ($_other ()))))
 
 (= (mm2-test-ParticlePairs $dist $expected)

@@ -134,6 +134,12 @@
    (let $_ (mm2-compileadd distBridgeKb (: pm (DistHolder $pd) (STV 1.0 1.0)))
       (mm2-test-equal (mm2-dist-pairs $pd) ((3.0 1.0)))))
 
+; Re-exporting one ParticleDist should not duplicate its MORK dist-pair rows.
+!(let $pd (ParticleFromPairs ((10 0.4) (20 0.6)))
+   (let $_first (mm2-export-dist $pd)
+     (let $_second (mm2-export-dist $pd)
+       (mm2-test-equal (mm2-list-count (mm2-dist-pairs $pd)) 2))))
+
 ; Map2Dist *: derive a deterministic output distribution from two point masses
 ; and materialize the result pair through the MORK fsum sink.
 !(let $len (PointMass 8.0)
