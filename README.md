@@ -84,7 +84,8 @@ Rule truth values are structured PeTTaChainer-style contextual TVs:
 - `(ruleN $g (ctv ($s+ $c+) ($s- $c-)) $premises)`: explicit CTV rule
 - `(ruleN $g (stv ($s $c) (brpat $ante $cons)) $premises)`: plain STV rule whose
   negative branch is derived at fire time from the base rates of the `brpat`
-  patterns (maintained by `05_baserate.mm2` and MORK's `fold-base-rate` sink)
+  keys. Compiled STV rules key these by rule id and fold role so unifiable
+  antecedent/consequent patterns do not cross-match.
 - `(ruleN $a (inv ($s+ $c+) (brpat $ante $cons)) $premises)`: inverse of an
   implication (PeTTa's `CTVInversionFormula`); the original rule's positive
   branch is inverted through the fire-time base rates, and the attempt retries

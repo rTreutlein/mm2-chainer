@@ -1288,9 +1288,10 @@ Zero evidence (`csum<=0`) keeps `(0.0 0.0)`.
 
 - `(ruleN $g (ctv ($s+ $c+) ($s- $c-)) $premises)` — explicit CTV.
 - `(ruleN $g (stv $s $c (brpat $ante $cons)) $premises)` — plain STV rule;
-  `$ante`/`$cons` are pattern copies with variables *independent* of
-  `$g`/`$premises` (so goal unification never instantiates them). They key
-  the base-rate relation.
+  `$ante`/`$cons` are copied base-rate keys with variables *independent* of
+  `$g`/`$premises` (so goal unification never instantiates them). STV-derived
+  keys include rule id and fold role to avoid antecedent/consequent
+  cross-matches when their patterns are unifiable.
 - `adapterN` (identity) unchanged.
 
 Base-rate maintenance (new `runtime/parts/05_baserate.mm2`, priority 2 so
@@ -1350,12 +1351,14 @@ build the runtime, run, assert `(fact (B x) (0.6 0.8999998649685302))`.
 
 ## Residual caveat
 
-- Variable-vs-variable unification for `(base-rate $ante ...)` matching is now
+- Variable-vs-variable unification for `(base-rate $ante ...)` matching is
   covered by `run_reference_stv_implication_test`, which pins the maintained
-  `(base-rate (A $a) ...)` and `(base-rate (B $a) ...)` facts produced from
-  copied base-rate patterns.
-- Structurally different but unifiable patterns (e.g. `(P $x $y)` vs
-  `(P $x c)`) would cross-match base-rate keys; acceptable for now.
+  role-keyed `(base-rate (base-rate-key ... antecedent ...))` and
+  `(base-rate (base-rate-key ... consequent ...))` facts produced from copied
+  base-rate patterns.
+- Guarded STV-derived base-rate keys include the rule id and fold role
+  (`antecedent` or `consequent`) so structurally different but unifiable
+  antecedent/consequent patterns do not cross-match.
 - `BaseRateSink` compares the serialized old/new values in `finalize` and
   avoids rewriting unchanged base-rate facts.
 

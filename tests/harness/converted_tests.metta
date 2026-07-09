@@ -31,6 +31,7 @@
                    (base-rate
                      (guarded-base-rate
                        (r $rv)
+                       consequent
                        ((stvGuardKb MAIN Nil) (Q $x)))
                      $stv)
                    $stv))

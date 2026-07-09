@@ -10,7 +10,8 @@
 ;   (: r (Implication (Premises p...)
 ;         (Conclusions q)) (CTV (STV ..) ..))  -> (ruleN q (ctv (..) (..)) prems)
 ;   (: r (Implication ...) (STV s c))          -> (ruleN q (stv (s c) (brpat a q')) prems)
-;                                                 + base-rate-def / base-rate seeds
+;                                                 + role-keyed base-rate-def /
+;                                                   base-rate seeds
 ;   query (: $prf T $tv)                       -> (, (Goal T)) [+ adapterN for And]
 ;
 ; Single-premise implications additionally compile an inverse rule (PeTTa's
@@ -24,8 +25,9 @@
 ; must reach the fact store so the base rates the inversion reads at fire
 ; time include them.
 ;
-; Base-rate patterns are copy_term'd so goal unification inside the runtime
-; never instantiates them.
+; Base-rate patterns are copy_term'd and keyed by rule+role so goal unification
+; inside the runtime never instantiates them and unifiable antecedent/consequent
+; patterns do not cross-match each other's maintained base-rate facts.
 
 (= (mm2-and-premises (And $a $b))
    (pcons $a (pcons $b pnil)))
@@ -54,43 +56,67 @@
 ; its own derived conclusions.
 (= (mm2-compile-add (: $name (Implication (Premises $p) (Conclusions $q)) $tv))
    (superpose (
-     (mm2-implication-forward $tv (pcons $p pnil) $p $q)
+     (mm2-implication-forward $name $tv (pcons $p pnil) $p $q)
      (if (or (=? $name (no_inverse $_)) (not (=? $tv (CTV $_pos $_neg))))
          (empty)
-         (mm2-implication-inverse $tv $p $q)))))
+         (mm2-implication-inverse $name $tv $p $q)))))
 
 (= (mm2-compile-add (: $name (Implication (Premises $p1 $p2) (Conclusions $q)) $tv))
-   (mm2-implication-forward $tv (pcons $p1 (pcons $p2 pnil)) (And $p1 $p2) $q))
+   (mm2-implication-forward $name $tv (pcons $p1 (pcons $p2 pnil)) (And $p1 $p2) $q))
 
 (= (mm2-compile-add (: $name (Implication (Premises $p1 $p2 $p3) (Conclusions $q)) $tv))
-   (mm2-implication-forward $tv (pcons $p1 (pcons $p2 (pcons $p3 pnil))) (And $p1 $p2 $p3) $q))
+   (mm2-implication-forward $name $tv (pcons $p1 (pcons $p2 (pcons $p3 pnil))) (And $p1 $p2 $p3) $q))
 
-(= (mm2-implication-forward (CTV (STV $pos-s $pos-c) (STV $neg-s $neg-c)) $premises $ante $concl)
+(= (mm2-implication-forward $_name (CTV (STV $pos-s $pos-c) (STV $neg-s $neg-c)) $premises $ante $concl)
    (ruleN $concl (ctv ($pos-s $pos-c) ($neg-s $neg-c)) $premises))
 
-(= (mm2-implication-forward (STV $s $c) $premises $ante $concl)
+(= (mm2-implication-forward $name (STV $s $c) $premises $ante $concl)
    (superpose (
-     (ruleN $concl (stv ($s $c) (brpat (copy_term $ante) (copy_term $concl))) $premises)
-     (mm2-base-rate-support $ante)
-     (mm2-base-rate-support $concl))))
+     (ruleN
+       $concl
+       (stv
+         ($s $c)
+         (brpat
+           (mm2-base-rate-key $name antecedent $ante)
+           (mm2-base-rate-key $name consequent $concl)))
+       $premises)
+     (mm2-base-rate-support $name antecedent $ante)
+     (mm2-base-rate-support $name consequent $concl))))
 
 ; CTVInversionFormula only reads the rule's positive branch, so CTV and STV
 ; rules share one inverse shape.
 (= (mm2-rule-pos (CTV (STV $pos-s $pos-c) $_neg)) ($pos-s $pos-c))
 (= (mm2-rule-pos (STV $s $c)) ($s $c))
 
-(= (mm2-implication-inverse $tv $ante $concl)
+(= (mm2-implication-inverse $name $tv $ante $concl)
    (superpose (
-     (ruleN $ante (inv (mm2-rule-pos $tv) (brpat (copy_term $ante) (copy_term $concl))) (pcons $concl pnil))
-     (mm2-base-rate-support $ante)
-     (mm2-base-rate-support $concl)
+     (ruleN
+       $ante
+       (inv
+         (mm2-rule-pos $tv)
+         (brpat
+           (mm2-base-rate-key $name antecedent $ante)
+           (mm2-base-rate-key $name consequent $concl)))
+       (pcons $concl pnil))
+     (mm2-base-rate-support $name antecedent $ante)
+     (mm2-base-rate-support $name consequent $concl)
      (, (Goal (copy_term $concl))))))
+
+(= (mm2-base-rate-key $name $role $pat)
+   (base-rate-key (copy_term $name) $role (copy_term $pat)))
 
 (= (mm2-base-rate-support $pat)
    (superpose (
      (base-rate-def (copy_term $pat) (copy_term $pat))
      (base-rate (copy_term $pat) (0.0 0.0))
      (mm2-base-rate-materialization-goal $pat))))
+
+(= (mm2-base-rate-support $name $role $pat)
+   (let $key (mm2-base-rate-key $name $role $pat)
+     (superpose (
+       (base-rate-def $key (copy_term $pat))
+       (base-rate (copy_term $key) (0.0 0.0))
+       (mm2-base-rate-materialization-goal $pat)))))
 
 ; PeTTaChainer's FoldAll base-rate premises can derive compound query facts
 ; while folding. MM2's maintained base-rate relation only sees materialized

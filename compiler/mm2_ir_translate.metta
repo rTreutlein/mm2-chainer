@@ -244,11 +244,11 @@
        (mm2-prior-base-rate-support $pat $kb $concept))
       ($other (notsupported-ir (fold-support $other))))))
 
-(= (mm2-guarded-base-rate-key $rule-id $pat)
-   (guarded-base-rate (copy_term $rule-id) (copy_term $pat)))
+(= (mm2-guarded-base-rate-key $rule-id $role $pat)
+   (guarded-base-rate (copy_term $rule-id) $role (copy_term $pat)))
 
-(= (mm2-guarded-base-rate-support $pat $rule-id)
-   (let* (($key (mm2-guarded-base-rate-key $rule-id $pat))
+(= (mm2-guarded-base-rate-support $pat $rule-id $role)
+   (let* (($key (mm2-guarded-base-rate-key $rule-id $role $pat))
           ($match (copy_term $pat))
           ($guard (copy_term $rule-id))
           ($seed (copy_term $key)))
@@ -257,14 +257,14 @@
        (base-rate $seed (0.0 0.0))
        (mm2-base-rate-materialization-goal $pat)))))
 
-(= (mm2-ir-guarded-fold-key $rule-id $fold)
+(= (mm2-ir-guarded-fold-key $rule-id $role $fold)
    (case $fold
-     (((brfold $pat) (mm2-guarded-base-rate-key $rule-id $pat))
+     (((brfold $pat) (mm2-guarded-base-rate-key $rule-id $role $pat))
       ($other (mm2-ir-fold-key $other)))))
 
-(= (mm2-ir-guarded-fold-support $rule-id $fold)
+(= (mm2-ir-guarded-fold-support $rule-id $role $fold)
    (case $fold
-     (((brfold $pat) (mm2-guarded-base-rate-support $pat $rule-id))
+     (((brfold $pat) (mm2-guarded-base-rate-support $pat $rule-id $role))
       ($other (mm2-ir-fold-support $other)))))
 
 (= (mm2-ir-foldall-sum $cpu)
@@ -689,11 +689,11 @@
        (stv
          $pos
          (brpat
-           (mm2-ir-guarded-fold-key $rid $fa)
-           (mm2-ir-guarded-fold-key $rid $fb)))
+           (mm2-ir-guarded-fold-key $rid antecedent $fa)
+           (mm2-ir-guarded-fold-key $rid consequent $fb)))
        $ptypes)
-     (mm2-ir-guarded-fold-support $rid $fa)
-     (mm2-ir-guarded-fold-support $rid $fb))))
+     (mm2-ir-guarded-fold-support $rid antecedent $fa)
+     (mm2-ir-guarded-fold-support $rid consequent $fb))))
 
 (= (mm2-ir-inv-evidence-id $rid)
    (case $rid
@@ -713,11 +713,11 @@
       ((inverted (bi-backward $base) with $_pa $_pb) true)
       ($other false))))
 
-(= (mm2-ir-inv-fold-key-for-mode unguarded $_rid $fold) (mm2-ir-fold-key $fold))
-(= (mm2-ir-inv-fold-key-for-mode guarded $rid $fold) (mm2-ir-guarded-fold-key $rid $fold))
+(= (mm2-ir-inv-fold-key-for-mode unguarded $_rid $_role $fold) (mm2-ir-fold-key $fold))
+(= (mm2-ir-inv-fold-key-for-mode guarded $rid $role $fold) (mm2-ir-guarded-fold-key $rid $role $fold))
 
-(= (mm2-ir-inv-fold-support-for-mode unguarded $_rid $fold) (mm2-ir-fold-support $fold))
-(= (mm2-ir-inv-fold-support-for-mode guarded $rid $fold) (mm2-ir-guarded-fold-support $rid $fold))
+(= (mm2-ir-inv-fold-support-for-mode unguarded $_rid $_role $fold) (mm2-ir-fold-support $fold))
+(= (mm2-ir-inv-fold-support-for-mode guarded $rid $role $fold) (mm2-ir-guarded-fold-support $rid $role $fold))
 
 (= (mm2-ir-forward-chain-goal-marker ($scope $type))
    (forward-chain-goal $scope ($scope $type)))
@@ -743,11 +743,11 @@
               (inv
                 $pos
                 (brpat
-                  (mm2-ir-inv-fold-key-for-mode $mode $rid $fa)
-                  (mm2-ir-inv-fold-key-for-mode $mode $rid $fb)))
+                  (mm2-ir-inv-fold-key-for-mode $mode $rid antecedent $fa)
+                  (mm2-ir-inv-fold-key-for-mode $mode $rid consequent $fb)))
               $ptypes)
-       (mm2-ir-inv-fold-support-for-mode $mode $rid $fa)
-       (mm2-ir-inv-fold-support-for-mode $mode $rid $fb)
+       (mm2-ir-inv-fold-support-for-mode $mode $rid antecedent $fa)
+       (mm2-ir-inv-fold-support-for-mode $mode $rid consequent $fb)
        (mm2-ir-inv-materialization-goal $mode $rid $fb)))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
