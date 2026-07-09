@@ -32,8 +32,15 @@ total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_o
 min_total_pass=259
 max_total_adapted=0
 jobs="${MM2_HARNESS_JOBS:-4}"
+case "$jobs" in
+  ''|*[!0-9]*)
+    echo "MM2_HARNESS_JOBS must be a positive integer, got: $jobs" >&2
+    exit 2
+    ;;
+esac
 if [ "$jobs" -lt 1 ]; then
-  jobs=1
+  echo "MM2_HARNESS_JOBS must be a positive integer, got: $jobs" >&2
+  exit 2
 fi
 
 now_ns() {
@@ -100,6 +107,7 @@ run_one_file() {
   log="outputs/harness_logs/$name.log"
   vlog="outputs/harness_logs/$name.verdicts.log"
   metrics="outputs/harness_logs/$name.metrics"
+  rm -f "$metrics"
   : > "$vlog"
   start_ns="$(now_ns)"
   MM2_HARNESS_VERDICT_LOG="$ROOT_DIR/$vlog" timeout 300 petta "$f" > "$log" 2>&1

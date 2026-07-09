@@ -967,7 +967,7 @@ the follow-up corpus run.
 
 Latest timed corpus snapshot after this adjustment:
 
-    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=14.988s file-time=55.563s flagged-files=0
+    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=15.165s file-time=55.167s flagged-files=0
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
