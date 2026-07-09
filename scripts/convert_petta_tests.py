@@ -129,6 +129,8 @@ def rename_calls(e):
         e[0] = "mm2-add-to-kb"
     elif head(e) == "query":
         e[0] = "mm2-query"
+    elif head(e) == "forward-chain":
+        e[0] = "mm2-forward-chain"
     elif head(e) == "set-base-rate":
         e[0] = "mm2-set-base-rate"
     elif head(e) == "clear-base-rate":
@@ -821,7 +823,7 @@ def forward_chainer_materialization_adaptation(queryish, expected):
     return None
 
 
-def forward_chainer_fact_count_adaptation(queryish, expected):
+def forward_chainer_fact_count_test(queryish, expected):
     if head(queryish) != "let*" or len(queryish) != 3:
         return None
     bindings, body = queryish[1], queryish[2]
@@ -834,13 +836,10 @@ def forward_chainer_fact_count_adaptation(queryish, expected):
     scoped = scoped_pattern_kb_type(pattern)
     if scoped is None or scoped[0] != forward[2]:
         return None
-    return (
-        "ADAPTED PeTTa forward proof-count check: MM2 checks materialized fact count",
-        ["mm2-test-forward-fact-count", rename_calls(forward[1]), rename_calls(forward[2]), rename_calls(scoped[1]), rename_calls(expected)],
-    )
+    return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
 
 
-def forward_chainer_merge_token_adaptation(queryish, expected):
+def forward_chainer_merge_token_test(queryish, expected):
     if expected != "true":
         return None
     if head(queryish) != "let*" or len(queryish) != 3:
@@ -855,10 +854,25 @@ def forward_chainer_merge_token_adaptation(queryish, expected):
     scoped = scoped_pattern_kb_type(pattern)
     if scoped is None or scoped[0] != forward[2] or head(pattern[2]) != "merge/revision":
         return None
-    return (
-        "ADAPTED PeTTa forward proof-token merge-shape check: MM2 checks canonical materialized readback proof token",
-        ["mm2-test-forward-query-proofs", rename_calls(forward[1]), "10", rename_calls(forward[2]), [":", "$prf", rename_calls(scoped[1]), "$tv"], ["mm2-merged"]],
-    )
+    return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
+
+
+def forward_chainer_cpu_placeholder_test(queryish, expected):
+    if expected != "true":
+        return None
+    if head(queryish) != "let*" or len(queryish) != 3:
+        return None
+    bindings, body = queryish[1], queryish[2]
+    forward = forward_binding(bindings)
+    if head(forward) != "forward-chain" or len(forward) != 3:
+        return None
+    if head(body) != "==" or len(body) != 3 or body[2] != [] or not is_var(body[1]):
+        return None
+    pattern = match_pattern_from_collapse(binding_value(bindings, body[1]))
+    scoped = scoped_pattern_kb_type(pattern)
+    if scoped is None or scoped[0] != forward[2] or head(pattern[3]) != "cpu-call":
+        return None
+    return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
 
 
 def forward_chainer_evidence_union_adaptation(queryish, expected):
@@ -1132,19 +1146,19 @@ def convert_file(path):
             continue
         if kind == "bang" and head(expr) == "test":
             if forward_prefix_only:
-                adapted = forward_chainer_fact_count_adaptation(expr[1], expr[2])
-                if adapted is not None:
-                    reason, converted = adapted
-                    out.append("; " + reason)
+                converted = forward_chainer_fact_count_test(expr[1], expr[2])
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
+                converted = forward_chainer_merge_token_test(expr[1], expr[2])
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
+                converted = forward_chainer_cpu_placeholder_test(expr[1], expr[2])
+                if converted is not None:
                     out.append("!" + show(converted))
                     continue
                 adapted = forward_chainer_materialization_adaptation(expr[1], expr[2])
-                if adapted is not None:
-                    reason, converted = adapted
-                    out.append("; " + reason)
-                    out.append("!" + show(converted))
-                    continue
-                adapted = forward_chainer_merge_token_adaptation(expr[1], expr[2])
                 if adapted is not None:
                     reason, converted = adapted
                     out.append("; " + reason)

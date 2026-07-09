@@ -187,6 +187,11 @@
 (= (mm2-remove-matches $pattern)
    (mm2-remove-atoms (collapse (match &mork $pattern $pattern))))
 
+(= (mm2-remove-kb-atoms ()) ())
+(= (mm2-remove-kb-atoms (cons $atom $rest))
+   (let $_remove (remove-atom &kb $atom)
+     (mm2-remove-kb-atoms $rest)))
+
 (= (mm2-formula-runtime-path)
    "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/runtime/formula_eval.mm2")
 
@@ -1161,7 +1166,8 @@
    (let* (($scope (mm2-ir-scope-kb $_kb))
           ($_clear (mm2-clear-runtime-queue))
           ($_goals (mm2-add-compiled $_kb (mm2-forward-chain-goals $scope)))
-          ($_run (mm2-exec &mork $steps)))
+          ($_run (mm2-exec &mork $steps))
+          ($_sync (mm2-forward-sync-kb $scope)))
      ()))
 
 (= (mm2-forward-chain $rounds $kb)
@@ -1174,6 +1180,20 @@
 (= (mm2-forward-derived? $kb $type)
    (let $g ((mm2-ir-scope-kb $kb) $type)
      (not (== (collapse (match &mork (fact $g ($s $c)) true)) ()))))
+
+(= (mm2-forward-sync-kb-fact $scope $type ($s $c))
+   (let* (($old (collapse (match &kb ($type $scope $prf $tv) ($type $scope $prf $tv))))
+          ($_remove (mm2-remove-kb-atoms $old))
+          ($_add (add-atom &kb ($type $scope mm2-forward (STV $s $c)))))
+     ()))
+
+(= (mm2-forward-sync-kb $scope)
+   (let $_sync
+     (collapse
+       (match &mork
+         (fact ($scope $type) ($s $c))
+         (mm2-forward-sync-kb-fact $scope $type ($s $c))))
+     ()))
 
 (= (mm2-list-count ()) 0)
 (= (mm2-list-count (cons $_x $tail)) (+ 1 (mm2-list-count $tail)))

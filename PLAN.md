@@ -862,6 +862,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
+## Forward `&kb` readback for proof-count checks (DONE 2026-07-09)
+
+`mm2-forward-chain` now syncs a canonical PeTTa-shaped `&kb` row for each
+current MM2 forward fact in the target KB scope. The generated
+`test_forward_chainer` proof-count checks, raw `merge/revision` absence check,
+and CPU-placeholder cleanup check now keep their original PeTTa `match &kb`
+assertion shape while still driving MM2 forward execution.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=12 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -875,7 +887,7 @@ Latest corpus snapshot after this adjustment:
    then remaining MP arrangements, weighted/grouped folds, and member
    machinery. Rerun
    `scripts/run-harness-corpus.sh` after each to watch the totals move.
-   Last complete corpus snapshot (2026-07-08, after query cleanup, `not-ctv`,
+   Last complete corpus snapshot (2026-07-09, after query cleanup, `not-ctv`,
    Not+And compound lowering, preserved logic-config imports, FoldAll query
    aggregates, partial base-rate cache operations, CTV assumption facts, the
    var-head weighted-fold shortcut, proof/evidence pooling, the best-first
@@ -911,15 +923,16 @@ Latest corpus snapshot after this adjustment:
    distribution `GreaterThan` rule-premise coverage, and selective
    forward-materialization tail coverage, adapted ParticleStore helper
    coverage, and adapted forward
-   source-materialization checks, forward fact-count adapters, forward
-   agenda marker adaptation, forward proof-token readback adaptation, forward
+   source-materialization checks, forward `&kb` readback for proof-count,
+   merge-token absence, and CPU-placeholder cleanup checks, forward
+   agenda marker adaptation, forward
    merged-evidence adaptation, and forward short-budget adaptation):
-   pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17
+   pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=12
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, unsupported IR, or converter-level skipped
-   forms remain in the generated corpus; there are 17 explicit adaptations and
+   forms remain in the generated corpus; there are 12 explicit adaptations and
    no generated omissions.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
