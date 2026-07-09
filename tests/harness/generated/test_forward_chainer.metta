@@ -1,5 +1,5 @@
 ; generated from PeTTaChainer tests/test_forward_chainer.metta by convert_petta_tests.py
-; forward materialization subset; PeTTa agenda-step internals are documented omissions
+; forward materialization subset; PeTTa agenda/proof internals use explicit MM2 adapters
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
 !(mm2-compileadd fwdkb (: edgeAB (Edge A B) (STV 1.0 1.0)))
@@ -27,7 +27,8 @@
 !(mm2-compileadd deltakb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd deltakb (: lowFact (LowPriority) (STV 1.0 0.8)))
 !(mm2-compileadd deltakb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (DeltaGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-; OMITTED PeTTa one-agenda-pop forward budget check: MM2 forward-chain advances the whole KB in one broad pass: (test (let $_ (forward-chain 1 deltakb) (forward-has-derived? deltakb (DeltaGoal))) false)
+; ADAPTED PeTTa one-agenda-pop forward budget check: MM2 checks a short raw-step forward budget before the full broad pass
+!(mm2-test-forward-has-derived-steps (mm2-forward-chain-short-budget-steps) deltakb (DeltaGoal) false)
 !(mm2-test-forward-has-derived 1 deltakb (DeltaGoal) true)
 !(mm2-compileadd selectedkb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd selectedkb (: lowFact (LowPriority) (STV 1.0 0.8)))

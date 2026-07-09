@@ -790,19 +790,19 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=240 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=1 adapted=16 flagged-files=0
 
-## Forward agenda-step omission classification (DONE 2026-07-09)
+## Forward short-budget adapter (DONE 2026-07-09)
 
-The only remaining generated omission is the first `deltakb` tiny-budget
-forward check in `test_forward_chainer.metta`. PeTTa's first
-`forward-chain 1` call pops one agenda item and intentionally has not derived
-`DeltaGoal` yet; MM2's harness-level `mm2-forward-chain` reopens the KB's
-materialization goals and advances them as a broad MORK pass, so `DeltaGoal`
-is already present after one MM2 forward round. The generated omission now
-names this agenda-step mismatch directly.
+The first `deltakb` tiny-budget forward check in `test_forward_chainer.metta`
+now runs as an explicit MM2 budget adapter. PeTTa's first `forward-chain 1`
+call pops one agenda item and intentionally has not derived `DeltaGoal` yet;
+MM2 does not expose that agenda pop, so the harness checks a short raw-step
+forward budget before the existing full broad forward round. This preserves
+the test intent -- not enough forward work stays false, a full MM2 round
+derives the goal -- without changing `mm2-forward-chain`'s broad-pass API.
 
-Latest corpus snapshot after this classification:
+Latest corpus snapshot after this adjustment:
 
-    totals: pass=240 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=1 adapted=16 flagged-files=0
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
 ## Next
 
@@ -854,15 +854,15 @@ Latest corpus snapshot after this classification:
    forward-materialization tail coverage, adapted ParticleStore helper
    coverage, and adapted forward
    source-materialization checks, forward fact-count adapters, forward
-   agenda marker adaptation, forward proof-token readback adaptation, and
-   forward merged-evidence adaptation):
-   pass=240 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=1 adapted=16
+   agenda marker adaptation, forward proof-token readback adaptation, forward
+   merged-evidence adaptation, and forward short-budget adaptation):
+   pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, unsupported IR, or converter-level skipped
-   forms remain in the generated corpus; the remaining coverage notes are 1
-   explicit omission and 16 explicit adaptations.
+   forms remain in the generated corpus; there are 17 explicit adaptations and
+   no generated omissions.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is exact after readback-level factoring of raw two-premise And
@@ -961,7 +961,8 @@ Latest corpus snapshot after this classification:
    availability check. PeTTa's forward merge-shape assertion is adapted to an
    exact MM2 readback proof-token check for `mm2-merged`, and PeTTa's
    proof-store evidence assertion is adapted to an exact MM2 merged
-   `fact-evidence` union check.
+   `fact-evidence` union check. PeTTa's one-agenda-pop false check is adapted
+   to a short raw-step MM2 forward-budget check before the full broad pass.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
@@ -971,9 +972,9 @@ Latest corpus snapshot after this classification:
 19. Converter gaps: no generated corpus tests are currently skipped. The only
    upstream `test_*.metta` file not generated is the explicit out-of-scope
    benchmark generator. `test_forward_chainer` is generated as a forward
-   materialization subset; its remaining PeTTa-specific agenda-step
-   bookkeeping check is intentionally omitted inline while later
-   materialization-compatible assertions continue to be converted.
+   materialization subset; PeTTa-specific proof/agenda surfaces are now
+   covered as explicit MM2 adapters while later materialization-compatible
+   assertions continue to be converted.
    `test_distribution_values` now
    includes the downstream `PlayTogetherIn` `GreaterThan` rule, and
    `test_particle_values` now generates the country-height `Taller` rule plus

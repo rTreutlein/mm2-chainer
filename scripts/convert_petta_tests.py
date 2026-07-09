@@ -916,6 +916,22 @@ def forward_chainer_evidence_union_adaptation(queryish, expected):
     )
 
 
+def forward_chainer_short_budget_adaptation(queryish, expected):
+    converted = forward_has_derived_test(queryish, expected)
+    if converted is None or expected != "false" or converted[2] != "deltakb":
+        return None
+    return (
+        "ADAPTED PeTTa one-agenda-pop forward budget check: MM2 checks a short raw-step forward budget before the full broad pass",
+        [
+            "mm2-test-forward-has-derived-steps",
+            ["mm2-forward-chain-short-budget-steps"],
+            converted[2],
+            converted[3],
+            "false",
+        ],
+    )
+
+
 def forward_chainer_omission_reason(queryish, expected):
     if contains_head(queryish, "forward-agenda-dirty?"):
         return "OMITTED PeTTa forward agenda dirty-state check"
@@ -1099,7 +1115,7 @@ def convert_file(path):
     particle_store_tail = path.name in PARTIAL_PARTICLE_STORE_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
     if forward_prefix_only:
-        out.insert(1, "; forward materialization subset; PeTTa agenda-step internals are documented omissions")
+        out.insert(1, "; forward materialization subset; PeTTa agenda/proof internals use explicit MM2 adapters")
     unsupported = 0
     for kind, expr in forms:
         if particle_store_tail and kind == "bang":
@@ -1135,6 +1151,12 @@ def convert_file(path):
                     out.append("!" + show(converted))
                     continue
                 adapted = forward_chainer_evidence_union_adaptation(expr[1], expr[2])
+                if adapted is not None:
+                    reason, converted = adapted
+                    out.append("; " + reason)
+                    out.append("!" + show(converted))
+                    continue
+                adapted = forward_chainer_short_budget_adaptation(expr[1], expr[2])
                 if adapted is not None:
                     reason, converted = adapted
                     out.append("; " + reason)

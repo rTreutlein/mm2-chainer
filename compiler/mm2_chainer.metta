@@ -1155,13 +1155,17 @@
 ; exec loop still services durable base-rate and distribution feeder templates
 ; globally.
 (= (mm2-forward-chain-steps-per-round) 250)
+(= (mm2-forward-chain-short-budget-steps) 150)
 
-(= (mm2-forward-chain $rounds $_kb)
+(= (mm2-forward-chain-steps $steps $_kb)
    (let* (($scope (mm2-ir-scope-kb $_kb))
           ($_clear (mm2-clear-runtime-queue))
           ($_goals (mm2-add-compiled $_kb (mm2-forward-chain-goals $scope)))
-          ($_run (mm2-exec &mork (* $rounds (mm2-forward-chain-steps-per-round)))))
+          ($_run (mm2-exec &mork $steps)))
      ()))
+
+(= (mm2-forward-chain $rounds $kb)
+   (mm2-forward-chain-steps (* $rounds (mm2-forward-chain-steps-per-round)) $kb))
 
 (= (mm2-forward-has-goals? $kb)
    (let $scope (mm2-ir-scope-kb $kb)
@@ -1184,6 +1188,10 @@
 
 (= (mm2-test-forward-has-derived $rounds $kb $type $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
+     (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
+
+(= (mm2-test-forward-has-derived-steps $steps $kb $type $expected)
+   (let $_forward (mm2-forward-chain-steps $steps $kb)
      (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
 
 (= (mm2-test-forward-fact-count $rounds $kb $type $expected)
