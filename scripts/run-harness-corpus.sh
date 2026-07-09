@@ -30,8 +30,13 @@ cd "$ROOT_DIR"
 mkdir -p outputs/harness_logs
 bash scripts/build-runtime.sh outputs/harness_runtime.mm2
 
-report="outputs/harness_report.txt"
-perf_report="outputs/harness_perf.tsv"
+if [ "$#" -eq 0 ]; then
+  report="outputs/harness_report.txt"
+  perf_report="outputs/harness_perf.tsv"
+else
+  report="outputs/harness_report.focus.txt"
+  perf_report="outputs/harness_perf.focus.tsv"
+fi
 : > "$report"
 : > "$perf_report"
 

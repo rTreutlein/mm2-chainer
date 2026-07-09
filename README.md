@@ -74,6 +74,9 @@ bash scripts/run-harness-corpus.sh test_forward_chainer
 bash scripts/run-harness-corpus.sh tests/harness/generated/test_math.metta
 ```
 
+Focused runs write `outputs/harness_report.focus.txt` and
+`outputs/harness_perf.focus.tsv`, leaving the last full-corpus reports intact.
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling
