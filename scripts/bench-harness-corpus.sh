@@ -101,7 +101,7 @@ run_petta_file() {
   local log="$4"
   local vlog="$5"
   local start_ns end_ns duration_ms status count_log
-  local pass close fail unsup_ir skipped
+  local pass close fail unsup_ir skipped omitted adapted
 
   : > "$vlog"
   start_ns="$(now_ns)"
@@ -121,10 +121,12 @@ run_petta_file() {
   fail="$(grep -c 'mm2-test-FAIL' "$count_log" || true)"
   unsup_ir="$(grep -c 'notsupported-ir' "$count_log" || true)"
   skipped="$(grep -c 'mm2-test-unsupported' "$count_log" || true)"
+  omitted="$(grep -c '^; OMITTED' "$file" || true)"
+  adapted="$(grep -c '^; ADAPTED' "$file" || true)"
   cat "$vlog" >> "$log"
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$run_id" "$duration_ms" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$status"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$run_id" "$duration_ms" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$omitted" "$adapted" "$status"
 }
 
 mkdir -p outputs/harness_bench_logs "$(dirname "$summary_report")" "$(dirname "$runs_report")"
@@ -161,13 +163,13 @@ for requested in "${requested_fixtures[@]}"; do
 done
 
 baseline_times=()
-printf 'file\trun\tduration_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n' > "$runs_report"
+printf 'file\trun\tduration_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tomitted\tadapted\tstatus\n' > "$runs_report"
 for run_id in $(seq 1 "$runs"); do
   log="outputs/harness_bench_logs/__baseline.$run_id.log"
   vlog="outputs/harness_bench_logs/__baseline.$run_id.verdicts.log"
   row="$(run_petta_file "$baseline_file" __baseline "$run_id" "$log" "$vlog")"
   printf '%s\n' "$row" >> "$runs_report"
-  IFS=$'\t' read -r _name _run duration_ms _pass _close _fail _unsup_ir _skipped status <<< "$row"
+  IFS=$'\t' read -r _name _run duration_ms _pass _close _fail _unsup_ir _skipped _omitted _adapted status <<< "$row"
   if [ "$status" -ne 0 ]; then
     echo "baseline run $run_id failed with status $status; see $log" >&2
     exit 1
@@ -183,12 +185,15 @@ bench_errors=0
 for file in "${files[@]}"; do
   name="$(basename "$file" .metta)"
   min_pass="$(min_pass_for_file "$name")"
+  max_adapted="$(max_adapted_for_file "$name")"
   durations=()
   last_pass=0
   last_close=0
   last_fail=0
   last_unsup_ir=0
   last_skipped=0
+  last_omitted=0
+  last_adapted=0
   worst_status=0
 
   for run_id in $(seq 1 "$runs"); do
@@ -196,13 +201,15 @@ for file in "${files[@]}"; do
     vlog="outputs/harness_bench_logs/$name.$run_id.verdicts.log"
     row="$(run_petta_file "$file" "$name" "$run_id" "$log" "$vlog")"
     printf '%s\n' "$row" >> "$runs_report"
-    IFS=$'\t' read -r _name _run duration_ms pass close fail unsup_ir skipped status <<< "$row"
+    IFS=$'\t' read -r _name _run duration_ms pass close fail unsup_ir skipped omitted adapted status <<< "$row"
     durations+=("$duration_ms")
     last_pass="$pass"
     last_close="$close"
     last_fail="$fail"
     last_unsup_ir="$unsup_ir"
     last_skipped="$skipped"
+    last_omitted="$omitted"
+    last_adapted="$adapted"
     if [ "$status" -ne 0 ]; then
       worst_status="$status"
     fi
@@ -210,7 +217,9 @@ for file in "${files[@]}"; do
        [ "$close" -ne 0 ] ||
        [ "$fail" -ne 0 ] ||
        [ "$unsup_ir" -ne 0 ] ||
-       [ "$skipped" -ne 0 ]; then
+       [ "$skipped" -ne 0 ] ||
+       [ "$omitted" -ne 0 ] ||
+       [ "$adapted" -gt "$max_adapted" ]; then
       bench_errors=$((bench_errors + 1))
     fi
     if [ "$pass" -lt "$min_pass" ]; then
@@ -227,15 +236,15 @@ for file in "${files[@]}"; do
     net_median=0
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$name" "$runs" "$baseline_median" "$gross_median" "$net_median" \
     "$gross_min" "$gross_max" "$last_pass" "$min_pass" "$last_close" "$last_fail" \
-    "$last_unsup_ir" "$last_skipped" "$worst_status" \
+    "$last_unsup_ir" "$last_skipped" "$last_omitted" "$last_adapted" "$worst_status" \
     >> "$summary_body"
 done
 
 {
-  printf 'file\truns\tbaseline_median_ms\tgross_median_ms\tnet_median_ms\tgross_min_ms\tgross_max_ms\tpass\tmin_pass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n'
+  printf 'file\truns\tbaseline_median_ms\tgross_median_ms\tnet_median_ms\tgross_min_ms\tgross_max_ms\tpass\tmin_pass\tclose\tfail\tunsupported_ir\tskipped\tomitted\tadapted\tstatus\n'
   sort -t $'\t' -k5,5nr "$summary_body"
 } > "$summary_report"
 

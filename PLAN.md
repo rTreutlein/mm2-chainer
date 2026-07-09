@@ -977,8 +977,9 @@ it benchmarks the slowest files from the last `outputs/harness_perf.tsv`, so
 the next optimization pass can focus on net fixture work instead of
 `petta`/import startup noise. The benchmark exits nonzero if any sampled
 fixture reports a runtime error, timeout, close/fail verdict, unsupported IR,
-skipped form, or a pass count below the generated corpus floor, so timing
-samples remain tied to clean semantic runs with unchanged coverage.
+skipped form, omitted/adapted marker outside the corpus limits, or a pass count
+below the generated corpus floor, so timing samples remain tied to clean
+semantic runs with unchanged coverage.
 
 First default benchmark sample (`MM2_BENCH_RUNS=3`) measured a 1067 ms
 baseline median; the top net medians were `test_forward_chainer` 2338 ms,
