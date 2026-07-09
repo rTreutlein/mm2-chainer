@@ -131,7 +131,8 @@ compiler (3 pass, 1 close).
 Corpus: `scripts/convert_petta_tests.py` converted 36 test files into
 `tests/harness/generated/`; `scripts/run-harness-corpus.sh` runs them
 (one petta process per file, 180 s timeout) into
-`outputs/harness_report.txt` (per-file pass/close/fail/unsupported-ir/skipped/ERROR).
+`outputs/harness_report.txt` (per-file pass/close/fail/unsupported-ir/skipped,
+plus explicit generated omitted/adapted comment counts and ERROR/TIMEOUT flags).
 Older snapshots below use the previous combined `unsupported` count, where
 converter-level skipped tests and real `(notsupported-ir ...)` markers were
 added together.
@@ -742,6 +743,17 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Corpus omission/adaptation visibility (DONE 2026-07-09)
+
+`scripts/run-harness-corpus.sh` now reports explicit generated `OMITTED` and
+`ADAPTED` comment counts per file and in the totals row. These are not test
+failures, but they keep the remaining intentional gaps visible in the normal
+verification output.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=10 adapted=7 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -793,11 +805,13 @@ Latest corpus snapshot after this adjustment:
    ParticleStore resource-management omissions, and adapted forward
    source-materialization checks, forward fact-count adapters, and forward
    agenda marker adaptation):
-   pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=10 adapted=7
+   flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
-   No supported failures, closes, or unsupported IR remain in the generated
-   corpus.
+   No supported failures, closes, unsupported IR, or converter-level skipped
+   forms remain in the generated corpus; the remaining coverage notes are 10
+   explicit omissions and 7 explicit adaptations.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is exact after readback-level factoring of raw two-premise And
