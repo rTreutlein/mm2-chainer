@@ -1189,15 +1189,21 @@ def convert_file(path):
 def main():
     DST_DIR.mkdir(parents=True, exist_ok=True)
     total = 0
+    written = set()
     for path in sorted(SRC_DIR.glob("test_*.metta")):
         if path.name in SKIP_FILES:
             continue
         text, unsupported = convert_file(path)
         dst = DST_DIR / path.name
         dst.write_text(text)
+        written.add(dst)
         total += 1
         note = f" ({unsupported} unsupported test forms)" if unsupported else ""
         print(f"converted {path.name}{note}")
+    for stale in sorted(DST_DIR.glob("test_*.metta")):
+        if stale not in written:
+            stale.unlink()
+            print(f"removed stale {stale.name}")
     print(f"{total} files -> {DST_DIR}")
 
 

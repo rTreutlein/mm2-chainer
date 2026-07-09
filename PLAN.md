@@ -840,6 +840,17 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
+## Generated corpus stale-file cleanup (DONE 2026-07-09)
+
+`scripts/convert_petta_tests.py` now removes stale generated `test_*.metta`
+fixtures that are no longer produced from the upstream PeTTaChainer test set.
+This keeps renamed/deleted upstream tests from lingering in
+`tests/harness/generated/` and being run as accidental historical coverage.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
