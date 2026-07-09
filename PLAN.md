@@ -531,9 +531,8 @@ that were originally kept only in `tests/harness/converted_tests.metta`:
 
 This keeps the hand harness as focused supplemental coverage while making the
 generated corpus the primary source-file parity report. The generated corpus now
-covers 36 upstream `test_*.metta` files. The only skipped upstream test file is
-`test_benchgen_metta.metta`, an explicit out-of-scope benchmark generator rather
-than a chainer regression.
+covers every upstream `test_*.metta` file; `test_benchgen_metta.metta` is
+included as benchmark-generator helper/compiler-state coverage.
 
 Latest corpus snapshot after this adjustment:
 
@@ -966,18 +965,17 @@ agenda is empty instead of burning the remaining requested rounds; the focused
 forward fixture still reports 30 pass / 0 fail and dropped to about 3.2 s in
 the follow-up corpus run.
 
-Latest timed corpus snapshot after this adjustment:
+Latest timed corpus snapshot after adding benchgen helper-state coverage:
 
-    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=15.285s file-time=55.313s flagged-files=0
+    totals: pass=282 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=15.572s file-time=56.819s flagged-files=0
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that
 `tests/harness/generated/test_*.metta` exactly matches upstream
-PeTTaChainer `test_*.metta` files minus the explicit
-`test_benchgen_metta.metta` benchmark-generator skip. This turns the
-documented 36-of-37 source-file coverage into an executable gate, so a future
-converter-level skip cannot silently keep the generated corpus green.
+PeTTaChainer `test_*.metta` files. This turns source-file coverage into an
+executable gate, so a future converter-level skip cannot silently keep the
+generated corpus green.
 
 ## Converter no-adaptation cleanup (DONE 2026-07-09)
 
@@ -1045,8 +1043,9 @@ path during normal test runs.
    coverage, forward agenda dirty facade, selected forward source
    materialization, forward `&kb` readback for proof-count,
    merge-token absence, CPU-placeholder cleanup checks, and forward
-   proof evidence readback, and forward source-agenda scheduling):
-   pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0
+   proof evidence readback, forward source-agenda scheduling, and
+   benchmark-generator helper/compiler-state coverage):
+   pass=282 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 16 pass, 0 close, 0 fail`.

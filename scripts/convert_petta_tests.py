@@ -33,7 +33,6 @@ HARNESS = "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer"
 
 SKIP_FILES = {
     "test.metta",                     # top-level umbrella, not a query test file
-    "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
 }
 
 PARTIAL_PARTICLE_STORE_FILES = {
@@ -1040,8 +1039,16 @@ def convert_import(expr):
     target = expr[2]
     if target == "petta_chainer":
         return None
+    if isinstance(target, str) and target.startswith("benchmarks/"):
+        return ["import!", expr[1], str(PETTA_METTA_DIR / target)]
     if isinstance(target, str) and target.startswith("logic_configs/"):
         return ["import!", expr[1], str(PETTA_METTA_DIR / target)]
+    return None
+
+
+def benchgen_test(expr):
+    if head(expr) == "test" and len(expr) == 3:
+        return ["mm2-test-equal", expr[1], expr[2]]
     return None
 
 
@@ -1054,6 +1061,9 @@ def convert_file(path):
     ]
     particle_store_tail = path.name in PARTIAL_PARTICLE_STORE_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
+    benchgen_helper_state = path.name == "test_benchgen_metta.metta"
+    if benchgen_helper_state:
+        out.insert(1, "; benchmark-generator helper-state coverage; assertions run against PeTTa helper/compiler state")
     if forward_prefix_only:
         out.insert(1, "; forward materialization subset; PeTTa agenda/proof internals use explicit MM2 adapters")
     unsupported = 0
@@ -1069,6 +1079,11 @@ def convert_file(path):
                 out.append("!" + show(converted))
             continue
         if kind == "bang" and head(expr) == "test":
+            if benchgen_helper_state:
+                converted = benchgen_test(expr)
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
             if forward_prefix_only:
                 converted = forward_chainer_fact_count_test(expr[1], expr[2])
                 if converted is not None:

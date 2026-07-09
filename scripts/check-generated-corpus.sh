@@ -7,9 +7,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 src_dir="../PeTTaChainer/pettachainer/metta/tests"
-skip_files=(
-  test_benchgen_metta.metta
-)
+skip_files=()
 
 python3 scripts/convert_petta_tests.py >/dev/null
 

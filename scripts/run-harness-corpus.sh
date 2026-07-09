@@ -44,7 +44,7 @@ fi
 : > "$perf_report"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0 total_ms=0
-min_total_pass=259
+min_total_pass=282
 max_total_adapted=0
 jobs="${MM2_HARNESS_JOBS:-4}"
 case "$jobs" in
@@ -72,6 +72,7 @@ min_pass_for_file() {
     test_backward_dag_helpers) echo 34 ;;
     test_backward_open_query_results) echo 3 ;;
     test_base_rate_cache) echo 10 ;;
+    test_benchgen_metta) echo 23 ;;
     test_best_first_runtime) echo 12 ;;
     test_chainer_add_atom) echo 2 ;;
     test_distribution_values) echo 6 ;;
