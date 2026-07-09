@@ -48,7 +48,7 @@ harness_floor_names() {
 
 min_pass_for_file() {
   harness_floor_table |
-    awk -F '\t' -v name="$1" '$1 == name { print $2; found = 1 } END { if (!found) print 0 }'
+    awk -F '\t' -v name="$1" '$1 == name && !found { print $2; found = 1 } END { if (!found) print 0 }'
 }
 
 max_adapted_for_file() {
