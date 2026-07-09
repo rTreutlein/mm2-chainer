@@ -949,6 +949,23 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 flagged-files=0
 
+## Corpus timing visibility (DONE 2026-07-09)
+
+`scripts/run-harness-corpus.sh` now records elapsed time for each generated
+fixture plus the total corpus runtime in `outputs/harness_report.txt`. This
+keeps performance visible in the normal gate output while preserving the
+existing semantic pass/close/fail/unsupported/skipped/omitted/adapted checks.
+
+The first timed run showed `test_forward_chainer` as the slowest generated
+fixture at about 4.0 s. `mm2-forward-chain-loop` now stops once the source
+agenda is empty instead of burning the remaining requested rounds; the focused
+forward fixture still reports 30 pass / 0 fail and dropped to about 3.2 s in
+the follow-up corpus run.
+
+Latest timed corpus snapshot after this adjustment:
+
+    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=52.948s flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter

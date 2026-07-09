@@ -30,9 +30,18 @@ report="outputs/harness_report.txt"
 vlog="outputs/harness_verdicts.log"
 : > "$report"
 
-total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0
+total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0 total_ms=0
 min_total_pass=259
 max_total_adapted=0
+
+now_ns() {
+  date +%s%N
+}
+
+format_ms() {
+  local ms="$1"
+  printf '%d.%03d' "$((ms / 1000))" "$((ms % 1000))"
+}
 
 min_pass_for_file() {
   case "$1" in
@@ -84,8 +93,12 @@ for f in tests/harness/generated/test_*.metta; do
   name="$(basename "$f" .metta)"
   log="outputs/harness_logs/$name.log"
   : > "$vlog"
+  start_ns="$(now_ns)"
   timeout 300 petta "$f" > "$log" 2>&1
   status=$?
+  end_ns="$(now_ns)"
+  duration_ms=$(((end_ns - start_ns) / 1000000))
+  duration_s="$(format_ms "$duration_ms")"
   count_log="$log"
   if [ $status -ne 0 ]; then
     count_log="$vlog"
@@ -125,14 +138,15 @@ for f in tests/harness/generated/test_*.metta; do
   total_skipped=$((total_skipped + skipped))
   total_omitted=$((total_omitted + omitted))
   total_adapted=$((total_adapted + adapted))
-  printf '%-45s pass=%-3s close=%-3s fail=%-3s unsupported-ir=%-3s skipped=%-3s omitted=%-3s adapted=%-3s %s\n' \
-    "$name" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$omitted" "$adapted" "$flag" \
+  total_ms=$((total_ms + duration_ms))
+  printf '%-45s pass=%-3s close=%-3s fail=%-3s unsupported-ir=%-3s skipped=%-3s omitted=%-3s adapted=%-3s time=%ss %s\n' \
+    "$name" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$omitted" "$adapted" "$duration_s" "$flag" \
     >> "$report"
 done
 
 {
   echo "---"
-  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted flagged-files=$((total_err + total_coverage_err + total_adapted_err))"
+  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted time=$(format_ms "$total_ms")s flagged-files=$((total_err + total_coverage_err + total_adapted_err))"
 } >> "$report"
 
 cat "$report"

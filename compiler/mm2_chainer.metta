@@ -1208,19 +1208,21 @@
    (let* (($scope (mm2-ir-scope-kb $kb))
           ($fact (mm2-forward-next-fact $scope)))
      (if (== $fact ())
-       ()
+       false
        (let* (($_mark (add-atom &mork (mm2-forward-processed $scope $fact)))
               ($_run (mm2-forward-chain-from-facts-steps
                        (mm2-forward-chain-steps-per-round)
                        $kb
                        (cons $fact ()))))
-         ()))))
+         true))))
 
 (= (mm2-forward-chain-loop $rounds $kb)
    (if (<= $rounds 0)
      ()
-     (let $_step (mm2-forward-chain-one-step $kb)
-       (mm2-forward-chain-loop (- $rounds 1) $kb))))
+     (let $advanced (mm2-forward-chain-one-step $kb)
+       (if (== $advanced false)
+         ()
+         (mm2-forward-chain-loop (- $rounds 1) $kb)))))
 
 (= (mm2-forward-chain $rounds $kb)
    (mm2-forward-chain-loop $rounds $kb))

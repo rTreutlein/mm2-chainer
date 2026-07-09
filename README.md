@@ -56,7 +56,8 @@ runs the corpus gate. The corpus gate fails if generated tests produce close or
 fail verdicts, unsupported IR, converter skips, omitted forms, or timeout/error
 files, and it also fails if the total pass count drops below the current
 coverage floor or an individual generated file drops below its current pass
-count.
+count. The corpus report also includes per-file and total elapsed time so slow
+fixtures are visible in the normal gate output.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
