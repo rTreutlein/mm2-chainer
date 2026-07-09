@@ -1066,7 +1066,11 @@ and source-fact fanout fixtures, repeats each case, subtracts the
 import+`mm2-init` baseline, and rejects dirty samples with runtime errors,
 close/fail verdicts, unsupported/skipped forms, zero pass verdicts, or unstable
 verdict counts. This keeps future agenda/indexing experiments tied to larger
-MM2-space behavior instead of the tiny generated corpus fixtures alone.
+MM2-space behavior instead of the tiny generated corpus fixtures alone. The
+chain cases exercise the public agenda loop, while fanout cases use explicit
+source facts with a size-scaled source budget so wider documented samples remain
+clean benchmark inputs instead of accidentally measuring the fixed per-source
+round cap.
 
 Rejected performance experiments:
 

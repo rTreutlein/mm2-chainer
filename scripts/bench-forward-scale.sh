@@ -117,18 +117,20 @@ generate_chain_fixture() {
 generate_fanout_fixture() {
   local width="$1"
   local file="$2"
+  local rounds=$(((width + 63) / 64))
   local i
 
   {
     printf '; generated fanout-width=%s by scripts/bench-forward-scale.sh\n' "$width"
+    printf '; fanout rounds=%s\n' "$rounds"
     emit_header
     printf '!(mm2-compileadd forwardScaleFanout%sKb (: seed (ForwardScaleFanSeed) (STV 1.0 1.0)))\n' "$width"
     for i in $(seq 1 "$width"); do
       printf '!(mm2-compileadd forwardScaleFanout%sKb (: r%s (Implication (Premises (ForwardScaleFanSeed)) (Conclusions (ForwardScaleFanGoal g%s))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))\n' \
         "$width" "$i" "$i"
     done
-    printf '!(mm2-test-equal (let* (($_ (mm2-forward-chain 2 forwardScaleFanout%sKb)) ($facts (collapse (match &kb ((ForwardScaleFanGoal $g) (forwardScaleFanout%sKb MAIN Nil) $prf $tv) $g)))) (list-count $facts)) %s)\n' \
-      "$width" "$width" "$width"
+    printf '!(mm2-test-equal (let* (($facts (collapse (match &kb ((ForwardScaleFanSeed) (forwardScaleFanout%sKb MAIN Nil) $prf $tv) ((ForwardScaleFanSeed) (forwardScaleFanout%sKb MAIN Nil) $prf $tv)))) ($_ (mm2-forward-chain-from-facts %s forwardScaleFanout%sKb $facts)) ($derived (collapse (match &kb ((ForwardScaleFanGoal $g) (forwardScaleFanout%sKb MAIN Nil) $prf $tv) $g)))) (list-count $derived)) %s)\n' \
+      "$width" "$width" "$rounds" "$width" "$width" "$width"
   } > "$file"
 }
 

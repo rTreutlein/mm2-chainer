@@ -116,7 +116,7 @@ prints gross time, delta from the previous selected prefix, verdict counts, and
 the selected line. Override `MM2_PROFILE_PATTERN` to select different lines.
 
 For forward-materialization work, use a synthetic scale benchmark that separates
-chain depth from source-fact fanout:
+agenda-driven chain depth from explicit source-fact fanout:
 
 ```bash
 bash scripts/bench-forward-scale.sh
@@ -128,6 +128,8 @@ It writes median gross and baseline-subtracted timings to
 `outputs/forward_scale_bench_runs.tsv`. The benchmark fails if any generated
 case has a `petta` error, close/fail verdict, unsupported IR marker, skipped
 form, zero pass verdicts, or unstable verdict counts across repeated runs.
+Fanout cases use `mm2-forward-chain-from-facts` with a size-scaled source budget;
+chain cases use the public `mm2-forward-chain` agenda loop.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
