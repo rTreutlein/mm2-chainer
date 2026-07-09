@@ -33,6 +33,8 @@ Repository layout:
   - `run-independent.sh`: run the independent-goals demo
   - `bench-harness-corpus.sh`: repeat selected generated harness fixtures and
     report baseline-subtracted timing medians
+  - `profile-harness-file.sh`: time cumulative prefixes of one generated
+    harness fixture
 - `outputs/`
   - ignored generated results from the scripts
 - `docs/`
@@ -102,6 +104,16 @@ form, if it contains an omitted/adapted marker outside the corpus limits, or if
 its pass count drops below the generated corpus floor. Repeated runs must also
 produce stable verdict counts, so timing samples cannot silently mix clean and
 dirty coverage.
+
+To localize cost inside one generated fixture, run cumulative prefix timings:
+
+```bash
+bash scripts/profile-harness-file.sh test_forward_backward_compose
+```
+
+The prefix profiler reruns the fixture truncated after each `mm2-test*` line and
+prints gross time, delta from the previous selected prefix, verdict counts, and
+the selected line. Override `MM2_PROFILE_PATTERN` to select different lines.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
