@@ -6,6 +6,7 @@
 #   - benchmark implication query depths 4, 8, and 12
 #   - benchmark same-order And projection widths 4 and 8
 #   - subtract an import+mm2-init baseline median from each case median
+#   - record in-process query time by wrapping only mm2-query in current-time
 #
 # Example:
 #   bash scripts/bench-query-scale.sh
@@ -107,6 +108,7 @@ generate_chain_fixture() {
   local depth="$1"
   local file="$2"
   local steps=$((depth * 10))
+  local case_name="query_chain_$depth"
   local i prev
 
   {
@@ -119,14 +121,15 @@ generate_chain_fixture() {
       printf '!(mm2-compileadd queryScaleChain%sKb (: r%s (Implication (Premises (QueryScaleNode%s $x)) (Conclusions (QueryScaleNode%s $x))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))\n' \
         "$depth" "$i" "$prev" "$i"
     done
-    printf '!(mm2-test-equal (not (== (mm2-query %s queryScaleChain%sKb (: $prf (QueryScaleNode%s item) $tv)) ())) true)\n' \
-      "$steps" "$depth" "$depth"
+    printf '!(let* (($t0 (current-time)) ($result (mm2-query %s queryScaleChain%sKb (: $prf (QueryScaleNode%s item) $tv))) ($t1 (current-time))) (if (not (== $result ())) (mm2-query-bench %s chain %s seconds (- $t1 $t0) mm2-test-pass) (mm2-query-bench %s chain %s seconds (- $t1 $t0) mm2-test-FAIL)))\n' \
+      "$steps" "$depth" "$depth" "$case_name" "$depth" "$case_name" "$depth"
   } > "$file"
 }
 
 generate_and_projection_fixture() {
   local width="$1"
   local file="$2"
+  local case_name="query_and_projection_$width"
   local i
 
   {
@@ -137,11 +140,12 @@ generate_and_projection_fixture() {
       printf ' (QueryScalePart%s item)' "$i"
     done
     printf ') (STV 1.0 0.99)))\n'
-    printf '!(mm2-test-equal (not (== (mm2-query 100 queryScaleAnd%sKb (: $prf (And' "$width"
+    printf '!(let* (($t0 (current-time)) ($result (mm2-query 100 queryScaleAnd%sKb (: $prf (And' "$width"
     for i in $(seq 1 "$width"); do
       printf ' (QueryScalePart%s $x)' "$i"
     done
-    printf ') $tv)) ())) true)\n'
+    printf ') $tv))) ($t1 (current-time))) (if (not (== $result ())) (mm2-query-bench %s and_projection %s seconds (- $t1 $t0) mm2-test-pass) (mm2-query-bench %s and_projection %s seconds (- $t1 $t0) mm2-test-FAIL)))\n' \
+      "$case_name" "$width" "$case_name" "$width"
   } > "$file"
 }
 
@@ -154,6 +158,7 @@ run_petta_file() {
   local log="$6"
   local start_ns end_ns duration_ms status
   local pass close fail unsup_ir skipped
+  local query_seconds query_ms
 
   start_ns="$(now_ns)"
   set +e
@@ -168,9 +173,18 @@ run_petta_file() {
   fail="$(grep -c 'mm2-test-FAIL' "$log" || true)"
   unsup_ir="$(grep -c 'notsupported-ir' "$log" || true)"
   skipped="$(grep -c 'mm2-test-unsupported' "$log" || true)"
+  query_seconds="$(
+    sed -n 's/.*(mm2-query-bench [^ ]* [^ ]* [^ ]* seconds \([^ ]*\) .*/\1/p' "$log" |
+      tail -n 1
+  )"
+  if [ -n "$query_seconds" ]; then
+    query_ms="$(awk -v seconds="$query_seconds" 'BEGIN { printf "%d", (seconds * 1000) + 0.5 }')"
+  else
+    query_ms=0
+  fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$shape" "$size" "$run_id" "$duration_ms" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$status"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$shape" "$size" "$run_id" "$duration_ms" "$query_ms" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$status"
 }
 
 require_positive_int MM2_QUERY_BENCH_RUNS "$runs"
@@ -194,12 +208,12 @@ baseline_file="$tmp_dir/baseline.metta"
 generate_baseline_fixture "$baseline_file"
 
 baseline_times=()
-printf 'case\tshape\tsize\trun\tduration_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n' > "$runs_report"
+printf 'case\tshape\tsize\trun\tduration_ms\tquery_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n' > "$runs_report"
 for run_id in $(seq 1 "$runs"); do
   log="outputs/query_scale_bench_logs/__baseline.$run_id.log"
   row="$(run_petta_file "$baseline_file" __baseline baseline 0 "$run_id" "$log")"
   printf '%s\n' "$row" >> "$runs_report"
-  IFS=$'\t' read -r _name _shape _size _run duration_ms _pass _close _fail _unsup_ir _skipped status <<< "$row"
+  IFS=$'\t' read -r _name _shape _size _run duration_ms _query_ms _pass _close _fail _unsup_ir _skipped status <<< "$row"
   if [ "$status" -ne 0 ]; then
     echo "baseline run $run_id failed with status $status; see $log" >&2
     exit 1
@@ -218,6 +232,7 @@ run_case() {
   local size="$3"
   local file="$4"
   local durations=()
+  local query_durations=()
   local last_pass=0
   local last_close=0
   local last_fail=0
@@ -229,15 +244,16 @@ run_case() {
   local expected_unsup_ir=
   local expected_skipped=
   local worst_status=0
-  local run_id row duration_ms pass close fail unsup_ir skipped status
-  local gross_median gross_min gross_max net_median log
+  local run_id row duration_ms query_ms pass close fail unsup_ir skipped status
+  local gross_median gross_min gross_max net_median query_median query_min query_max log
 
   for run_id in $(seq 1 "$runs"); do
     log="outputs/query_scale_bench_logs/$name.$run_id.log"
     row="$(run_petta_file "$file" "$name" "$shape" "$size" "$run_id" "$log")"
     printf '%s\n' "$row" >> "$runs_report"
-    IFS=$'\t' read -r _name _shape _size _run duration_ms pass close fail unsup_ir skipped status <<< "$row"
+    IFS=$'\t' read -r _name _shape _size _run duration_ms query_ms pass close fail unsup_ir skipped status <<< "$row"
     durations+=("$duration_ms")
+    query_durations+=("$query_ms")
     last_pass="$pass"
     last_close="$close"
     last_fail="$fail"
@@ -275,14 +291,18 @@ run_case() {
   gross_median="$(median_ms "${durations[@]}")"
   gross_min="$(min_ms "${durations[@]}")"
   gross_max="$(max_ms "${durations[@]}")"
+  query_median="$(median_ms "${query_durations[@]}")"
+  query_min="$(min_ms "${query_durations[@]}")"
+  query_max="$(max_ms "${query_durations[@]}")"
   net_median=$((gross_median - baseline_median))
   if [ "$net_median" -lt 0 ]; then
     net_median=0
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$name" "$shape" "$size" "$runs" "$baseline_median" "$gross_median" "$net_median" \
-    "$gross_min" "$gross_max" "$last_pass" "$last_close" "$last_fail" "$last_unsup_ir" "$last_skipped" \
+    "$gross_min" "$gross_max" "$query_median" "$query_min" "$query_max" \
+    "$last_pass" "$last_close" "$last_fail" "$last_unsup_ir" "$last_skipped" \
     "$worst_status" >> "$summary_body"
 }
 
@@ -301,8 +321,8 @@ for width in $and_widths; do
 done
 
 {
-  printf 'case\tshape\tsize\truns\tbaseline_median_ms\tgross_median_ms\tnet_median_ms\tgross_min_ms\tgross_max_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n'
-  sort -t $'\t' -k7,7nr "$summary_body"
+  printf 'case\tshape\tsize\truns\tbaseline_median_ms\tgross_median_ms\tnet_median_ms\tgross_min_ms\tgross_max_ms\tquery_median_ms\tquery_min_ms\tquery_max_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n'
+  sort -t $'\t' -k10,10nr "$summary_body"
 } > "$summary_report"
 
 cat "$summary_report"
