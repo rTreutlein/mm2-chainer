@@ -100,7 +100,7 @@ against the mm2 runtime **in one petta process**, via PeTTa's mork_ffi
   relative) / `FAIL`; the current hand harness is exact.
 - Converted tests live in `tests/harness/converted_tests.metta`; run with
   `scripts/run-harness-tests.sh` (wired into the suite, currently
-  14 pass / 0 close / 0 fail).
+  16 pass / 0 close / 0 fail).
 - Setup facts: petta wrapper LD_PRELOADs
   `PeTTa/mork_ffi/target/release/libmork_ffi.so`, which path-depends on our
   `../../MORK` — rebuild with `cargo build -p mork_ffi --release` in
@@ -119,15 +119,13 @@ inheritance records). Recognized CPU chains:
     subgoals + AndFormula*                      -> adapterN
     ... + MP with literal CTV                   -> ruleN ctv
     ... + Fold Fold ImplCTV(STV) MP             -> ruleN stv (+ brpat support)
-    ... + Fold Fold ImplCTV Inversion MP        -> ruleN inv (+ consequent
-                                                   materialization goal for
-                                                   CTV-derived inverses only;
-                                                   STV-derived inverses skip it
-                                                   pending the recursion guard)
+    ... + Fold Fold ImplCTV Inversion MP        -> ruleN inv (+ role-keyed
+                                                   brpat support and consequent
+                                                   materialization goal)
 
 Unrecognized IR -> `(notsupported-ir ...)` markers in the transcript and the
-space. Hand-converted tests keep identical verdicts through the real
-compiler (3 pass, 1 close).
+space. Hand-converted tests are supplemental coverage for focused runtime
+behaviors not pinned narrowly by the generated corpus.
 
 Corpus: `scripts/convert_petta_tests.py` converted 36 test files into
 `tests/harness/generated/`; `scripts/run-harness-corpus.sh` runs them
@@ -533,11 +531,9 @@ that were originally kept only in `tests/harness/converted_tests.metta`:
 
 This keeps the hand harness as focused supplemental coverage while making the
 generated corpus the primary source-file parity report. The generated corpus now
-covers 32 of the 37 upstream `test_*.metta` files. The five still excluded files
-are explicit out-of-scope cases for this runtime-focused harness:
-`test_benchgen_metta.metta`, `test_forward_chainer.metta`,
-`test_distribution_values.metta`, `test_numeric_pattern_dist.metta`, and
-`test_particle_values.metta`.
+covers 36 upstream `test_*.metta` files. The only skipped upstream test file is
+`test_benchgen_metta.metta`, an explicit out-of-scope benchmark generator rather
+than a chainer regression.
 
 Latest corpus snapshot after this adjustment:
 
