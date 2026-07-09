@@ -162,6 +162,7 @@ For the full ConceptNet query modeled on PeTTaChainer's `x.metta`, run:
 bash scripts/bench-conceptnet-query.sh
 MM2_CONCEPTNET_BENCH_RUNS=1 MM2_CONCEPTNET_BENCH_PETTA=0 bash scripts/bench-conceptnet-query.sh
 MM2_CONCEPTNET_BENCH_OBJECTS=32 MM2_CONCEPTNET_BENCH_PET_DISTRACTORS=64 MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS=64 bash scripts/bench-conceptnet-query.sh
+bash scripts/bench-conceptnet-scale.sh
 ```
 
 It builds the `And (Own (i $a)) (Pet $a)` seed over `rules/full_rules.mm2`.
@@ -176,6 +177,13 @@ distractor counts to `0` for the old two-object probe.
 The script records mm2/MORK timings, optionally compares against PeTTaChainer
 query-only timing, and writes per-exec MORK timing to
 `outputs/conceptnet_query_bench/profile.tsv`.
+`scripts/bench-conceptnet-scale.sh` runs a repeatable size matrix and collects
+the per-case summaries in `outputs/conceptnet_query_scale/summary.tsv`. Override
+`MM2_CONCEPTNET_SCALE_CASES` with entries like
+`"8:8:8:16 32:32:32:64"`, where each entry is
+`objects:pet-only:own-only:unrelated`. Use
+`MM2_CONCEPTNET_SCALE_PETTA_STEPS` when PeTTaChainer needs a larger search
+budget than MM2 to return the same answer count.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
