@@ -947,22 +947,6 @@ def forward_chainer_proof_evidence_test(queryish, expected):
     return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
 
 
-def forward_chainer_short_budget_adaptation(queryish, expected):
-    converted = forward_has_derived_test(queryish, expected)
-    if converted is None or expected != "false" or converted[2] != "deltakb":
-        return None
-    return (
-        "ADAPTED PeTTa one-agenda-pop forward budget check: MM2 checks a short raw-step forward budget before the full broad pass",
-        [
-            "mm2-test-forward-has-derived-steps",
-            ["mm2-forward-chain-short-budget-steps"],
-            converted[2],
-            converted[3],
-            "false",
-        ],
-    )
-
-
 def forward_chainer_omission_reason(queryish, expected):
     if contains_head(queryish, "forward-agenda-dirty?"):
         return "OMITTED PeTTa forward agenda dirty-state check"
@@ -976,9 +960,6 @@ def forward_chainer_omission_reason(queryish, expected):
         return "OMITTED PeTTa forward proof-token merge-shape check"
     if contains_head(queryish, "cpu-call"):
         return "OMITTED PeTTa forward CPU-placeholder cleanup check"
-    converted = forward_has_derived_test(queryish, expected)
-    if converted is not None and expected == "false" and converted[2] == "deltakb":
-        return "OMITTED PeTTa one-agenda-pop forward budget check: MM2 forward-chain advances the whole KB in one broad pass"
     return None
 
 
@@ -1177,12 +1158,6 @@ def convert_file(path):
                     continue
                 converted = forward_chainer_proof_evidence_test(expr[1], expr[2])
                 if converted is not None:
-                    out.append("!" + show(converted))
-                    continue
-                adapted = forward_chainer_short_budget_adaptation(expr[1], expr[2])
-                if adapted is not None:
-                    reason, converted = adapted
-                    out.append("; " + reason)
                     out.append("!" + show(converted))
                     continue
                 omitted = forward_chainer_omission_reason(expr[1], expr[2])

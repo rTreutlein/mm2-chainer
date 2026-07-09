@@ -102,6 +102,7 @@
 
 (= (mm2-compileadd $kb $stmt)
    (let* (($added (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
+          ($_forward-dirty (mm2-clear-forward-agenda $kb))
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
 
@@ -110,6 +111,7 @@
 ; without shadowing PeTTaChainer's own add-to-kb, which compileadd still uses.
 (= (mm2-add-to-kb $stmt)
    (let* (($added (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
+          ($_forward-dirty (mm2-clear-forward-agenda kb))
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
 
@@ -1160,9 +1162,8 @@
 ; exec loop still services durable base-rate and distribution feeder templates
 ; globally.
 (= (mm2-forward-chain-steps-per-round) 250)
-(= (mm2-forward-chain-short-budget-steps) 150)
 
-(= (mm2-forward-chain-steps $steps $_kb)
+(= (mm2-forward-chain-steps-raw $steps $_kb)
    (let* (($scope (mm2-ir-scope-kb $_kb))
           ($_clear (mm2-clear-runtime-queue))
           ($_goals (mm2-add-compiled $_kb (mm2-forward-chain-goals $scope)))
@@ -1170,8 +1171,59 @@
           ($_sync (mm2-forward-sync-kb $scope)))
      ()))
 
+(= (mm2-forward-chain-steps $steps $kb)
+   (let $_done (collapse (mm2-forward-chain-steps-raw $steps $kb))
+     ()))
+
+(= (mm2-clear-forward-agenda $kb)
+   (let $scope (mm2-ir-scope-kb $kb)
+     (mm2-remove-matches (mm2-forward-processed $scope $fact))))
+
+(= (mm2-forward-unprocessed-facts $scope)
+   (collapse
+     (match &mork
+       (fact ($scope $type) ($_s $c))
+       (let true
+            (== (collapse
+                  (match &mork
+                    (mm2-forward-processed $scope ($scope $type))
+                    true))
+                ())
+            (forward-candidate $c ($scope $type))))))
+
+(= (mm2-forward-best-candidate ()) (forward-candidate -1.0 ()))
+(= (mm2-forward-best-candidate (cons $candidate ())) $candidate)
+(= (mm2-forward-best-candidate (cons (forward-candidate $c $fact) $rest))
+   (let (forward-candidate $best-c $best-fact) (mm2-forward-best-candidate $rest)
+     (if (> $c $best-c)
+       (forward-candidate $c $fact)
+       (forward-candidate $best-c $best-fact))))
+
+(= (mm2-forward-next-fact $scope)
+   (let (forward-candidate $_c $fact)
+        (mm2-forward-best-candidate (mm2-forward-unprocessed-facts $scope))
+     $fact))
+
+(= (mm2-forward-chain-one-step $kb)
+   (let* (($scope (mm2-ir-scope-kb $kb))
+          ($fact (mm2-forward-next-fact $scope)))
+     (if (== $fact ())
+       ()
+       (let* (($_mark (add-atom &mork (mm2-forward-processed $scope $fact)))
+              ($_run (mm2-forward-chain-from-facts-steps
+                       (mm2-forward-chain-steps-per-round)
+                       $kb
+                       (cons $fact ()))))
+         ()))))
+
+(= (mm2-forward-chain-loop $rounds $kb)
+   (if (<= $rounds 0)
+     ()
+     (let $_step (mm2-forward-chain-one-step $kb)
+       (mm2-forward-chain-loop (- $rounds 1) $kb))))
+
 (= (mm2-forward-chain $rounds $kb)
-   (mm2-forward-chain-steps (* $rounds (mm2-forward-chain-steps-per-round)) $kb))
+   (mm2-forward-chain-loop $rounds $kb))
 
 (= (mm2-forward-target-type (: $_name $type $_tv)) $type)
 (= (mm2-forward-target-type ($type $_scope $_prf $_tv)) $type)
@@ -1219,13 +1271,17 @@
        (mm2-forward-goals-from-fact $fact)
        (mm2-forward-goals-from-facts $rest))))
 
-(= (mm2-forward-chain-from-facts-steps $steps $kb $facts)
+(= (mm2-forward-chain-from-facts-steps-raw $steps $kb $facts)
    (let* (($scope (mm2-ir-scope-kb $kb))
           ($fact-keys (mm2-forward-fact-keys $facts))
           ($_clear (mm2-clear-runtime-queue))
           ($_goals (mm2-add-compiled $kb (mm2-forward-goals-from-facts $fact-keys)))
           ($_run (mm2-exec &mork $steps))
           ($_sync (mm2-forward-sync-kb $scope)))
+     ()))
+
+(= (mm2-forward-chain-from-facts-steps $steps $kb $facts)
+   (let $_done (collapse (mm2-forward-chain-from-facts-steps-raw $steps $kb $facts))
      ()))
 
 (= (mm2-forward-chain-from-facts $rounds $kb $facts)

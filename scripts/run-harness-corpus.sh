@@ -31,8 +31,8 @@ vlog="outputs/harness_verdicts.log"
 : > "$report"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0
-min_total_pass=243
-max_total_adapted=1
+min_total_pass=259
+max_total_adapted=0
 
 min_pass_for_file() {
   case "$1" in
@@ -45,8 +45,8 @@ min_pass_for_file() {
     test_evidence_semantics) echo 2 ;;
     test_foldall_merged_outputs) echo 2 ;;
     test_foldall_query_goal) echo 3 ;;
-    test_forward_backward_compose) echo 17 ;;
-    test_forward_chainer) echo 16 ;;
+    test_forward_backward_compose) echo 19 ;;
+    test_forward_chainer) echo 30 ;;
     test_frontier_pooling) echo 6 ;;
     test_height_average) echo 4 ;;
     test_idealized_confidence) echo 12 ;;
@@ -77,10 +77,7 @@ min_pass_for_file() {
 }
 
 max_adapted_for_file() {
-  case "$1" in
-    test_forward_chainer) echo 1 ;;
-    *) echo 0 ;;
-  esac
+  echo 0
 }
 
 for f in tests/harness/generated/test_*.metta; do

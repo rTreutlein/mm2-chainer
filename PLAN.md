@@ -877,12 +877,12 @@ Latest corpus snapshot after this adjustment:
 ## Corpus adapted-count guard (DONE 2026-07-09)
 
 `scripts/run-harness-corpus.sh` now fails if generated `ADAPTED` comments
-increase above the current count. The only allowed adapted surfaces are now
-`test_forward_chainer` with 1 explicit MM2 forward budget adaptation.
+appear. The generated corpus currently has no explicit adaptations; parity
+surfaces that need MM2 runtime/readback facades are converted directly.
 
 Latest corpus snapshot after this adjustment:
 
-    totals: pass=243 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=1 flagged-files=0
+    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 flagged-files=0
 
 ## Selected forward source materialization (DONE 2026-07-09)
 
@@ -931,6 +931,23 @@ revised fact and merged `fact-evidence` record intact.
 Latest corpus snapshot after this adjustment:
 
     totals: pass=243 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=1 flagged-files=0
+
+## Forward source-agenda scheduling (DONE 2026-07-09)
+
+`mm2-forward-chain` now advances one highest-confidence unprocessed source fact
+per requested round, clearing that agenda state whenever `mm2-compileadd` or
+`mm2-add-to-kb` mutates the KB. Public forward-chain helpers collapse their
+internal side-effect branches before returning, so harness assertions observe a
+single post-run state instead of transient intermediate materialization states.
+
+This lets the generated `test_forward_chainer` one-agenda-pop false/true check
+keep its original two-call shape without a short raw-step budget adapter, while
+repeated rounds still expose the broader materialization behavior used by the
+rest of the generated forward corpus.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 flagged-files=0
 
 ## Next
 
@@ -983,15 +1000,14 @@ Latest corpus snapshot after this adjustment:
    coverage, forward agenda dirty facade, selected forward source
    materialization, forward `&kb` readback for proof-count,
    merge-token absence, CPU-placeholder cleanup checks, and forward
-   proof evidence readback, with only the forward short-budget adaptation
-   remaining):
-   pass=243 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=1
+   proof evidence readback, and forward source-agenda scheduling):
+   pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
-   `HARNESS: 14 pass, 0 close, 0 fail`.
-   No supported failures, closes, unsupported IR, or converter-level skipped
-   forms remain in the generated corpus; there is 1 explicit adaptation and
-   no generated omissions.
+   `HARNESS: 12 pass, 0 close, 0 fail`.
+   No supported failures, closes, unsupported IR, converter-level skipped
+   forms, explicit adaptations, or generated omissions remain in the generated
+   corpus.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is exact after readback-level factoring of raw two-premise And
@@ -1084,14 +1100,10 @@ Latest corpus snapshot after this adjustment:
    assertions and converts the materialization-compatible derivedness checks:
    initial path closure, eventual `DeltaGoal`, selected/fact-seeded forward
    materialization, rule-added-after-first-run false/true behavior, and the
-   dedupe CPU-placeholder cleanup's reachable-output side. PeTTa's proof-count
-   assertions in the same file are adapted to MM2 materialized fact-count
-   checks, and PeTTa's agenda-dirty check is adapted to an MM2 forward-goal
-   availability check. PeTTa's forward merge-shape assertion is adapted to an
-   exact MM2 readback proof-token check for `mm2-merged`, and PeTTa's
-   proof-store evidence assertion is adapted to an exact MM2 merged
-   `fact-evidence` union check. PeTTa's one-agenda-pop false check is adapted
-   to a short raw-step MM2 forward-budget check before the full broad pass.
+   dedupe CPU-placeholder cleanup's reachable-output side. The proof-count,
+   agenda-dirty, merge-token, proof-store evidence, and one-agenda-pop checks
+   now run through MM2 runtime/readback facades without generated `ADAPTED`
+   comments.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
