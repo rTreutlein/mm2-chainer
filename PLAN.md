@@ -1010,6 +1010,13 @@ the API boundary while avoiding repeated whole-scope sync work. A focused
 `MM2_BENCH_RUNS=5` sample measured `test_forward_chainer` at 2279 ms net and
 `test_forward_backward_compose` at 1771 ms net.
 
+Distribution assertion helpers no longer run an extra fixed 400-step settle
+pass after `mm2-query-wide`; the wide query budget already settles the
+generated distribution cases before readback. A focused `MM2_BENCH_RUNS=5`
+sample measured `test_particle_values` at 1770 ms net,
+`test_distribution_values` at 945 ms net, `test_height_average` at 360 ms net,
+and `test_rectangle_area` at 328 ms net.
+
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that
