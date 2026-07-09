@@ -52,9 +52,9 @@ bash scripts/run-independent.sh
 bash scripts/test.sh
 ```
 
-`scripts/test.sh` runs the MM2 runtime regression suite, verifies the generated
-PeTTaChainer corpus is in sync with `scripts/convert_petta_tests.py`, and then
-runs the corpus gate. The generated-corpus check also verifies that generated
+`scripts/test.sh` first verifies the generated PeTTaChainer corpus is in sync
+with `scripts/convert_petta_tests.py`, then runs the MM2 runtime regression
+suite and corpus gate. The generated-corpus check also verifies that generated
 files match upstream PeTTaChainer `test_*.metta` files and that every generated
 fixture has exactly one explicit pass floor. The corpus gate fails if generated tests produce
 close or fail verdicts, unsupported IR, converter skips, omitted forms, or
