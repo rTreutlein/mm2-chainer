@@ -92,14 +92,15 @@ against the mm2 runtime **in one petta process**, via PeTTa's mork_ffi
            ((: $_ (B x) (STV 0.6 0.8999998649685302))))
 ```
 
-- Statements compile through the thin backend; every goal term is wrapped as
-  `($kb $term)` so named KBs share the space without cross-talk (verified).
+- Statements compile through PeTTaChainer's compiler plus the MM2 IR
+  translator; every goal term is scoped so named KBs share the space without
+  cross-talk (verified).
 - `mm2-test` compares (type, tv) sets — mm2 proof tokens differ from PeTTa
   proof terms by design. Verdicts: `pass` (exact) / `close` (within 1e-3
-  relative — the inversion refinement drift) / `FAIL`.
+  relative) / `FAIL`; the current hand harness is exact.
 - Converted tests live in `tests/harness/converted_tests.metta`; run with
   `scripts/run-harness-tests.sh` (wired into the suite, currently
-  3 pass / 1 close / 0 fail).
+  12 pass / 0 close / 0 fail).
 - Setup facts: petta wrapper LD_PRELOADs
   `PeTTa/mork_ffi/target/release/libmork_ffi.so`, which path-depends on our
   `../../MORK` — rebuild with `cargo build -p mork_ffi --release` in

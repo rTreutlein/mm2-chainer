@@ -481,8 +481,8 @@ EOF
 }
 
 # PeTTaChainer-style tests running in-process against the mm2 runtime via
-# petta + mork_ffi (compiler/mm2_chainer.metta). The `close` verdict is the
-# inversion refinement drift documented in PLAN.md.
+# petta + mork_ffi (compiler/mm2_chainer.metta). The harness should now be
+# exact: no close verdicts and no failures.
 run_ffi_harness_test() {
   local summary
   summary="$(bash scripts/run-harness-tests.sh | tail -1)"
