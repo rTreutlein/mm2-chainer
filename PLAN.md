@@ -1110,6 +1110,12 @@ Rejected performance experiments:
   `test_forward_chainer` from 30 pass / 0 fail to 28 pass / 2 fail, so even
   apparently empty source rounds can advance durable runtime work that the
   harness observes.
+- Derived-only forward helper without final sync: making
+  `mm2-test-forward-has-derived` consume the agenda without the public
+  `mm2-forward-sync-kb` side effect improved `forward_chain_32` only modestly
+  (3799 ms net in a 5-run sample), but broke `test_forward_chainer` with
+  29 pass / 1 fail. The helper consumed the agenda before a later proof-count
+  assertion expected the public `&kb` readback sync.
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
