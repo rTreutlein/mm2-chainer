@@ -61,7 +61,8 @@ current coverage floor or an individual generated file drops below its current
 pass count. The corpus report also includes per-file and total elapsed time so
 slow fixtures are visible in the normal gate output. Corpus files run in
 parallel with 4 jobs by default; set positive-integer `MM2_HARNESS_JOBS=1` for
-serial debugging or a higher value for local timing experiments.
+serial debugging or a higher value for local timing experiments. Harness
+side-log files live under `outputs/` and are managed by the runner scripts.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 

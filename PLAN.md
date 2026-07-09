@@ -986,6 +986,13 @@ MM2 runtime/readback facades; any future unrecognized forward-chainer test form
 now emits `mm2-test-unsupported` like the rest of the converter instead of an
 omission comment.
 
+## Harness side-log isolation (DONE 2026-07-09)
+
+`scripts/run-harness-tests.sh` now sets `MM2_HARNESS_VERDICT_LOG` explicitly
+for the hand-converted harness, matching the corpus runner's per-process side
+logs and avoiding writes to the legacy default `outputs/harness_verdicts.log`
+path during normal test runs.
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter

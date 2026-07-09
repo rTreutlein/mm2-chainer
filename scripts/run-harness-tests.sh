@@ -12,7 +12,10 @@ mkdir -p outputs
 bash scripts/build-runtime.sh outputs/harness_runtime.mm2
 
 out="outputs/harness_tests.log"
-petta tests/harness/converted_tests.metta 2>&1 | tee "$out"
+side="outputs/harness_tests.verdicts.log"
+: > "$side"
+MM2_HARNESS_VERDICT_LOG="$ROOT_DIR/$side" \
+  petta tests/harness/converted_tests.metta 2>&1 | tee "$out"
 
 if grep -q "ERROR" "$out"; then
   echo "HARNESS: petta error" >&2
