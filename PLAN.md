@@ -969,6 +969,19 @@ Latest timed corpus snapshot after adding benchgen helper-state coverage:
 
     totals: pass=282 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=15.572s file-time=56.819s flagged-files=0
 
+For performance triage beyond the one-shot gate report,
+`scripts/bench-harness-corpus.sh` repeats selected generated fixtures
+serially, measures an import+`mm2-init` baseline, and writes median gross plus
+baseline-subtracted timings to `outputs/harness_bench.tsv`. With no arguments
+it benchmarks the slowest files from the last `outputs/harness_perf.tsv`, so
+the next optimization pass can focus on net fixture work instead of
+`petta`/import startup noise.
+
+First default benchmark sample (`MM2_BENCH_RUNS=3`) measured a 1067 ms
+baseline median; the top net medians were `test_forward_chainer` 2338 ms,
+`test_particle_values` 1966 ms, `test_forward_backward_compose` 1811 ms,
+`test_distribution_values` 1047 ms, and `test_frontier_pooling` 939 ms.
+
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that

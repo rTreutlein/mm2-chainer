@@ -31,6 +31,8 @@ Repository layout:
   - `run-chain.sh`: run the transitive-chain demo
   - `run-cyclic.sh`: run the cycle-handling demo
   - `run-independent.sh`: run the independent-goals demo
+  - `bench-harness-corpus.sh`: repeat selected generated harness fixtures and
+    report baseline-subtracted timing medians
 - `outputs/`
   - ignored generated results from the scripts
 - `docs/`
@@ -75,6 +77,20 @@ bash scripts/run-harness-corpus.sh tests/harness/generated/test_math.metta
 
 Focused runs write `outputs/harness_report.focus.txt` and
 `outputs/harness_perf.focus.tsv`, leaving the last full-corpus reports intact.
+
+For local performance triage, repeat selected generated fixtures with startup
+overhead separated from fixture work:
+
+```bash
+bash scripts/bench-harness-corpus.sh
+MM2_BENCH_RUNS=5 bash scripts/bench-harness-corpus.sh test_forward_chainer test_particle_values
+```
+
+With no fixture arguments, the benchmark script uses the slowest
+`MM2_BENCH_TOP=5` files from the last `outputs/harness_perf.tsv` report. It
+writes median gross and baseline-subtracted timings to
+`outputs/harness_bench.tsv` plus per-run samples to
+`outputs/harness_bench_runs.tsv`.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
