@@ -1234,6 +1234,20 @@
             ($_cleanup (mm2-cleanup-queries $cqs)))
        $results)))
 
+(= (mm2-run-query-wide-first $steps $notsup $cqs)
+   (let $existing (mm2-query-results $notsup $cqs)
+     (if (== $existing ())
+       (let* (($_run (mm2-exec &mork (mm2-test-total-steps $steps)))
+              ($results (mm2-query-results $notsup $cqs)))
+         $results)
+       $existing)))
+
+(= (mm2-query-wide-first $steps $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-wide-first $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
+
 (= (mm2-query-materialize $steps $kb (: $prf $type $tv))
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
@@ -1786,7 +1800,7 @@
       ($other (mm2-test-equal no-result $expected)))))
 
 (= (mm2-test-query-dist-gt-strength $steps $kb $query $threshold $expected)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $_c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
@@ -1794,7 +1808,7 @@
         ($other (mm2-test-equal no-result $expected))))))
 
 (= (mm2-test-query-dist-gt-strength-between $steps $kb $query $threshold $lo $hi)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $_c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
@@ -1802,7 +1816,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-dist-gt-strength-confidence-over $steps $kb $query $threshold $slo $clo)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
@@ -1810,7 +1824,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-dist-gt-between $steps $kb $query $threshold $slo $shi $clo $chi)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
@@ -1822,7 +1836,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-dist-gt-mp-between $steps $kb $query $threshold $ctv $slo $shi $clo $chi)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $c)
@@ -1837,7 +1851,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-dist-gt-mp-strength-between $steps $kb $query $threshold $ctv $slo $shi)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $_c)
@@ -1848,7 +1862,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-dist-gt-mp-confidence-over $steps $kb $query $threshold $ctv $clo)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $_s $c)
@@ -1859,7 +1873,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-particle-pairs $steps $kb $query $expected)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (mm2-test-equal (mm2-dist-pairs (mm2-last-arg $type)) $expected))
@@ -1875,7 +1889,7 @@
       ($_ false))))
 
 (= (mm2-test-query-particle-pairs-between $steps $kb $query $expected)
-   (let $results (mm2-query-wide $steps $kb $query)
+   (let $results (mm2-query-wide-first $steps $kb $query)
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
          (mm2-test-equal

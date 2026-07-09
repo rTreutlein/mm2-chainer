@@ -1017,6 +1017,14 @@ sample measured `test_particle_values` at 1770 ms net,
 `test_distribution_values` at 945 ms net, `test_height_average` at 360 ms net,
 and `test_rectangle_area` at 328 ms net.
 
+The same distribution assertion helpers now use a first-result wide query
+variant that reuses existing readback results when earlier assertions in the
+same fixture already materialized the derived distribution. The full
+`mm2-query-wide` path remains unchanged for callers that need all derivations.
+A focused `MM2_BENCH_RUNS=5` sample measured `test_particle_values` at
+961 ms net, `test_distribution_values` at 578 ms net, `test_rectangle_area` at
+228 ms net, and `test_height_average` at 227 ms net.
+
 ## Corpus inventory guard (DONE 2026-07-09)
 
 `scripts/check-generated-corpus.sh` now verifies that
