@@ -131,6 +131,12 @@ def rename_calls(e):
         e[0] = "mm2-query"
     elif head(e) == "forward-chain":
         e[0] = "mm2-forward-chain"
+    elif head(e) == "forward-chain-from":
+        e[0] = "mm2-forward-chain-from"
+    elif head(e) == "forward-chain-from-facts":
+        e[0] = "mm2-forward-chain-from-facts"
+    elif head(e) == "forward-has-derived?":
+        e[0] = "mm2-forward-derived?"
     elif head(e) == "set-base-rate":
         e[0] = "mm2-set-base-rate"
     elif head(e) == "clear-base-rate":
@@ -875,6 +881,27 @@ def forward_chainer_cpu_placeholder_test(queryish, expected):
     return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
 
 
+def forward_chainer_source_materialization_test(queryish, expected):
+    if expected != "true":
+        return None
+
+    if head(queryish) == "let" and len(queryish) == 4:
+        forward, derived = queryish[2], queryish[3]
+        if head(forward) == "forward-chain-from" and len(forward) == 4:
+            if head(derived) == "forward-has-derived?" and len(derived) == 3 and forward[2] == derived[1]:
+                return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
+        return None
+
+    if head(queryish) != "let*" or len(queryish) != 3:
+        return None
+    bindings, body = queryish[1], queryish[2]
+    forward = forward_binding(bindings)
+    if head(forward) == "forward-chain-from-facts" and len(forward) == 4:
+        if head(body) == "forward-has-derived?" and len(body) == 3 and forward[2] == body[1]:
+            return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
+    return None
+
+
 def forward_chainer_evidence_union_adaptation(queryish, expected):
     if expected != "true" or not contains_head(queryish, "proof-atom-evidence-set"):
         return None
@@ -1155,6 +1182,10 @@ def convert_file(path):
                     out.append("!" + show(converted))
                     continue
                 converted = forward_chainer_cpu_placeholder_test(expr[1], expr[2])
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
+                converted = forward_chainer_source_materialization_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
                     continue

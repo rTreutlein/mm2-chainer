@@ -31,8 +31,8 @@ vlog="outputs/harness_verdicts.log"
 : > "$report"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0
-min_total_pass=241
-max_total_adapted=12
+min_total_pass=243
+max_total_adapted=10
 
 min_pass_for_file() {
   case "$1" in
@@ -46,7 +46,7 @@ min_pass_for_file() {
     test_foldall_merged_outputs) echo 2 ;;
     test_foldall_query_goal) echo 3 ;;
     test_forward_backward_compose) echo 17 ;;
-    test_forward_chainer) echo 14 ;;
+    test_forward_chainer) echo 16 ;;
     test_frontier_pooling) echo 6 ;;
     test_height_average) echo 4 ;;
     test_idealized_confidence) echo 12 ;;
@@ -78,7 +78,7 @@ min_pass_for_file() {
 
 max_adapted_for_file() {
   case "$1" in
-    test_forward_chainer) echo 5 ;;
+    test_forward_chainer) echo 3 ;;
     test_particle_values) echo 7 ;;
     *) echo 0 ;;
   esac

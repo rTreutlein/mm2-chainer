@@ -29,13 +29,11 @@
 !(mm2-compileadd selectedkb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd selectedkb (: lowFact (LowPriority) (STV 1.0 0.8)))
 !(mm2-compileadd selectedkb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (SelectedGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-; ADAPTED PeTTa selected forward agenda check: MM2 checks materialization after a whole-KB forward pass
-!(mm2-test-forward-has-derived 1 selectedkb (SelectedGoal) true)
+!(mm2-test-equal (let $_ (mm2-forward-chain-from 1 selectedkb (LowPriority)) (mm2-forward-derived? selectedkb (SelectedGoal))) true)
 !(mm2-compileadd factseedkb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd factseedkb (: lowFact (LowPriority) (STV 1.0 0.8)))
 !(mm2-compileadd factseedkb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (FactSeedGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-; ADAPTED PeTTa fact-seeded forward agenda check: MM2 checks materialization after a whole-KB forward pass
-!(mm2-test-forward-has-derived 1 factseedkb (FactSeedGoal) true)
+!(mm2-test-equal (let* (($facts (collapse (match &kb ((LowPriority) (factseedkb MAIN Nil) $prf $tv) ((LowPriority) (factseedkb MAIN Nil) $prf $tv)))) ($_ (mm2-forward-chain-from-facts 1 factseedkb $facts))) (mm2-forward-derived? factseedkb (FactSeedGoal))) true)
 !(mm2-compileadd ruleaddkb (: oldSeed (RuleSeed) (STV 1.0 1.0)))
 !(mm2-test-forward-has-derived 1 ruleaddkb (RuleAddGoal) false)
 !(mm2-compileadd ruleaddkb (: seedToGoal (Implication (Premises (RuleSeed)) (Conclusions (RuleAddGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))

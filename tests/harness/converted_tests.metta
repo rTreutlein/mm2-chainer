@@ -133,5 +133,13 @@
 !(mm2-test-query 240 invKb (: $prf (P alice) $tv)
                  ((: $_ (P alice) (STV 0.736162240263287 0.0003604307138536469))))
 
+; Selected MM2 forward materialization opens goals from the selected source
+; fact only.
+!(mm2-compileadd selectedNegativeKb (: highOnly (HighPriority) (STV 1.0 1.0)))
+!(mm2-compileadd selectedNegativeKb (: lowOnly (LowPriority) (STV 1.0 0.8)))
+!(mm2-compileadd selectedNegativeKb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (SelectedGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
+!(mm2-test-equal (let $_ (mm2-forward-chain-from 1 selectedNegativeKb (HighPriority)) (mm2-forward-derived? selectedNegativeKb (SelectedGoal))) false)
+!(mm2-test-equal (let $_ (mm2-forward-chain-from 1 selectedNegativeKb (LowPriority)) (mm2-forward-derived? selectedNegativeKb (SelectedGoal))) true)
+
 ; kb isolation: stvRuleKb facts must not leak into nAryKb
 !(mm2-test-query 5 nAryKb (: $prf (B x) $tv) ())

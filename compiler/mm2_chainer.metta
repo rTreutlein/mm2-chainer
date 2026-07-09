@@ -1173,6 +1173,73 @@
 (= (mm2-forward-chain $rounds $kb)
    (mm2-forward-chain-steps (* $rounds (mm2-forward-chain-steps-per-round)) $kb))
 
+(= (mm2-forward-target-type (: $_name $type $_tv)) $type)
+(= (mm2-forward-target-type ($type $_scope $_prf $_tv)) $type)
+(= (mm2-forward-target-type $target) $target)
+
+(= (mm2-forward-select-fact $kb $target)
+   (let* (($scope (mm2-ir-scope-kb $kb))
+          ($type (mm2-forward-target-type $target))
+          ($matches
+            (collapse
+              (once
+                (match &mork
+                  (fact ($scope $type) $stv)
+                  ($scope $type))))))
+     (if (== $matches ()) () (car-atom $matches))))
+
+(= (mm2-forward-fact-key ($type $scope $_prf $_tv)) ($scope $type))
+(= (mm2-forward-fact-key ($scope $type)) ($scope $type))
+(= (mm2-forward-fact-key $fact) $fact)
+
+(= (mm2-forward-fact-keys ()) ())
+(= (mm2-forward-fact-keys (cons $fact $rest))
+   (cons (mm2-forward-fact-key $fact) (mm2-forward-fact-keys $rest)))
+
+(= (mm2-forward-premises-contain $fact (pcons $fact $_rest)) true)
+(= (mm2-forward-premises-contain $fact (pcons $_head $rest))
+   (mm2-forward-premises-contain $fact $rest))
+(= (mm2-forward-premises-contain $_fact pnil) false)
+
+(= (mm2-forward-goals-from-fact $fact)
+   (append
+     (collapse
+       (match &mork
+         (ruleN $g $kind $premises)
+         (let true (mm2-forward-premises-contain $fact $premises) (, (Goal $g)))))
+     (collapse
+       (match &mork
+         (ruleN $g $rid $kind $premises)
+         (let true (mm2-forward-premises-contain $fact $premises) (, (Goal $g)))))))
+
+(= (mm2-forward-goals-from-facts ()) ())
+(= (mm2-forward-goals-from-facts (cons $fact $rest))
+   (list_to_set
+     (append
+       (mm2-forward-goals-from-fact $fact)
+       (mm2-forward-goals-from-facts $rest))))
+
+(= (mm2-forward-chain-from-facts-steps $steps $kb $facts)
+   (let* (($scope (mm2-ir-scope-kb $kb))
+          ($fact-keys (mm2-forward-fact-keys $facts))
+          ($_clear (mm2-clear-runtime-queue))
+          ($_goals (mm2-add-compiled $kb (mm2-forward-goals-from-facts $fact-keys)))
+          ($_run (mm2-exec &mork $steps))
+          ($_sync (mm2-forward-sync-kb $scope)))
+     ()))
+
+(= (mm2-forward-chain-from-facts $rounds $kb $facts)
+   (mm2-forward-chain-from-facts-steps
+     (* $rounds (mm2-forward-chain-steps-per-round))
+     $kb
+     $facts))
+
+(= (mm2-forward-chain-from $rounds $kb $target)
+   (let $fact (mm2-forward-select-fact $kb $target)
+     (if (== $fact ())
+       false
+       (mm2-forward-chain-from-facts $rounds $kb (cons $fact ())))))
+
 (= (mm2-forward-has-goals? $kb)
    (let $scope (mm2-ir-scope-kb $kb)
      (not (== (mm2-forward-chain-goals $scope) ()))))
