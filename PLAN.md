@@ -1025,6 +1025,12 @@ A focused `MM2_BENCH_RUNS=5` sample measured `test_particle_values` at
 961 ms net, `test_distribution_values` at 578 ms net, `test_rectangle_area` at
 228 ms net, and `test_height_average` at 227 ms net.
 
+`scripts/bench-harness-corpus.sh` now also requires each repeated run of a
+sampled fixture to produce the same pass/close/fail/unsupported/skipped/
+omitted/adapted counts as the first run. The benchmark already failed dirty
+samples, but this makes intermittent verdict drift explicit instead of leaving
+only the per-run TSV to reveal it after the fact.
+
 Rejected performance experiments:
 
 - Empty-result query quiescence: trying to stop negative `mm2-test-query`

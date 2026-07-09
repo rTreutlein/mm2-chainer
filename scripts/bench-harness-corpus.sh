@@ -204,6 +204,13 @@ for file in "${files[@]}"; do
   last_skipped=0
   last_omitted=0
   last_adapted=0
+  expected_pass=
+  expected_close=
+  expected_fail=
+  expected_unsup_ir=
+  expected_skipped=
+  expected_omitted=
+  expected_adapted=
   worst_status=0
 
   for run_id in $(seq 1 "$runs"); do
@@ -222,6 +229,27 @@ for file in "${files[@]}"; do
     last_adapted="$adapted"
     if [ "$status" -ne 0 ]; then
       worst_status="$status"
+    fi
+    if [ "$run_id" -eq 1 ]; then
+      expected_pass="$pass"
+      expected_close="$close"
+      expected_fail="$fail"
+      expected_unsup_ir="$unsup_ir"
+      expected_skipped="$skipped"
+      expected_omitted="$omitted"
+      expected_adapted="$adapted"
+    elif [ "$pass" -ne "$expected_pass" ] ||
+         [ "$close" -ne "$expected_close" ] ||
+         [ "$fail" -ne "$expected_fail" ] ||
+         [ "$unsup_ir" -ne "$expected_unsup_ir" ] ||
+         [ "$skipped" -ne "$expected_skipped" ] ||
+         [ "$omitted" -ne "$expected_omitted" ] ||
+         [ "$adapted" -ne "$expected_adapted" ]; then
+      printf 'benchmark verdict counts varied for %s run %s: got pass=%s close=%s fail=%s unsupported-ir=%s skipped=%s omitted=%s adapted=%s; expected pass=%s close=%s fail=%s unsupported-ir=%s skipped=%s omitted=%s adapted=%s\n' \
+        "$name" "$run_id" \
+        "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$omitted" "$adapted" \
+        "$expected_pass" "$expected_close" "$expected_fail" "$expected_unsup_ir" "$expected_skipped" "$expected_omitted" "$expected_adapted" >&2
+      bench_errors=$((bench_errors + 1))
     fi
     if [ "$status" -ne 0 ] ||
        [ "$close" -ne 0 ] ||

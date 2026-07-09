@@ -98,7 +98,9 @@ writes median gross and baseline-subtracted timings to
 `outputs/harness_bench_runs.tsv`. It exits nonzero if any sampled fixture has a
 `petta` error, timeout, close/fail verdict, unsupported IR marker, or skipped
 form, if it contains an omitted/adapted marker outside the corpus limits, or if
-its pass count drops below the generated corpus floor.
+its pass count drops below the generated corpus floor. Repeated runs must also
+produce stable verdict counts, so timing samples cannot silently mix clean and
+dirty coverage.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
