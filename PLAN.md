@@ -980,6 +980,10 @@ fixture reports a runtime error, timeout, close/fail verdict, unsupported IR,
 skipped form, omitted/adapted marker outside the corpus limits, or a pass count
 below the generated corpus floor, so timing samples remain tied to clean
 semantic runs with unchanged coverage.
+Both corpus and benchmark runners now reject real generated fixtures under
+`tests/harness/generated/` if `scripts/harness-common.sh` lacks an explicit
+pass floor for the file; temporary scratch `.metta` probes outside that
+directory can still use the zero default.
 
 First default benchmark sample (`MM2_BENCH_RUNS=3`) measured a 1067 ms
 baseline median; the top net medians were `test_forward_chainer` 2338 ms,

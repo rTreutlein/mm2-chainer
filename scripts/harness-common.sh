@@ -46,3 +46,14 @@ min_pass_for_file() {
 max_adapted_for_file() {
   echo 0
 }
+
+requires_harness_floor() {
+  case "$1" in
+    tests/harness/generated/test_*.metta|*/tests/harness/generated/test_*.metta)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}

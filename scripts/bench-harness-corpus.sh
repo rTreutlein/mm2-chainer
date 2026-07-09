@@ -162,6 +162,15 @@ for requested in "${requested_fixtures[@]}"; do
   files+=("$candidate")
 done
 
+for file in "${files[@]}"; do
+  name="$(basename "$file" .metta)"
+  min_pass="$(min_pass_for_file "$name")"
+  if requires_harness_floor "$file" && [ "$min_pass" -le 0 ]; then
+    echo "missing corpus pass floor for generated fixture: $name" >&2
+    exit 2
+  fi
+done
+
 baseline_times=()
 printf 'file\trun\tduration_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tomitted\tadapted\tstatus\n' > "$runs_report"
 for run_id in $(seq 1 "$runs"); do

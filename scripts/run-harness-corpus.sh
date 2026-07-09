@@ -126,6 +126,15 @@ else
   done
 fi
 
+for f in "${files[@]}"; do
+  name="$(basename "$f" .metta)"
+  min_pass="$(min_pass_for_file "$name")"
+  if requires_harness_floor "$f" && [ "$min_pass" -le 0 ]; then
+    echo "missing corpus pass floor for generated fixture: $name" >&2
+    exit 2
+  fi
+done
+
 active_jobs=0
 suite_start_ns="$(now_ns)"
 for f in "${files[@]}"; do

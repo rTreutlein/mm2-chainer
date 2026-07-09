@@ -59,11 +59,14 @@ files match upstream PeTTaChainer `test_*.metta` files. The corpus gate fails if
 close or fail verdicts, unsupported IR, converter skips, omitted forms, or
 timeout/error files, and it also fails if the total pass count drops below the
 current coverage floor or an individual generated file drops below its current
-pass count. The corpus report also includes per-file and total elapsed time so
-slow fixtures are visible in the normal gate output. Corpus files run in
-parallel with 4 jobs by default; set positive-integer `MM2_HARNESS_JOBS=1` for
-serial debugging or a higher value for local timing experiments. Harness
-side-log files live under `outputs/` and are managed by the runner scripts.
+pass count. Real generated corpus fixtures must have an explicit pass floor in
+`scripts/harness-common.sh`; scratch `.metta` probes outside
+`tests/harness/generated/` may still use the default floor of zero. The corpus
+report also includes per-file and total elapsed time so slow fixtures are
+visible in the normal gate output. Corpus files run in parallel with 4 jobs by
+default; set positive-integer `MM2_HARNESS_JOBS=1` for serial debugging or a
+higher value for local timing experiments. Harness side-log files live under
+`outputs/` and are managed by the runner scripts.
 After each corpus run, `outputs/harness_perf.tsv` lists generated files sorted
 slowest-first by elapsed milliseconds.
 
