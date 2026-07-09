@@ -775,6 +775,12 @@ def forward_chainer_materialization_adaptation(queryish, expected):
     if expected != "true":
         return None
 
+    if head(queryish) == "forward-agenda-dirty?" and len(queryish) == 2:
+        return (
+            "ADAPTED PeTTa forward agenda dirty-state check: MM2 checks that forward goals are registered",
+            ["mm2-test-forward-has-goals", rename_calls(queryish[1]), "true"],
+        )
+
     if head(queryish) == "let" and len(queryish) == 4:
         forward, derived = queryish[2], queryish[3]
         if head(forward) == "forward-chain-from" and len(forward) == 4:

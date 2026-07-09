@@ -731,6 +731,17 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=231 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Forward agenda marker adaptation (DONE 2026-07-09)
+
+PeTTa's `forward-agenda-dirty?` check in `test_forward_chainer.metta` now
+compiles to an explicit MM2 forward-goal availability check. This keeps the
+same intent -- a newly compiled forward rule has work registered -- without
+pretending MM2 has PeTTa's agenda dirty-state machinery.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -780,8 +791,9 @@ Latest corpus snapshot after this adjustment:
    distribution `GreaterThan` rule-premise coverage, and selective
    forward-materialization tail coverage, and explicit per-form
    ParticleStore resource-management omissions, and adapted forward
-   source-materialization checks, and forward fact-count adapters):
-   pass=231 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   source-materialization checks, forward fact-count adapters, and forward
+   agenda marker adaptation):
+   pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -880,7 +892,8 @@ Latest corpus snapshot after this adjustment:
    materialization, rule-added-after-first-run false/true behavior, and the
    dedupe CPU-placeholder cleanup's reachable-output side. PeTTa's proof-count
    assertions in the same file are adapted to MM2 materialized fact-count
-   checks.
+   checks, and PeTTa's agenda-dirty check is adapted to an MM2 forward-goal
+   availability check.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
