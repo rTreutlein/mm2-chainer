@@ -14,6 +14,7 @@
 #   - benchmark n-ary And adapter widths 4 and 8
 #   - scale query rounds by the current runtime template count
 #   - subtract an empty direct-MORK baseline median from each case median
+#   - report both fixed-budget and first-answer latency rows
 #
 # Example:
 #   bash scripts/bench-query-direct-mork.sh
@@ -203,15 +204,21 @@ generate_and_adapter_case() {
 case_steps() {
   local shape="$1"
   local size="$2"
+  echo $(($(case_rounds "$shape" "$size") * steps_per_round))
+}
+
+case_rounds() {
+  local shape="$1"
+  local size="$2"
   case "$shape" in
     chain)
-      echo $((size * 10 * steps_per_round))
+      echo $((size * 10))
       ;;
     and_adapter)
-      echo $((100 * steps_per_round))
+      echo 100
       ;;
     baseline)
-      echo "$steps_per_round"
+      echo 1
       ;;
     *)
       echo "unknown shape: $shape" >&2
@@ -276,12 +283,14 @@ run_mork_case() {
 
 run_case() {
   local name="$1"
-  local shape="$2"
-  local size="$3"
-  local rules="$4"
-  local runtime="$5"
-  local steps="$6"
-  local baseline_median="$7"
+  local mode="$2"
+  local shape="$3"
+  local size="$4"
+  local rules="$5"
+  local runtime="$6"
+  local rounds="$7"
+  local baseline_median="$8"
+  local steps=$((rounds * steps_per_round))
   local durations=()
   local valid_count=0
   local worst_status=0
@@ -289,10 +298,10 @@ run_case() {
   local gross_median gross_min gross_max net_median
 
   for run_id in $(seq 1 "$runs"); do
-    out="$logs_dir/$name.$run_id.mm2"
-    log="$logs_dir/$name.$run_id.log"
+    out="$logs_dir/$name.$mode.$run_id.mm2"
+    log="$logs_dir/$name.$mode.$run_id.log"
     row="$(run_mork_case "$name" "$shape" "$size" "$rules" "$runtime" "$steps" "$run_id" "$out" "$log")"
-    printf '%s\n' "$row" >> "$runs_report"
+    printf '%s\t%s\n' "$mode" "$row" >> "$runs_report"
     IFS=$'\t' read -r _name _shape _size _run _steps duration_ms valid status <<< "$row"
     durations+=("$duration_ms")
     if [ "$valid" -eq 1 ]; then
@@ -320,13 +329,68 @@ run_case() {
       "$name" "$worst_status" "$logs_dir" "$name" >&2
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$shape" "$size" "$steps" "$gross_median" "$gross_min" "$gross_max" \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$mode" "$shape" "$size" "$rounds" "$steps" "$gross_median" "$gross_min" "$gross_max" \
     "$baseline_median" "$net_median" "$valid_count"
 
   if [ "$valid_count" -ne "$runs" ] || [ "$worst_status" -ne 0 ]; then
     return 1
   fi
+}
+
+probe_case_valid() {
+  local name="$1"
+  local shape="$2"
+  local size="$3"
+  local rules="$4"
+  local runtime="$5"
+  local rounds="$6"
+  local steps=$((rounds * steps_per_round))
+  local out="$tmp_dir/probes/$name.$rounds.mm2"
+  local log="$tmp_dir/probes/$name.$rounds.log"
+  local row valid status
+
+  row="$(run_mork_case "$name" "$shape" "$size" "$rules" "$runtime" "$steps" "probe-$rounds" "$out" "$log")"
+  IFS=$'\t' read -r _name _shape _size _run _steps _duration_ms valid status <<< "$row"
+  [ "$valid" -eq 1 ] && [ "$status" -eq 0 ]
+}
+
+find_answer_rounds() {
+  local name="$1"
+  local shape="$2"
+  local size="$3"
+  local rules="$4"
+  local runtime="$5"
+  local max_rounds="$6"
+  local lo=0
+  local hi=1
+  local mid
+
+  while [ "$hi" -lt "$max_rounds" ]; do
+    if probe_case_valid "$name" "$shape" "$size" "$rules" "$runtime" "$hi"; then
+      break
+    fi
+    lo="$hi"
+    hi=$((hi * 2))
+    if [ "$hi" -gt "$max_rounds" ]; then
+      hi="$max_rounds"
+    fi
+  done
+
+  if ! probe_case_valid "$name" "$shape" "$size" "$rules" "$runtime" "$hi"; then
+    return 1
+  fi
+
+  while [ $((hi - lo)) -gt 1 ]; do
+    mid=$(((lo + hi) / 2))
+    if probe_case_valid "$name" "$shape" "$size" "$rules" "$runtime" "$mid"; then
+      hi="$mid"
+    else
+      lo="$mid"
+    fi
+  done
+
+  echo "$hi"
 }
 
 require_positive_int MM2_DIRECT_QUERY_BENCH_RUNS "$runs"
@@ -344,8 +408,9 @@ trap cleanup EXIT
 
 mkdir -p "$prepared_dir" "$logs_dir" "$(dirname "$summary_report")" "$(dirname "$runs_report")"
 tmp_dir="$(mktemp -d)"
+mkdir -p "$tmp_dir/probes"
 
-printf 'case\tshape\tsize\trun\tsteps\tduration_ms\tvalid\tstatus\n' > "$runs_report"
+printf 'mode\tcase\tshape\tsize\trun\tsteps\tduration_ms\tvalid\tstatus\n' > "$runs_report"
 
 baseline_dir="$prepared_dir/__baseline"
 mkdir -p "$baseline_dir"
@@ -357,7 +422,7 @@ for run_id in $(seq 1 "$runs"); do
   out="$logs_dir/__baseline.$run_id.mm2"
   log="$logs_dir/__baseline.$run_id.log"
   row="$(run_mork_case __baseline baseline 0 "$baseline_dir/rules.mm2" "$baseline_dir/runtime.mm2" "$baseline_steps" "$run_id" "$out" "$log")"
-  printf '%s\n' "$row" >> "$runs_report"
+  printf 'baseline\t%s\n' "$row" >> "$runs_report"
   IFS=$'\t' read -r _name _shape _size _run _steps duration_ms valid status <<< "$row"
   if [ "$valid" -ne 1 ] || [ "$status" -ne 0 ]; then
     echo "baseline direct MORK run $run_id failed with status $status; see $log" >&2
@@ -374,10 +439,20 @@ bench_errors=0
 for depth in $chain_depths; do
   name="chain_$depth"
   case_dir="$prepared_dir/$name"
+  fixed_rounds="$(case_rounds chain "$depth")"
   mkdir -p "$case_dir"
   generate_chain_case "$depth" "$case_dir"
-  if ! run_case "$name" chain "$depth" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" \
-      "$(case_steps chain "$depth")" "$baseline_median" >> "$summary_body"; then
+  if ! run_case "$name" fixed_budget chain "$depth" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" \
+      "$fixed_rounds" "$baseline_median" >> "$summary_body"; then
+    bench_errors=1
+  fi
+  if answer_rounds="$(find_answer_rounds "$name" chain "$depth" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" "$fixed_rounds")"; then
+    if ! run_case "$name" first_answer chain "$depth" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" \
+        "$answer_rounds" "$baseline_median" >> "$summary_body"; then
+      bench_errors=1
+    fi
+  else
+    printf 'direct MORK benchmark could not find first-answer round for %s within %s rounds\n' "$name" "$fixed_rounds" >&2
     bench_errors=1
   fi
 done
@@ -385,18 +460,28 @@ done
 for width in $and_widths; do
   name="and_adapter_$width"
   case_dir="$prepared_dir/$name"
+  fixed_rounds="$(case_rounds and_adapter "$width")"
   mkdir -p "$case_dir"
   generate_and_adapter_case "$width" "$case_dir"
-  if ! run_case "$name" and_adapter "$width" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" \
-      "$(case_steps and_adapter "$width")" "$baseline_median" >> "$summary_body"; then
+  if ! run_case "$name" fixed_budget and_adapter "$width" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" \
+      "$fixed_rounds" "$baseline_median" >> "$summary_body"; then
+    bench_errors=1
+  fi
+  if answer_rounds="$(find_answer_rounds "$name" and_adapter "$width" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" "$fixed_rounds")"; then
+    if ! run_case "$name" first_answer and_adapter "$width" "$case_dir/rules.mm2" "$case_dir/runtime.mm2" \
+        "$answer_rounds" "$baseline_median" >> "$summary_body"; then
+      bench_errors=1
+    fi
+  else
+    printf 'direct MORK benchmark could not find first-answer round for %s within %s rounds\n' "$name" "$fixed_rounds" >&2
     bench_errors=1
   fi
 done
 
 {
-  printf 'case\tshape\tsize\tsteps\tgross_median_ms\tgross_min_ms\tgross_max_ms\tbaseline_median_ms\tnet_median_ms\tvalid_runs\n'
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    __baseline baseline 0 "$baseline_steps" "$baseline_median" \
+  printf 'case\tmode\tshape\tsize\trounds\tsteps\tgross_median_ms\tgross_min_ms\tgross_max_ms\tbaseline_median_ms\tnet_median_ms\tvalid_runs\n'
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    __baseline baseline baseline 0 "$(case_rounds baseline 0)" "$baseline_steps" "$baseline_median" \
     "$(min_ms "${baseline_times[@]}")" "$(max_ms "${baseline_times[@]}")" \
     "$baseline_median" 0 "$runs"
   cat "$summary_body"
