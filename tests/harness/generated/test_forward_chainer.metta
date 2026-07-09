@@ -8,17 +8,20 @@
 !(mm2-compileadd fwdkb (: pathStep (Implication (Premises (Path $x $y) (Edge $y $z)) (Conclusions (Path $x $z))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-compileadd fwdkb (: pathIdempotent (Implication (Premises (Path $x $y)) (Conclusions (Path $x $y))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-test-forward-has-derived 50 fwdkb (Path A C) true)
-; OMITTED PeTTa forward proof-count check: (test (let* (($_ (forward-chain 50 fwdkb)) ($proofs (collapse (match &kb ((Path A C) (fwdkb MAIN Nil) $prf $tv) $prf)))) (list-count $proofs)) 1)
+; ADAPTED PeTTa forward proof-count check: MM2 checks materialized fact count
+!(mm2-test-forward-fact-count 50 fwdkb (Path A C) 1)
 !(mm2-compileadd loopkb (: seedLoop (Loop Start) (STV 1.0 1.0)))
 !(mm2-compileadd loopkb (: keepLoop (Implication (Premises (Loop $x)) (Conclusions (Loop $x))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-; OMITTED PeTTa forward proof-count check: (test (let* (($_ (forward-chain 200 loopkb)) ($proofs (collapse (match &kb ((Loop Start) (loopkb MAIN Nil) $prf $tv) $prf)))) (list-count $proofs)) 1)
+; ADAPTED PeTTa forward proof-count check: MM2 checks materialized fact count
+!(mm2-test-forward-fact-count 200 loopkb (Loop Start) 1)
 !(mm2-compileadd mergekb (: weakFact (WeakPremise) (STV 1.0 0.1)))
 !(mm2-compileadd mergekb (: baseFact (BasePremise) (STV 1.0 1.0)))
 !(mm2-compileadd mergekb (: ruleHighThenDrop (Implication (Premises (WeakPremise) (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.9) (STV 0.0 1.0))))
 !(mm2-compileadd mergekb (: ruleStable (Implication (Premises (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
 ; OMITTED PeTTa forward proof-token merge-shape check: (test (let* (($_ (forward-chain 50 mergekb)) ($merged (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) (merge/revision $p1 $p2) $tv) true)))) (== $merged (
 ; OMITTED PeTTa forward proof-store evidence check: (test (let* (($_ (forward-chain 50 mergekb)) ($ev-ok (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) $prf $tv) (== (proof-atom-evidence-set ((SwitchGoal)
-; OMITTED PeTTa forward proof-count check: (test (let* (($_ (forward-chain 50 mergekb)) ($proofs (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) $prf $tv) $prf)))) (list-count $proofs)) 1)
+; ADAPTED PeTTa forward proof-count check: MM2 checks materialized fact count
+!(mm2-test-forward-fact-count 50 mergekb (SwitchGoal) 1)
 !(mm2-compileadd deltakb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd deltakb (: lowFact (LowPriority) (STV 1.0 0.8)))
 !(mm2-compileadd deltakb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (DeltaGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))

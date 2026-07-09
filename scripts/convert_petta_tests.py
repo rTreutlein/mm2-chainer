@@ -815,6 +815,25 @@ def forward_chainer_materialization_adaptation(queryish, expected):
     return None
 
 
+def forward_chainer_fact_count_adaptation(queryish, expected):
+    if head(queryish) != "let*" or len(queryish) != 3:
+        return None
+    bindings, body = queryish[1], queryish[2]
+    forward = forward_binding(bindings)
+    if head(forward) != "forward-chain" or len(forward) != 3:
+        return None
+    if head(body) != "list-count" or len(body) != 2 or not is_var(body[1]):
+        return None
+    pattern = match_pattern_from_collapse(binding_value(bindings, body[1]))
+    scoped = scoped_pattern_kb_type(pattern)
+    if scoped is None or scoped[0] != forward[2]:
+        return None
+    return (
+        "ADAPTED PeTTa forward proof-count check: MM2 checks materialized fact count",
+        ["mm2-test-forward-fact-count", rename_calls(forward[1]), rename_calls(forward[2]), rename_calls(scoped[1]), rename_calls(expected)],
+    )
+
+
 def forward_chainer_omission_reason(queryish, expected):
     if contains_head(queryish, "forward-agenda-dirty?"):
         return "OMITTED PeTTa forward agenda dirty-state check"
@@ -1001,6 +1020,12 @@ def convert_file(path):
             continue
         if kind == "bang" and head(expr) == "test":
             if forward_prefix_only:
+                adapted = forward_chainer_fact_count_adaptation(expr[1], expr[2])
+                if adapted is not None:
+                    reason, converted = adapted
+                    out.append("; " + reason)
+                    out.append("!" + show(converted))
+                    continue
                 adapted = forward_chainer_materialization_adaptation(expr[1], expr[2])
                 if adapted is not None:
                     reason, converted = adapted

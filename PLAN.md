@@ -718,6 +718,19 @@ side log is process-global:
 
     totals: pass=228 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Forward proof-count fact adapters (DONE 2026-07-09)
+
+PeTTa's forward proof-count checks in `test_forward_chainer.metta` now compile
+to explicit MM2 fact-count checks. This is an intentional adaptation: PeTTa
+counts materialized proof terms in `&kb`, while MM2's comparable runtime
+surface is the deduplicated materialized `(fact ...)` row for the same scoped
+output. The still-omitted forward checks are now limited to PeTTa agenda state,
+proof-token merge shape, and proof-store evidence inspection.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=231 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -767,8 +780,8 @@ side log is process-global:
    distribution `GreaterThan` rule-premise coverage, and selective
    forward-materialization tail coverage, and explicit per-form
    ParticleStore resource-management omissions, and adapted forward
-   source-materialization checks):
-   pass=228 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   source-materialization checks, and forward fact-count adapters):
+   pass=231 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -865,7 +878,9 @@ side log is process-global:
    assertions and converts the materialization-compatible derivedness checks:
    initial path closure, eventual `DeltaGoal`, selected/fact-seeded forward
    materialization, rule-added-after-first-run false/true behavior, and the
-   dedupe CPU-placeholder cleanup's reachable-output side.
+   dedupe CPU-placeholder cleanup's reachable-output side. PeTTa's proof-count
+   assertions in the same file are adapted to MM2 materialized fact-count
+   checks.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
