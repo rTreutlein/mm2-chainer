@@ -818,10 +818,11 @@ Latest corpus snapshot after this adjustment:
 
 ## Full test entry point includes corpus (DONE 2026-07-09)
 
-`scripts/test.sh` now runs both `tests/test_runtime.sh` and the generated
-corpus gate. This makes the zero-close/zero-failure/zero-unsupported/zero-skip/
-zero-omission corpus state part of the normal regression command rather than a
-separate manual check.
+`scripts/test.sh` now runs `tests/test_runtime.sh`, verifies that
+`tests/harness/generated/` is in sync with `scripts/convert_petta_tests.py`,
+and then runs the generated corpus gate. This makes the
+zero-close/zero-failure/zero-unsupported/zero-skip/zero-omission corpus state
+part of the normal regression command rather than a separate manual check.
 
 Latest corpus snapshot after this adjustment:
 
