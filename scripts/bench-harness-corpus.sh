@@ -14,6 +14,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+. scripts/harness-common.sh
 
 runs="${MM2_BENCH_RUNS:-3}"
 top_n="${MM2_BENCH_TOP:-5}"
@@ -181,6 +182,7 @@ bench_errors=0
 
 for file in "${files[@]}"; do
   name="$(basename "$file" .metta)"
+  min_pass="$(min_pass_for_file "$name")"
   durations=()
   last_pass=0
   last_close=0
@@ -211,6 +213,10 @@ for file in "${files[@]}"; do
        [ "$skipped" -ne 0 ]; then
       bench_errors=$((bench_errors + 1))
     fi
+    if [ "$pass" -lt "$min_pass" ]; then
+      echo "benchmark pass count regressed for $name run $run_id: got $pass, expected at least $min_pass" >&2
+      bench_errors=$((bench_errors + 1))
+    fi
   done
 
   gross_median="$(median_ms "${durations[@]}")"
@@ -221,15 +227,15 @@ for file in "${files[@]}"; do
     net_median=0
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$name" "$runs" "$baseline_median" "$gross_median" "$net_median" \
-    "$gross_min" "$gross_max" "$last_pass" "$last_close" "$last_fail" \
+    "$gross_min" "$gross_max" "$last_pass" "$min_pass" "$last_close" "$last_fail" \
     "$last_unsup_ir" "$last_skipped" "$worst_status" \
     >> "$summary_body"
 done
 
 {
-  printf 'file\truns\tbaseline_median_ms\tgross_median_ms\tnet_median_ms\tgross_min_ms\tgross_max_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n'
+  printf 'file\truns\tbaseline_median_ms\tgross_median_ms\tnet_median_ms\tgross_min_ms\tgross_max_ms\tpass\tmin_pass\tclose\tfail\tunsupported_ir\tskipped\tstatus\n'
   sort -t $'\t' -k5,5nr "$summary_body"
 } > "$summary_report"
 
