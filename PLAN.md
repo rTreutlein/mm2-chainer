@@ -1017,6 +1017,12 @@ advances one selected source fact per round, matching PeTTa's heap-pop
 semantics; only the rule lookup path changed. A focused `MM2_BENCH_RUNS=5`
 sample measured `test_forward_chainer` at 2176 ms net and
 `test_forward_backward_compose` at 1768 ms net.
+Forward-from-facts goal collection now appends raw trigger results and
+deduplicates once at the end instead of applying `list_to_set` recursively
+while walking the fact list. This is semantically identical and mostly helps
+multi-fact explicit forward calls; the same focused sample measured
+`test_forward_chainer` at 2159 ms net and `test_forward_backward_compose` at
+1746 ms net.
 
 Distribution assertion helpers no longer run an extra fixed 400-step settle
 pass after `mm2-query-wide`; the wide query budget already settles the

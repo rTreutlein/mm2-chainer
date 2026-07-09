@@ -1396,12 +1396,14 @@
        (forward-trigger $fact $g)
        (, (Goal $g)))))
 
-(= (mm2-forward-goals-from-facts ()) ())
-(= (mm2-forward-goals-from-facts (cons $fact $rest))
-   (list_to_set
-     (append
-       (mm2-forward-goals-from-fact $fact)
-       (mm2-forward-goals-from-facts $rest))))
+(= (mm2-forward-goals-from-facts-raw ()) ())
+(= (mm2-forward-goals-from-facts-raw (cons $fact $rest))
+   (append
+     (mm2-forward-goals-from-fact $fact)
+     (mm2-forward-goals-from-facts-raw $rest)))
+
+(= (mm2-forward-goals-from-facts $facts)
+   (list_to_set (mm2-forward-goals-from-facts-raw $facts)))
 
 (= (mm2-forward-chain-from-facts-steps-raw $steps $kb $facts)
    (let* (($scope (mm2-ir-scope-kb $kb))
