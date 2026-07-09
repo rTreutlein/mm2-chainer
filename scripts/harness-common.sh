@@ -1,46 +1,54 @@
 #!/usr/bin/env bash
 
+harness_floor_table() {
+  cat <<'EOF'
+test_backward_dag_helpers	34
+test_backward_open_query_results	3
+test_base_rate_cache	10
+test_benchgen_metta	23
+test_best_first_runtime	12
+test_chainer_add_atom	2
+test_distribution_values	6
+test_evidence_semantics	2
+test_foldall_merged_outputs	2
+test_foldall_query_goal	3
+test_forward_backward_compose	19
+test_forward_chainer	30
+test_frontier_pooling	6
+test_height_average	4
+test_idealized_confidence	12
+test_implication_inversion	1
+test_implication_premise	16
+test_inheritance_query_proof	1
+test_lifting_merge	6
+test_logic_config	10
+test_math	3
+test_member_compat	3
+test_member_concept_node	2
+test_merged_subgoal_rule_application	2
+test_nary_conjuction	1
+test_negated_evidence_merge	5
+test_numeric_pattern_dist	5
+test_particle_values	22
+test_query_adds	5
+test_query_compute_in_compound	3
+test_query_materialize	8
+test_rectangle_area	3
+test_specializing_rule	5
+test_stv_implication_derived_ctv	1
+test_total_implication_aggregate	1
+test_uniform_prior	9
+test_var_head	2
+EOF
+}
+
+harness_floor_names() {
+  harness_floor_table | cut -f1
+}
+
 min_pass_for_file() {
-  case "$1" in
-    test_backward_dag_helpers) echo 34 ;;
-    test_backward_open_query_results) echo 3 ;;
-    test_base_rate_cache) echo 10 ;;
-    test_benchgen_metta) echo 23 ;;
-    test_best_first_runtime) echo 12 ;;
-    test_chainer_add_atom) echo 2 ;;
-    test_distribution_values) echo 6 ;;
-    test_evidence_semantics) echo 2 ;;
-    test_foldall_merged_outputs) echo 2 ;;
-    test_foldall_query_goal) echo 3 ;;
-    test_forward_backward_compose) echo 19 ;;
-    test_forward_chainer) echo 30 ;;
-    test_frontier_pooling) echo 6 ;;
-    test_height_average) echo 4 ;;
-    test_idealized_confidence) echo 12 ;;
-    test_implication_inversion) echo 1 ;;
-    test_implication_premise) echo 16 ;;
-    test_inheritance_query_proof) echo 1 ;;
-    test_lifting_merge) echo 6 ;;
-    test_logic_config) echo 10 ;;
-    test_math) echo 3 ;;
-    test_member_compat) echo 3 ;;
-    test_member_concept_node) echo 2 ;;
-    test_merged_subgoal_rule_application) echo 2 ;;
-    test_nary_conjuction) echo 1 ;;
-    test_negated_evidence_merge) echo 5 ;;
-    test_numeric_pattern_dist) echo 5 ;;
-    test_particle_values) echo 22 ;;
-    test_query_adds) echo 5 ;;
-    test_query_compute_in_compound) echo 3 ;;
-    test_query_materialize) echo 8 ;;
-    test_rectangle_area) echo 3 ;;
-    test_specializing_rule) echo 5 ;;
-    test_stv_implication_derived_ctv) echo 1 ;;
-    test_total_implication_aggregate) echo 1 ;;
-    test_uniform_prior) echo 9 ;;
-    test_var_head) echo 2 ;;
-    *) echo 0 ;;
-  esac
+  harness_floor_table |
+    awk -F '\t' -v name="$1" '$1 == name { print $2; found = 1 } END { if (!found) print 0 }'
 }
 
 max_adapted_for_file() {

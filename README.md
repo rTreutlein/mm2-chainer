@@ -56,7 +56,7 @@ bash scripts/test.sh
 PeTTaChainer corpus is in sync with `scripts/convert_petta_tests.py`, and then
 runs the corpus gate. The generated-corpus check also verifies that generated
 files match upstream PeTTaChainer `test_*.metta` files and that every generated
-fixture has an explicit pass floor. The corpus gate fails if generated tests produce
+fixture has exactly one explicit pass floor. The corpus gate fails if generated tests produce
 close or fail verdicts, unsupported IR, converter skips, omitted forms, or
 timeout/error files, and it also fails if the total pass count drops below the
 current coverage floor or an individual generated file drops below its current

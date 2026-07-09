@@ -31,6 +31,8 @@ find "$src_dir" -maxdepth 1 -type f -name 'test_*.metta' -printf '%f\n' | sort >
 printf '%s\n' "${skip_files[@]}" | sort > "$tmp_dir/skipped"
 comm -23 "$tmp_dir/upstream" "$tmp_dir/skipped" > "$tmp_dir/expected"
 find tests/harness/generated -maxdepth 1 -type f -name 'test_*.metta' -printf '%f\n' | sort > "$tmp_dir/generated"
+sed 's/\.metta$//' "$tmp_dir/generated" | sort > "$tmp_dir/generated-stems"
+harness_floor_names | sort > "$tmp_dir/floor-stems"
 
 if ! diff -u "$tmp_dir/expected" "$tmp_dir/generated" >/dev/null; then
   diff -u "$tmp_dir/expected" "$tmp_dir/generated" >&2 || true
@@ -38,14 +40,15 @@ if ! diff -u "$tmp_dir/expected" "$tmp_dir/generated" >/dev/null; then
   exit 1
 fi
 
-missing_floor=0
-while IFS= read -r generated_name; do
-  stem="${generated_name%.metta}"
-  if [ "$(min_pass_for_file "$stem")" -le 0 ]; then
-    echo "missing corpus pass floor for generated fixture: $stem" >&2
-    missing_floor=1
-  fi
-done < "$tmp_dir/generated"
-if [ "$missing_floor" -ne 0 ]; then
+floor_err=0
+while IFS= read -r missing_floor; do
+  echo "missing corpus pass floor for generated fixture: $missing_floor" >&2
+  floor_err=1
+done < <(comm -23 "$tmp_dir/generated-stems" "$tmp_dir/floor-stems")
+while IFS= read -r stale_floor; do
+  echo "stale corpus pass floor without generated fixture: $stale_floor" >&2
+  floor_err=1
+done < <(comm -13 "$tmp_dir/generated-stems" "$tmp_dir/floor-stems")
+if [ "$floor_err" -ne 0 ]; then
   exit 1
 fi
