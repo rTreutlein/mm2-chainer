@@ -983,7 +983,9 @@ semantic runs with unchanged coverage.
 Both corpus and benchmark runners now reject real generated fixtures under
 `tests/harness/generated/` if `scripts/harness-common.sh` lacks an explicit
 pass floor for the file; temporary scratch `.metta` probes outside that
-directory can still use the zero default.
+directory can still use the zero default. `scripts/check-generated-corpus.sh`
+also verifies the explicit floor list while doing the cheap converter/inventory
+check, so missing floors are caught before the runtime corpus gate starts.
 
 First default benchmark sample (`MM2_BENCH_RUNS=3`) measured a 1067 ms
 baseline median; the top net medians were `test_forward_chainer` 2338 ms,

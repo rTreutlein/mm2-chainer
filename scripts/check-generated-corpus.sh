@@ -5,6 +5,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+. scripts/harness-common.sh
 
 src_dir="../PeTTaChainer/pettachainer/metta/tests"
 skip_files=()
@@ -34,5 +35,17 @@ find tests/harness/generated -maxdepth 1 -type f -name 'test_*.metta' -printf '%
 if ! diff -u "$tmp_dir/expected" "$tmp_dir/generated" >/dev/null; then
   diff -u "$tmp_dir/expected" "$tmp_dir/generated" >&2 || true
   echo "generated corpus file inventory does not match upstream tests minus explicit skips" >&2
+  exit 1
+fi
+
+missing_floor=0
+while IFS= read -r generated_name; do
+  stem="${generated_name%.metta}"
+  if [ "$(min_pass_for_file "$stem")" -le 0 ]; then
+    echo "missing corpus pass floor for generated fixture: $stem" >&2
+    missing_floor=1
+  fi
+done < "$tmp_dir/generated"
+if [ "$missing_floor" -ne 0 ]; then
   exit 1
 fi
