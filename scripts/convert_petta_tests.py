@@ -18,8 +18,9 @@ unreduced terms in the run report — that's the gap list.
 
 Files whose tests are entirely out of scope are skipped; query-oriented tests
 are generated even when they also have older hand-written harness coverage.
-Some distribution files omit PeTTa's particle-store pruning helpers, which are
-runtime resource-management tests rather than chainer rule semantics.
+Some distribution files omit PeTTa's particle-store pruning helpers as explicit
+per-form comments; those are runtime resource-management tests rather than
+chainer rule semantics.
 """
 
 import re
@@ -761,6 +762,22 @@ def forward_chainer_omission_reason(queryish, expected):
     return None
 
 
+def particle_store_omission_reason(expr):
+    if head(expr) == "test" and len(expr) == 3:
+        queryish = expr[1]
+        if contains_head(queryish, "ParticleSetBudget") or contains_head(queryish, "ParticleGetBudget"):
+            return "OMITTED PeTTa ParticleStore budget helper check"
+        if contains_head(queryish, "ParticleStorePruneKB"):
+            return "OMITTED PeTTa ParticleStore pruning/resource-management check"
+        if contains_head_prefix(queryish, "ParticleStore"):
+            return "OMITTED PeTTa ParticleStore resource-management check"
+    if head(expr) == "compileadd" and len(expr) == 3:
+        stmt = expr[2]
+        if head(stmt) == ":" and len(stmt) >= 2 and stmt[1] == "keptParticleFact":
+            return "OMITTED PeTTa ParticleStore pruning fixture fact"
+    return None
+
+
 def short_snippet(expr, limit=160):
     return show(expr)[:limit].rstrip()
 
@@ -915,15 +932,17 @@ def convert_file(path):
         if fold_value_only and kind == "bang" and head(expr) == "compileadd" and contains_head(expr, "PlayTogetherIn"):
             out.append("; OMITTED downstream GreaterThan rule over FoldAllValue output: " + show(expr)[:160])
             continue
+        if particle_store_tail and kind == "bang":
+            omitted = particle_store_omission_reason(expr)
+            if omitted is not None:
+                out.append("; " + omitted + ": " + short_snippet(expr))
+                continue
         if kind == "bang" and head(expr) == "import!":
             converted = convert_import(expr)
             if converted is not None:
                 out.append("!" + show(converted))
             continue
         if kind == "bang" and head(expr) == "test":
-            if particle_store_tail and contains_head_prefix(expr, "ParticleStore"):
-                out.append("; Remaining source forms exercise PeTTa ParticleStore pruning and are intentionally omitted here.")
-                break
             if forward_prefix_only:
                 omitted = forward_chainer_omission_reason(expr[1], expr[2])
                 if omitted is not None:

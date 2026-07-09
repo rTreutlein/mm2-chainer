@@ -30,4 +30,10 @@
 !(mm2-test-query-dist-gt-mp-strength-between 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0599 0.0601)
 !(mm2-test-query-dist-gt-mp-confidence-over 40 kb (: $prf (CntKidInParticle roomp1 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0)
 !(mm2-test-query-dist-gt-mp-confidence-over 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0)
-; Remaining source forms exercise PeTTa ParticleStore pruning and are intentionally omitted here.
+; OMITTED PeTTa ParticleStore resource-management check: (test (progn (ParticleStoreClear) (ParticleStoreCount)) 0)
+; OMITTED PeTTa ParticleStore budget helper check: (test (progn (ParticleSetBudget 128) (ParticleGetBudget)) 128)
+; OMITTED PeTTa ParticleStore budget helper check: (test (progn (ParticleSetBudget 512) (ParticleGetBudget)) 512)
+; OMITTED PeTTa ParticleStore resource-management check: (test (progn (ParticleFromPairs ((1 0.6) (2 0.4))) (ParticleFromPairs ((3 1.0))) (ParticleStoreCount)) 3)
+; OMITTED PeTTa ParticleStore pruning/resource-management check: (test (progn (ParticleStorePruneKB) (ParticleStoreCount)) 0)
+; OMITTED PeTTa ParticleStore pruning fixture fact: (compileadd kb (: keptParticleFact (CountryHeightDist keepCountry (ParticleFromPairs ((170 0.7) (180 0.3)))) (STV 1.0 1.0)))
+; OMITTED PeTTa ParticleStore pruning/resource-management check: (test (progn (ParticleFromPairs ((999 1.0))) (ParticleStorePruneKB)) 0)

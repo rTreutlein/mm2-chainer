@@ -692,6 +692,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=225 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## ParticleStore omission clarity (DONE 2026-07-09)
+
+`test_particle_values.metta` now keeps converting after the PeTTa
+`ParticleStore*` helper section instead of using a broad tail cutoff. The
+generated fixture documents each omitted PeTTa particle-store
+resource-management form individually, including budget checks, store counts,
+pruning, and the pruning-only fixture fact.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -739,8 +751,9 @@ Latest corpus snapshot after this adjustment:
    completion, FoldAllValue distribution-query prefix coverage,
    FoldAllValue distribution CTVMP helper-tail coverage, real
    distribution `GreaterThan` rule-premise coverage, and selective
-   forward-materialization tail coverage):
-   pass=225 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   forward-materialization tail coverage, and explicit per-form
+   ParticleStore resource-management omissions):
+   pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -852,8 +865,9 @@ Latest corpus snapshot after this adjustment:
    includes the downstream `PlayTogetherIn` `GreaterThan` rule, and
    `test_particle_values` now generates the country-height `Taller` rule plus
    the FoldAllValue particle-count query/helper tail. Its remaining omitted
-   tail is PeTTa's `ParticleStore*` pruning/resource-management helper section.
-   The numeric-pattern distribution file is fully generated. Omitted
+   PeTTa `ParticleStore*` pruning/resource-management helper forms are now
+   documented individually instead of ending conversion with a broad tail
+   cutoff. The numeric-pattern distribution file is fully generated. Omitted
    helper/query-tail sections are documented in the generated files. Keep any
    future non-query harness additions explicit
    about whether they exercise MM2 runtime behavior or PeTTa helper/compiler
