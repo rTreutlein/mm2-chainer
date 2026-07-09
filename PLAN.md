@@ -1030,6 +1030,9 @@ sampled fixture to produce the same pass/close/fail/unsupported/skipped/
 omitted/adapted counts as the first run. The benchmark already failed dirty
 samples, but this makes intermittent verdict drift explicit instead of leaving
 only the per-run TSV to reveal it after the fact.
+`scripts/test.sh` also runs `bash -n` over the shell runners before the
+generated corpus and runtime gates, so benchmark-runner syntax regressions are
+caught by the normal suite.
 
 Rejected performance experiments:
 
