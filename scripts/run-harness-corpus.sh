@@ -30,8 +30,9 @@ report="outputs/harness_report.txt"
 vlog="outputs/harness_verdicts.log"
 : > "$report"
 
-total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0
+total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0
 min_total_pass=241
+max_total_adapted=12
 
 min_pass_for_file() {
   case "$1" in
@@ -75,6 +76,14 @@ min_pass_for_file() {
   esac
 }
 
+max_adapted_for_file() {
+  case "$1" in
+    test_forward_chainer) echo 5 ;;
+    test_particle_values) echo 7 ;;
+    *) echo 0 ;;
+  esac
+}
+
 for f in tests/harness/generated/test_*.metta; do
   name="$(basename "$f" .metta)"
   log="outputs/harness_logs/$name.log"
@@ -107,6 +116,12 @@ for f in tests/harness/generated/test_*.metta; do
     total_coverage_err=$((total_coverage_err + 1))
     echo "corpus pass count regressed for $name: got $pass, expected at least $min_pass" >&2
   fi
+  max_adapted="$(max_adapted_for_file "$name")"
+  if [ "$adapted" -gt "$max_adapted" ]; then
+    flag="${flag:+$flag,}ADAPTED"
+    total_adapted_err=$((total_adapted_err + 1))
+    echo "corpus adapted count regressed for $name: got $adapted, expected at most $max_adapted" >&2
+  fi
   total_pass=$((total_pass + pass))
   total_close=$((total_close + close))
   total_fail=$((total_fail + fail))
@@ -121,7 +136,7 @@ done
 
 {
   echo "---"
-  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted flagged-files=$((total_err + total_coverage_err))"
+  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted flagged-files=$((total_err + total_coverage_err + total_adapted_err))"
 } >> "$report"
 
 cat "$report"
@@ -133,9 +148,14 @@ if [ "$total_fail" -ne 0 ] ||
    [ "$total_omitted" -ne 0 ] ||
    [ "$total_err" -ne 0 ] ||
    [ "$total_coverage_err" -ne 0 ] ||
+   [ "$total_adapted_err" -ne 0 ] ||
+   [ "$total_adapted" -gt "$max_total_adapted" ] ||
    [ "$total_pass" -lt "$min_total_pass" ]; then
   if [ "$total_pass" -lt "$min_total_pass" ]; then
     echo "corpus pass count regressed: got $total_pass, expected at least $min_total_pass" >&2
+  fi
+  if [ "$total_adapted" -gt "$max_total_adapted" ]; then
+    echo "corpus adapted count regressed: got $total_adapted, expected at most $max_total_adapted" >&2
   fi
   exit 1
 fi

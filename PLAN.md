@@ -874,6 +874,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=12 flagged-files=0
 
+## Corpus adapted-count guard (DONE 2026-07-09)
+
+`scripts/run-harness-corpus.sh` now fails if generated `ADAPTED` comments
+increase above the current count. The only allowed adapted surfaces are
+`test_forward_chainer` with 5 explicit MM2 forward-materialization/proof-store
+adaptations and `test_particle_values` with 7 PeTTa ParticleStore helper-state
+adaptations.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=12 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
