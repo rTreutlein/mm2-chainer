@@ -604,6 +604,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=206 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## Numeric-pattern helper completion (DONE 2026-07-09)
+
+`test_numeric_pattern_dist.metta` is no longer a prefix-only generated file.
+The remaining direct helper assertions now run through the harness: structural
+distance checks use `mm2-test-equal`, `DistMap2Formula XY` is covered through
+the existing `mm2-test-ParticlePairs` export path, and `joint-cond-add-sample`
+is checked as a direct helper value.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=210 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -647,8 +659,9 @@ Latest corpus snapshot after this adjustment:
    coverage, self-dependent proof revision suppression, generated coverage for
    the older hand-ported query tests, direct distribution-helper coverage, and
    numeric-pattern query-prefix coverage, and forward materialization prefix
-   coverage, and dist-vs-dist helper coverage):
-   pass=206 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   coverage, and dist-vs-dist helper coverage, and numeric-pattern helper
+   completion):
+   pass=210 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -751,8 +764,8 @@ Latest corpus snapshot after this adjustment:
    benchmark generator. `test_forward_chainer` is generated as a forward
    materialization subset; its PeTTa-specific agenda/proof bookkeeping tail is
    intentionally omitted in the generated file. Two distribution files are
-   generated as direct-helper subsets, and the numeric-pattern distribution file
-   is generated as a query-prefix subset; omitted helper/query-tail sections are
+   generated as direct-helper subsets, while the numeric-pattern distribution
+   file is now fully generated. Omitted helper/query-tail sections are
    documented in the generated files. Keep any future non-query harness additions explicit
    about whether they exercise MM2 runtime behavior or PeTTa helper/compiler
    state.

@@ -41,7 +41,6 @@ PARTIAL_DIRECT_DIST_FILES = {
 }
 
 PARTIAL_PREFIX_FILES = {
-    "test_numeric_pattern_dist.metta",
 }
 
 PARTIAL_FORWARD_FILES = {
@@ -243,6 +242,8 @@ def convert_test(expr):
                 rename_calls(body[2]),
                 rename_calls(expected),
             ]
+    if numeric_pattern_helper_test(queryish) is not None:
+        return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
     query_tv = query_tv_test(queryish, expected)
     if query_tv is not None:
         return query_tv
@@ -357,6 +358,14 @@ def contains_head(expr, name):
     if head(expr) == name:
         return True
     return any(contains_head(item, name) for item in expr)
+
+
+def numeric_pattern_helper_test(queryish):
+    if head(queryish) == "joint-cond-add-sample":
+        return queryish
+    if contains_head(queryish, "struct-distance2"):
+        return queryish
+    return None
 
 
 def collapse_once_rules_match_test(queryish):
