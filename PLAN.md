@@ -967,7 +967,7 @@ the follow-up corpus run.
 
 Latest timed corpus snapshot after this adjustment:
 
-    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=15.165s file-time=55.167s flagged-files=0
+    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=15.285s file-time=55.313s flagged-files=0
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
@@ -977,6 +977,14 @@ PeTTaChainer `test_*.metta` files minus the explicit
 `test_benchgen_metta.metta` benchmark-generator skip. This turns the
 documented 36-of-37 source-file coverage into an executable gate, so a future
 converter-level skip cannot silently keep the generated corpus green.
+
+## Converter no-adaptation cleanup (DONE 2026-07-09)
+
+The converter no longer carries stale forward-chainer `ADAPTED`/`OMITTED`
+fallback branches. All current forward assertions convert through direct
+MM2 runtime/readback facades; any future unrecognized forward-chainer test form
+now emits `mm2-test-unsupported` like the rest of the converter instead of an
+omission comment.
 
 ## Next
 

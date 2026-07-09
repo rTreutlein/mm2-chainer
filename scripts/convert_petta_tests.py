@@ -809,50 +809,6 @@ def forward_chainer_agenda_dirty_test(queryish, expected):
     return None
 
 
-def forward_chainer_materialization_adaptation(queryish, expected):
-    if expected != "true":
-        return None
-
-    if head(queryish) == "let" and len(queryish) == 4:
-        forward, derived = queryish[2], queryish[3]
-        if head(forward) == "forward-chain-from" and len(forward) == 4:
-            if head(derived) == "forward-has-derived?" and len(derived) == 3 and forward[2] == derived[1]:
-                return (
-                    "ADAPTED PeTTa selected forward agenda check: MM2 checks materialization after a whole-KB forward pass",
-                    ["mm2-test-forward-has-derived", rename_calls(forward[1]), rename_calls(forward[2]), rename_calls(derived[2]), "true"],
-                )
-        return None
-
-    if head(queryish) != "let*" or len(queryish) != 3:
-        return None
-    bindings, body = queryish[1], queryish[2]
-    forward = forward_binding(bindings)
-    if forward is None:
-        return None
-
-    if head(forward) == "forward-chain-from-facts" and len(forward) == 4:
-        if head(body) == "forward-has-derived?" and len(body) == 3 and forward[2] == body[1]:
-            return (
-                "ADAPTED PeTTa fact-seeded forward agenda check: MM2 checks materialization after a whole-KB forward pass",
-                ["mm2-test-forward-has-derived", rename_calls(forward[1]), rename_calls(forward[2]), rename_calls(body[2]), "true"],
-            )
-
-    if head(forward) != "forward-chain" or len(forward) != 3:
-        return None
-    rounds, kb = forward[1], forward[2]
-
-    if head(body) == "==" and len(body) == 3 and body[2] == [] and is_var(body[1]):
-        pattern = match_pattern_from_collapse(binding_value(bindings, body[1]))
-        scoped = scoped_pattern_kb_type(pattern)
-        if scoped is not None and scoped[0] == kb and head(pattern[3]) == "cpu-call":
-            return (
-                "ADAPTED PeTTa forward CPU-placeholder cleanup check: MM2 checks the materialized output fact",
-                ["mm2-test-forward-has-derived", rename_calls(rounds), rename_calls(kb), rename_calls(scoped[1]), "true"],
-            )
-
-    return None
-
-
 def forward_chainer_fact_count_test(queryish, expected):
     if head(queryish) != "let*" or len(queryish) != 3:
         return None
@@ -945,22 +901,6 @@ def forward_chainer_proof_evidence_test(queryish, expected):
     if scoped is None or scoped[0] != "mergekb" or scoped[1] != ["SwitchGoal"]:
         return None
     return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
-
-
-def forward_chainer_omission_reason(queryish, expected):
-    if contains_head(queryish, "forward-agenda-dirty?"):
-        return "OMITTED PeTTa forward agenda dirty-state check"
-    if contains_head(queryish, "forward-chain-from") or contains_head(queryish, "forward-chain-from-facts"):
-        return "OMITTED PeTTa selected/fact-seeded forward agenda check"
-    if contains_head(queryish, "proof-atom-evidence-set"):
-        return "OMITTED PeTTa forward proof-store evidence check"
-    if contains_head(queryish, "list-count"):
-        return "OMITTED PeTTa forward proof-count check"
-    if contains_head(queryish, "merge/revision"):
-        return "OMITTED PeTTa forward proof-token merge-shape check"
-    if contains_head(queryish, "cpu-call"):
-        return "OMITTED PeTTa forward CPU-placeholder cleanup check"
-    return None
 
 
 def particle_store_test(expr):
@@ -1150,25 +1090,18 @@ def convert_file(path):
                 if converted is not None:
                     out.append("!" + show(converted))
                     continue
-                adapted = forward_chainer_materialization_adaptation(expr[1], expr[2])
-                if adapted is not None:
-                    reason, converted = adapted
-                    out.append("; " + reason)
-                    out.append("!" + show(converted))
-                    continue
                 converted = forward_chainer_proof_evidence_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
-                    continue
-                omitted = forward_chainer_omission_reason(expr[1], expr[2])
-                if omitted is not None:
-                    out.append("; " + omitted + ": " + short_snippet(expr))
                     continue
                 converted = forward_has_derived_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
                     continue
-                out.append("; OMITTED PeTTa forward-chainer-specific form: " + short_snippet(expr))
+                unsupported += 1
+                out.append("; UNSUPPORTED PeTTa forward-chainer-specific form: " + short_snippet(expr))
+                snippet = re.sub(r"[^A-Za-z0-9_ /.$-]", " ", show(expr))[:80].strip()
+                out.append(f'!(mm2-test-unsupported "{snippet}")')
                 continue
             converted = convert_test(expr)
             if converted is not None:
