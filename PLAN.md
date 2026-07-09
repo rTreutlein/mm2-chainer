@@ -754,6 +754,18 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=10 adapted=7 flagged-files=0
 
+## ParticleStore helper adapters (DONE 2026-07-09)
+
+The `test_particle_values.metta` ParticleStore tail now runs as explicit
+adapted helper coverage. These checks exercise PeTTa's `&particle_store`
+resource-management helpers (`ParticleStoreClear`, budget state,
+`ParticleStoreCount`, and `ParticleStorePruneKB`) inside the harness; they do
+not claim MM2 `dist-pair` storage has the same pruning model.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=238 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=3 adapted=14 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -801,17 +813,17 @@ Latest corpus snapshot after this adjustment:
    completion, FoldAllValue distribution-query prefix coverage,
    FoldAllValue distribution CTVMP helper-tail coverage, real
    distribution `GreaterThan` rule-premise coverage, and selective
-   forward-materialization tail coverage, and explicit per-form
-   ParticleStore resource-management omissions, and adapted forward
+   forward-materialization tail coverage, adapted ParticleStore helper
+   coverage, and adapted forward
    source-materialization checks, forward fact-count adapters, and forward
    agenda marker adaptation):
-   pass=232 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=10 adapted=7
+   pass=238 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=3 adapted=14
    flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, unsupported IR, or converter-level skipped
-   forms remain in the generated corpus; the remaining coverage notes are 10
-   explicit omissions and 7 explicit adaptations.
+   forms remain in the generated corpus; the remaining coverage notes are 3
+   explicit omissions and 14 explicit adaptations.
 2. **Open-query fair expansion/result semantics**:
    `test_backward_open_query_results` now completes and the openAndFairKb
    expectation is exact after readback-level factoring of raw two-premise And
@@ -922,10 +934,9 @@ Latest corpus snapshot after this adjustment:
    assertions continue to be converted. `test_distribution_values` now
    includes the downstream `PlayTogetherIn` `GreaterThan` rule, and
    `test_particle_values` now generates the country-height `Taller` rule plus
-   the FoldAllValue particle-count query/helper tail. Its remaining omitted
-   PeTTa `ParticleStore*` pruning/resource-management helper forms are now
-   documented individually instead of ending conversion with a broad tail
-   cutoff. The numeric-pattern distribution file is fully generated. Omitted
+   the FoldAllValue particle-count query/helper tail. Its PeTTa
+   `ParticleStore*` pruning/resource-management helper tail runs as adapted
+   PeTTa helper-state coverage. The numeric-pattern distribution file is fully generated. Omitted
    helper/query-tail sections are documented in the generated files. Keep any
    future non-query harness additions explicit
    about whether they exercise MM2 runtime behavior or PeTTa helper/compiler

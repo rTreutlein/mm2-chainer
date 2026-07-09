@@ -859,19 +859,31 @@ def forward_chainer_omission_reason(queryish, expected):
     return None
 
 
-def particle_store_omission_reason(expr):
+def particle_store_adaptation(expr):
     if head(expr) == "test" and len(expr) == 3:
         queryish = expr[1]
         if contains_head(queryish, "ParticleSetBudget") or contains_head(queryish, "ParticleGetBudget"):
-            return "OMITTED PeTTa ParticleStore budget helper check"
+            return (
+                "ADAPTED PeTTa ParticleStore budget helper check: runs PeTTa helper state, not MM2 dist-pair storage",
+                ["mm2-test-equal", rename_calls(queryish), rename_calls(expr[2])],
+            )
         if contains_head(queryish, "ParticleStorePruneKB"):
-            return "OMITTED PeTTa ParticleStore pruning/resource-management check"
+            return (
+                "ADAPTED PeTTa ParticleStore pruning/resource-management check: runs PeTTa helper state, not MM2 dist-pair storage",
+                ["mm2-test-equal", rename_calls(queryish), rename_calls(expr[2])],
+            )
         if contains_head_prefix(queryish, "ParticleStore"):
-            return "OMITTED PeTTa ParticleStore resource-management check"
+            return (
+                "ADAPTED PeTTa ParticleStore resource-management check: runs PeTTa helper state, not MM2 dist-pair storage",
+                ["mm2-test-equal", rename_calls(queryish), rename_calls(expr[2])],
+            )
     if head(expr) == "compileadd" and len(expr) == 3:
         stmt = expr[2]
         if head(stmt) == ":" and len(stmt) >= 2 and stmt[1] == "keptParticleFact":
-            return "OMITTED PeTTa ParticleStore pruning fixture fact"
+            return (
+                "ADAPTED PeTTa ParticleStore pruning fixture fact: retained for PeTTa helper-state prune coverage",
+                rename_calls(expr),
+            )
     return None
 
 
@@ -1015,9 +1027,11 @@ def convert_file(path):
     unsupported = 0
     for kind, expr in forms:
         if particle_store_tail and kind == "bang":
-            omitted = particle_store_omission_reason(expr)
-            if omitted is not None:
-                out.append("; " + omitted + ": " + short_snippet(expr))
+            adapted = particle_store_adaptation(expr)
+            if adapted is not None:
+                reason, converted = adapted
+                out.append("; " + reason)
+                out.append("!" + show(converted))
                 continue
         if kind == "bang" and head(expr) == "import!":
             converted = convert_import(expr)
