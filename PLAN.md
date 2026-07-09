@@ -1061,6 +1061,11 @@ Rejected performance experiments:
 - Factored-And single-scan readback was semantically clean on the focused
   fixtures, but `MM2_BENCH_RUNS=5` did not show an improvement for
   `test_frontier_pooling`, so the refactor was not kept.
+- Forward-chain round budget: lowering `mm2-forward-chain-steps-per-round`
+  from 250 broke `test_forward_chainer` even at 240 steps per source fact
+  (focused run: 26 pass / 4 fail), while 225 and 200 failed more broadly.
+  Keep the current budget unless the forward materialization internals become
+  less step-sensitive.
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
