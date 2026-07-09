@@ -32,7 +32,7 @@ vlog="outputs/harness_verdicts.log"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0
 min_total_pass=243
-max_total_adapted=2
+max_total_adapted=1
 
 min_pass_for_file() {
   case "$1" in
@@ -78,7 +78,7 @@ min_pass_for_file() {
 
 max_adapted_for_file() {
   case "$1" in
-    test_forward_chainer) echo 2 ;;
+    test_forward_chainer) echo 1 ;;
     *) echo 0 ;;
   esac
 }

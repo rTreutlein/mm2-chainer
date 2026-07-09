@@ -138,6 +138,8 @@ def rename_calls(e):
         e[0] = "mm2-forward-derived?"
     elif head(e) == "forward-agenda-dirty?":
         e[0] = "mm2-forward-agenda-dirty?"
+    elif head(e) == "proof-atom-evidence-set":
+        e[0] = "mm2-proof-atom-evidence-set"
     elif head(e) == "set-base-rate":
         e[0] = "mm2-set-base-rate"
     elif head(e) == "clear-base-rate":
@@ -924,7 +926,7 @@ def forward_chainer_source_materialization_test(queryish, expected):
     return None
 
 
-def forward_chainer_evidence_union_adaptation(queryish, expected):
+def forward_chainer_proof_evidence_test(queryish, expected):
     if expected != "true" or not contains_head(queryish, "proof-atom-evidence-set"):
         return None
     if head(queryish) != "let*" or len(queryish) != 3:
@@ -942,41 +944,7 @@ def forward_chainer_evidence_union_adaptation(queryish, expected):
     scoped = scoped_pattern_kb_type(pattern)
     if scoped is None or scoped[0] != "mergekb" or scoped[1] != ["SwitchGoal"]:
         return None
-    scope = ["mergekb", "MAIN", "Nil"]
-    evidence = [
-        "pcons",
-        ["fact-ev", [scope, ["BasePremise"]]],
-        [
-            "pcons",
-            ["fact-ev", [scope, ["WeakPremise"]]],
-            [
-                "pcons",
-                ["rule-ev", ["ruleStable", "$stable-proof"]],
-                ["pcons", ["rule-ev", ["ruleHighThenDrop", "$drop-proof"]], "pnil"],
-            ],
-        ],
-    ]
-    return (
-        "ADAPTED PeTTa forward proof-store evidence check: MM2 checks merged fact-evidence union, not PeTTa single proof-store token",
-        [
-            "mm2-test-equal",
-            [
-                "let",
-                "$_forward",
-                ["mm2-forward-chain", rename_calls(forward[1]), rename_calls(forward[2])],
-                [
-                    "collapse",
-                    [
-                        "match",
-                        "&mork",
-                        ["fact-evidence", [scope, ["SwitchGoal"]], "$stv", evidence],
-                        "true",
-                    ],
-                ],
-            ],
-            ["true"],
-        ],
-    )
+    return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
 
 
 def forward_chainer_short_budget_adaptation(queryish, expected):
@@ -1207,10 +1175,8 @@ def convert_file(path):
                     out.append("; " + reason)
                     out.append("!" + show(converted))
                     continue
-                adapted = forward_chainer_evidence_union_adaptation(expr[1], expr[2])
-                if adapted is not None:
-                    reason, converted = adapted
-                    out.append("; " + reason)
+                converted = forward_chainer_proof_evidence_test(expr[1], expr[2])
+                if converted is not None:
                     out.append("!" + show(converted))
                     continue
                 adapted = forward_chainer_short_budget_adaptation(expr[1], expr[2])

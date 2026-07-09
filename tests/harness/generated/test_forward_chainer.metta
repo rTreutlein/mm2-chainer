@@ -17,8 +17,7 @@
 !(mm2-compileadd mergekb (: ruleHighThenDrop (Implication (Premises (WeakPremise) (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.9) (STV 0.0 1.0))))
 !(mm2-compileadd mergekb (: ruleStable (Implication (Premises (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
 !(mm2-test-equal (let* (($_ (mm2-forward-chain 50 mergekb)) ($merged (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) (merge/revision $p1 $p2) $tv) true)))) (== $merged ())) true)
-; ADAPTED PeTTa forward proof-store evidence check: MM2 checks merged fact-evidence union, not PeTTa single proof-store token
-!(mm2-test-equal (let $_forward (mm2-forward-chain 50 mergekb) (collapse (match &mork (fact-evidence ((mergekb MAIN Nil) (SwitchGoal)) $stv (pcons (fact-ev ((mergekb MAIN Nil) (BasePremise))) (pcons (fact-ev ((mergekb MAIN Nil) (WeakPremise))) (pcons (rule-ev (ruleStable $stable-proof)) (pcons (rule-ev (ruleHighThenDrop $drop-proof)) pnil))))) true))) (true))
+!(mm2-test-equal (let* (($_ (mm2-forward-chain 50 mergekb)) ($ev-ok (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) $prf $tv) (== (mm2-proof-atom-evidence-set ((SwitchGoal) (mergekb MAIN Nil) $prf $tv)) (baseFact)))))) (not (== $ev-ok ()))) true)
 !(mm2-test-equal (let* (($_ (mm2-forward-chain 50 mergekb)) ($proofs (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) $prf $tv) $prf)))) (list-count $proofs)) 1)
 !(mm2-compileadd deltakb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd deltakb (: lowFact (LowPriority) (STV 1.0 0.8)))

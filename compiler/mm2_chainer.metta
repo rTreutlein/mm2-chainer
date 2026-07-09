@@ -1276,6 +1276,43 @@
 (= (mm2-result-proofs (cons (: $prf $_type $_tv) $rest))
    (cons $prf (mm2-result-proofs $rest)))
 
+(= (mm2-forward-proof-rows $scope $type)
+   (collapse
+     (match &mork
+       (proved ($scope $type) ($_s $c) $_proof $evset)
+       (forward-proof-row $c $evset))))
+
+(= (mm2-forward-best-proof-row ()) (forward-proof-row 0.0 pnil))
+(= (mm2-forward-best-proof-row (cons $row ())) $row)
+(= (mm2-forward-best-proof-row (cons (forward-proof-row $c $evset) $rest))
+   (let (forward-proof-row $best-c $best-evset) (mm2-forward-best-proof-row $rest)
+     (if (> $c $best-c)
+       (forward-proof-row $c $evset)
+       (forward-proof-row $best-c $best-evset))))
+
+(= (mm2-forward-fact-key-proof-names ($scope $type))
+   (let $proofs (collapse (once (match &kb ($type $scope $prf $_tv) $prf)))
+     (if (== $proofs ()) () $proofs)))
+
+(= (mm2-forward-evset-proof-names pnil) ())
+(= (mm2-forward-evset-proof-names (pcons (fact-ev $g) $rest))
+   (append
+     (mm2-forward-fact-key-proof-names $g)
+     (mm2-forward-evset-proof-names $rest)))
+(= (mm2-forward-evset-proof-names (pcons (fact-ev $prf $_g) $rest))
+   (cons $prf (mm2-forward-evset-proof-names $rest)))
+(= (mm2-forward-evset-proof-names (pcons (rule-ev $_rule) $rest))
+   (mm2-forward-evset-proof-names $rest))
+(= (mm2-forward-evset-proof-names (pcons $_other $rest))
+   (mm2-forward-evset-proof-names $rest))
+
+(= (mm2-proof-atom-evidence-set ($_type $_scope mm2-forward $_tv))
+   (let (forward-proof-row $_c $evset)
+        (mm2-forward-best-proof-row (mm2-forward-proof-rows $_scope $_type))
+     (list_to_set (mm2-forward-evset-proof-names $evset))))
+(= (mm2-proof-atom-evidence-set $atom)
+   (proof-atom-evidence-set $atom))
+
 (= (mm2-test-forward-has-derived $rounds $kb $type $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
      (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
