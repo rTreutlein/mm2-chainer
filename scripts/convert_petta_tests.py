@@ -227,6 +227,13 @@ def convert_test(expr):
             rename_calls(queryish[2]),
             rename_calls(expected),
         ]
+    if head(queryish) == "DistGreaterThanDistFormula" and len(queryish) == 3:
+        return [
+            "mm2-test-DistGreaterThanDistFormula",
+            rename_calls(queryish[1]),
+            rename_calls(queryish[2]),
+            rename_calls(expected),
+        ]
     if head(queryish) == "let*" and len(queryish) == 3:
         body = queryish[2]
         if head(body) == "DistGreaterThanFormula" and len(body) == 3:

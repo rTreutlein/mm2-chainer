@@ -545,9 +545,10 @@ Latest corpus snapshot after this adjustment:
 
 The converter now emits partial generated files for
 `test_distribution_values.metta` and `test_particle_values.metta`. These cover
-the direct `ParticlePairs` and `DistGreaterThanFormula` assertions by exporting
-PeTTa-created `ParticleDist` pairs into MORK and then using MM2's distribution
-pair readback / probability-confidence calculation. The later
+the direct `ParticlePairs`, `DistGreaterThanFormula`, and
+`DistGreaterThanDistFormula` assertions by exporting PeTTa-created
+`ParticleDist` pairs into MORK and then using MM2's distribution pair readback /
+probability-confidence calculation. The later
 `FoldAllValue`/query particle-store sections remain intentionally omitted from
 these generated files until distributional query semantics are modeled more
 generally.
@@ -590,6 +591,18 @@ not modeled by the MM2 forward approximation.
 Latest corpus snapshot after this adjustment:
 
     totals: pass=205 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
+## Dist-vs-dist helper coverage (DONE 2026-07-09)
+
+`test_particle_values.metta` now includes the direct
+`DistGreaterThanDistFormula` assertion. The harness computes the pairwise
+greater-than probability over exported `dist-pair` atoms and uses PeTTa's
+confidence convention for this formula: the minimum confidence of the two input
+particle distributions.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=206 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
 ## Next
 
@@ -634,8 +647,8 @@ Latest corpus snapshot after this adjustment:
    coverage, self-dependent proof revision suppression, generated coverage for
    the older hand-ported query tests, direct distribution-helper coverage, and
    numeric-pattern query-prefix coverage, and forward materialization prefix
-   coverage):
-   pass=205 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   coverage, and dist-vs-dist helper coverage):
+   pass=206 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated

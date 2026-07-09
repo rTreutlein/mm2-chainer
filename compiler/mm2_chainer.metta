@@ -1346,6 +1346,16 @@
 (= (mm2-dist-prob-gt (cons ($x $w) $tail) $threshold)
    (+ (if (> $x $threshold) $w 0.0) (mm2-dist-prob-gt $tail $threshold)))
 
+(= (mm2-dist-prob-gt2-inner $_xa $_wa () $acc) $acc)
+(= (mm2-dist-prob-gt2-inner $xa $wa (cons ($xb $wb) $tail) $acc)
+   (mm2-dist-prob-gt2-inner $xa $wa $tail
+     (+ $acc (if (> $xa $xb) (* $wa $wb) 0.0))))
+
+(= (mm2-dist-prob-gt2 () $_pairsb) 0.0)
+(= (mm2-dist-prob-gt2 (cons ($xa $wa) $taila) $pairsb)
+   (+ (mm2-dist-prob-gt2-inner $xa $wa $pairsb 0.0)
+      (mm2-dist-prob-gt2 $taila $pairsb)))
+
 ; The runtime's dist-pair stream already carries the observable pair mass, so
 ; the strength is computed directly from those pairs.
 (= (mm2-DistGreaterThanFormula $dist $threshold)
@@ -1356,6 +1366,17 @@
 (= (mm2-test-DistGreaterThanFormula $dist $threshold $expected)
    (let $_export (mm2-export-dist $dist)
      (mm2-test-tv-value (mm2-DistGreaterThanFormula $dist $threshold) $expected)))
+
+(= (mm2-DistGreaterThanDistFormula $dista $distb)
+   (let* (($pairsa (mm2-dist-pairs $dista))
+          ($pairsb (mm2-dist-pairs $distb)))
+     (STV (mm2-dist-prob-gt2 $pairsa $pairsb)
+          (min (mm2-dist-confidence $pairsa) (mm2-dist-confidence $pairsb)))))
+
+(= (mm2-test-DistGreaterThanDistFormula $dista $distb $expected)
+   (let* (($_export-a (mm2-export-dist $dista))
+          ($_export-b (mm2-export-dist $distb)))
+     (mm2-test-tv-value (mm2-DistGreaterThanDistFormula $dista $distb) $expected)))
 
 (= (mm2-last-list-item (cons $x ())) $x)
 (= (mm2-last-list-item (cons $_x $rest)) (mm2-last-list-item $rest))
