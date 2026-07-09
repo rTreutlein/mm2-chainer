@@ -46,6 +46,30 @@ harness_floor_names() {
   harness_floor_table | cut -f1
 }
 
+validate_harness_floor_table() {
+  harness_floor_table |
+    awk -F '\t' '
+      NF != 2 {
+        print "invalid corpus pass floor row: " $0 > "/dev/stderr"
+        err = 1
+        next
+      }
+      $1 !~ /^test_[[:alnum:]_]+$/ {
+        print "invalid corpus pass floor name: " $1 > "/dev/stderr"
+        err = 1
+      }
+      seen[$1]++ {
+        print "duplicate corpus pass floor entry: " $1 > "/dev/stderr"
+        err = 1
+      }
+      $2 !~ /^[1-9][0-9]*$/ {
+        print "invalid corpus pass floor for " $1 ": " $2 > "/dev/stderr"
+        err = 1
+      }
+      END { exit err }
+    '
+}
+
 min_pass_for_file() {
   harness_floor_table |
     awk -F '\t' -v name="$1" '$1 == name && !found { print $2; found = 1 } END { if (!found) print 0 }'

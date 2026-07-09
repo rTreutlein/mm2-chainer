@@ -15,6 +15,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 . scripts/harness-common.sh
+validate_harness_floor_table || exit 2
 
 runs="${MM2_BENCH_RUNS:-3}"
 top_n="${MM2_BENCH_TOP:-5}"

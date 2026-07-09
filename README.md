@@ -56,11 +56,12 @@ bash scripts/test.sh
 with `scripts/convert_petta_tests.py`, then runs the MM2 runtime regression
 suite and corpus gate. The generated-corpus check also verifies that generated
 files match upstream PeTTaChainer `test_*.metta` files and that every generated
-fixture has exactly one explicit pass floor. The corpus gate fails if generated tests produce
-close or fail verdicts, unsupported IR, converter skips, omitted forms, or
-timeout/error files, and it also fails if the total pass count drops below the
-current coverage floor or an individual generated file drops below its current
-pass count. Real generated corpus fixtures must have an explicit pass floor in
+fixture has exactly one explicit, positive pass floor with a valid generated
+test name. The corpus gate fails if generated tests produce close or fail
+verdicts, unsupported IR, converter skips, omitted forms, or timeout/error
+files, and it also fails if the total pass count drops below the current
+coverage floor or an individual generated file drops below its current pass
+count. Real generated corpus fixtures must have an explicit pass floor in
 `scripts/harness-common.sh`; scratch `.metta` probes outside
 `tests/harness/generated/` may still use the default floor of zero. The corpus
 report also includes per-file and total elapsed time so slow fixtures are

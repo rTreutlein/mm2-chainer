@@ -30,6 +30,7 @@ set -uo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 . scripts/harness-common.sh
+validate_harness_floor_table || exit 2
 
 mkdir -p outputs/harness_logs
 bash scripts/build-runtime.sh outputs/harness_runtime.mm2

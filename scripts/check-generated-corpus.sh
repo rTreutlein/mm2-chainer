@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 . scripts/harness-common.sh
+validate_harness_floor_table || exit 2
 
 src_dir="../PeTTaChainer/pettachainer/metta/tests"
 skip_files=()
