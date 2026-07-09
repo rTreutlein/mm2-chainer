@@ -975,7 +975,9 @@ serially, measures an import+`mm2-init` baseline, and writes median gross plus
 baseline-subtracted timings to `outputs/harness_bench.tsv`. With no arguments
 it benchmarks the slowest files from the last `outputs/harness_perf.tsv`, so
 the next optimization pass can focus on net fixture work instead of
-`petta`/import startup noise.
+`petta`/import startup noise. The benchmark exits nonzero if any sampled
+fixture reports a runtime error, timeout, close/fail verdict, unsupported IR,
+or skipped form, so timing samples remain tied to clean semantic runs.
 
 First default benchmark sample (`MM2_BENCH_RUNS=3`) measured a 1067 ms
 baseline median; the top net medians were `test_forward_chainer` 2338 ms,

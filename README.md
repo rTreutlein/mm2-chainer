@@ -90,7 +90,9 @@ With no fixture arguments, the benchmark script uses the slowest
 `MM2_BENCH_TOP=5` files from the last `outputs/harness_perf.tsv` report. It
 writes median gross and baseline-subtracted timings to
 `outputs/harness_bench.tsv` plus per-run samples to
-`outputs/harness_bench_runs.tsv`.
+`outputs/harness_bench_runs.tsv`. It exits nonzero if any sampled fixture has a
+`petta` error, timeout, close/fail verdict, unsupported IR marker, or skipped
+form.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 

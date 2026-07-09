@@ -177,6 +177,7 @@ done
 baseline_median="$(median_ms "${baseline_times[@]}")"
 summary_body="$tmp_dir/summary_body.tsv"
 : > "$summary_body"
+bench_errors=0
 
 for file in "${files[@]}"; do
   name="$(basename "$file" .metta)"
@@ -203,6 +204,13 @@ for file in "${files[@]}"; do
     if [ "$status" -ne 0 ]; then
       worst_status="$status"
     fi
+    if [ "$status" -ne 0 ] ||
+       [ "$close" -ne 0 ] ||
+       [ "$fail" -ne 0 ] ||
+       [ "$unsup_ir" -ne 0 ] ||
+       [ "$skipped" -ne 0 ]; then
+      bench_errors=$((bench_errors + 1))
+    fi
   done
 
   gross_median="$(median_ms "${durations[@]}")"
@@ -227,3 +235,8 @@ done
 
 cat "$summary_report"
 echo "wrote per-run timings to $runs_report"
+
+if [ "$bench_errors" -ne 0 ]; then
+  echo "benchmark saw $bench_errors non-clean fixture run(s)" >&2
+  exit 1
+fi
