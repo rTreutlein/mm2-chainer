@@ -1060,6 +1060,14 @@ steady cumulative cost before changing runtime semantics.
 generated corpus and runtime gates, so benchmark-runner syntax regressions are
 caught by the normal suite.
 
+`scripts/bench-forward-scale.sh` adds a synthetic forward-materialization scale
+benchmark for the next forward-runtime pass. It generates temporary chain-depth
+and source-fact fanout fixtures, repeats each case, subtracts the
+import+`mm2-init` baseline, and rejects dirty samples with runtime errors,
+close/fail verdicts, unsupported/skipped forms, zero pass verdicts, or unstable
+verdict counts. This keeps future agenda/indexing experiments tied to larger
+MM2-space behavior instead of the tiny generated corpus fixtures alone.
+
 Rejected performance experiments:
 
 - Empty-result query quiescence: trying to stop negative `mm2-test-query`

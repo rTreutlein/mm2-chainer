@@ -115,6 +115,20 @@ The prefix profiler reruns the fixture truncated after each `mm2-test*` line and
 prints gross time, delta from the previous selected prefix, verdict counts, and
 the selected line. Override `MM2_PROFILE_PATTERN` to select different lines.
 
+For forward-materialization work, use a synthetic scale benchmark that separates
+chain depth from source-fact fanout:
+
+```bash
+bash scripts/bench-forward-scale.sh
+MM2_FORWARD_BENCH_CHAIN_LENGTHS="8 16 32" MM2_FORWARD_BENCH_FANOUT_WIDTHS="32 128" bash scripts/bench-forward-scale.sh
+```
+
+It writes median gross and baseline-subtracted timings to
+`outputs/forward_scale_bench.tsv` and per-run samples to
+`outputs/forward_scale_bench_runs.tsv`. The benchmark fails if any generated
+case has a `petta` error, close/fail verdict, unsupported IR marker, skipped
+form, zero pass verdicts, or unstable verdict counts across repeated runs.
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling
