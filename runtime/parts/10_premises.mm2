@@ -503,6 +503,337 @@
         (, (dist-map2-contrib $pid $source ($y $mass)))
         (O (fsum (dist-pair $pid $y $sum) $sum $mass $source))))
 
+; Distribution GreaterThan pseudo-premises.  PeTTa's DistGreaterThanFormula
+; scales only the strength by the ParticleDist scale; confidence is derived
+; from the underlying pair weights via neff/(neff + 20).
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (dist-gt-ctv ($pos-s $pos-c) (gt (ParticleDist $pid $scale) $threshold ($neg-s $neg-c)))
+             pnil
+             no-stv
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (dist-gt-ctv ($pos-s $pos-c) (gt (ParticleDist $pid $scale) $threshold ($neg-s $neg-c)))
+                pnil
+                no-stv
+                $proof-id
+                $evset))
+           (+ (dist-stats-active (ParticleDist $pid $scale)))
+           (+ (dist-gt-active (ParticleDist $pid $scale) $threshold))
+           (+ (dist-gt-open
+                $g
+                (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                (1.0 1.0)
+                (ParticleDist $pid $scale)
+                $threshold
+                $proof-id
+                $evset)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (dist-gt-ctv ($pos-s $pos-c) (gt (ParticleDist $pid $scale) $threshold ($neg-s $neg-c)))
+             pnil
+             ($agg-s $agg-c)
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (dist-gt-ctv ($pos-s $pos-c) (gt (ParticleDist $pid $scale) $threshold ($neg-s $neg-c)))
+                pnil
+                ($agg-s $agg-c)
+                $proof-id
+                $evset))
+           (+ (dist-stats-active (ParticleDist $pid $scale)))
+           (+ (dist-gt-active (ParticleDist $pid $scale) $threshold))
+           (+ (dist-gt-open
+                $g
+                (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                ($agg-s $agg-c)
+                (ParticleDist $pid $scale)
+                $threshold
+                $proof-id
+                $evset)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (dist-gt-dist-ctv
+               ($pos-s $pos-c)
+               (gt2 (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) ($neg-s $neg-c)))
+             pnil
+             no-stv
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (dist-gt-dist-ctv
+                  ($pos-s $pos-c)
+                  (gt2 (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) ($neg-s $neg-c)))
+                pnil
+                no-stv
+                $proof-id
+                $evset))
+           (+ (dist-stats-active (ParticleDist $pida $scalea)))
+           (+ (dist-stats-active (ParticleDist $pidb $scaleb)))
+           (+ (dist-gt2-active (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb)))
+           (+ (dist-gt2-open
+                $g
+                (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                (1.0 1.0)
+                (ParticleDist $pida $scalea)
+                (ParticleDist $pidb $scaleb)
+                $proof-id
+                $evset)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (dist-gt-dist-ctv
+               ($pos-s $pos-c)
+               (gt2 (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) ($neg-s $neg-c)))
+             pnil
+             ($agg-s $agg-c)
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (dist-gt-dist-ctv
+                  ($pos-s $pos-c)
+                  (gt2 (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) ($neg-s $neg-c)))
+                pnil
+                ($agg-s $agg-c)
+                $proof-id
+                $evset))
+           (+ (dist-stats-active (ParticleDist $pida $scalea)))
+           (+ (dist-stats-active (ParticleDist $pidb $scaleb)))
+           (+ (dist-gt2-active (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb)))
+           (+ (dist-gt2-open
+                $g
+                (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                ($agg-s $agg-c)
+                (ParticleDist $pida $scalea)
+                (ParticleDist $pidb $scaleb)
+                $proof-id
+                $evset)))))
+
+(exec-template
+  (exec 2
+        (, (dist-stats-active (ParticleDist $pid $scale))
+           (dist-pair $pid $x $w))
+        (O (pure (dist-stat-contrib (ParticleDist $pid $scale) $x $w $w2)
+                 $w2
+                 (f64_to_string
+                   (product_f64
+                     (f64_from_string $w)
+                     (f64_from_string $w)))))))
+
+(exec-template
+  (exec 2
+        (, (dist-stat-contrib (ParticleDist $pid $scale) $x $w $w2))
+        (O (fsum
+             (dist-stat-total (ParticleDist $pid $scale) $total)
+             $total
+             $w
+             (dist-stat $pid $scale $x))
+           (fsum
+             (dist-stat-sumsq (ParticleDist $pid $scale) $sumsq)
+             $sumsq
+             $w2
+             (dist-stat $pid $scale $x)))))
+
+(exec-template
+  (exec 3
+        (, (dist-stat-total (ParticleDist $pid $scale) $total)
+           (dist-stat-sumsq (ParticleDist $pid $scale) $sumsq))
+        (O (pure (dist-confidence (ParticleDist $pid $scale) $confidence)
+                 $confidence
+                 (f64_to_string
+                   (div_f64
+                     (div_f64
+                       (product_f64
+                         (f64_from_string $total)
+                         (f64_from_string $total))
+                       (f64_from_string $sumsq))
+                     (sum_f64
+                       (div_f64
+                         (product_f64
+                           (f64_from_string $total)
+                           (f64_from_string $total))
+                         (f64_from_string $sumsq))
+                       (f64_from_string 20.0))))))))
+
+(exec-template
+  (exec 2
+        (, (dist-gt-active (ParticleDist $pid $scale) $threshold)
+           (dist-pair $pid $x $w))
+        (O (pure (dist-gt-contrib (ParticleDist $pid $scale) $threshold $x $mass)
+                 $mass
+                 (f64_to_string
+                   (product_f64
+                     (product_f64
+                       (f64_from_string $scale)
+                       (f64_from_string $w))
+                     (clamp_f64
+                       (signum_f64
+                         (sub_f64
+                           (f64_from_string $x)
+                           (f64_from_string $threshold)))
+                       (f64_from_string 0.0)
+                       (f64_from_string 1.0))))))))
+
+(exec-template
+  (exec 2
+        (, (dist-gt-contrib (ParticleDist $pid $scale) $threshold $x $mass))
+        (O (fsum
+             (dist-gt-strength (ParticleDist $pid $scale) $threshold $strength)
+             $strength
+             $mass
+             (dist-gt $pid $scale $threshold $x)))))
+
+(exec-template
+  (exec 2
+        (, (dist-gt2-active (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
+           (dist-pair $pida $xa $wa)
+           (dist-pair $pidb $xb $wb))
+        (O (pure (dist-gt2-contrib
+                   (ParticleDist $pida $scalea)
+                   (ParticleDist $pidb $scaleb)
+                   $xa
+                   $xb
+                   $mass)
+                 $mass
+                 (f64_to_string
+                   (product_f64
+                     (product_f64
+                       (product_f64
+                         (f64_from_string $scalea)
+                         (f64_from_string $scaleb))
+                       (product_f64
+                         (f64_from_string $wa)
+                         (f64_from_string $wb)))
+                     (clamp_f64
+                       (signum_f64
+                         (sub_f64
+                           (f64_from_string $xa)
+                           (f64_from_string $xb)))
+                       (f64_from_string 0.0)
+                       (f64_from_string 1.0))))))))
+
+(exec-template
+  (exec 2
+        (, (dist-gt2-contrib
+             (ParticleDist $pida $scalea)
+             (ParticleDist $pidb $scaleb)
+             $xa
+             $xb
+             $mass))
+        (O (fsum
+             (dist-gt2-strength (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) $strength)
+             $strength
+             $mass
+             (dist-gt2 $pida $scalea $pidb $scaleb $xa $xb)))))
+
+(exec-template
+  (exec 4
+        (, (dist-gt-open
+             $g
+             (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+             ($agg-s $agg-c)
+             (ParticleDist $pid $scale)
+             $threshold
+             $proof-id
+             $evset)
+           (dist-gt-strength (ParticleDist $pid $scale) $threshold $gt-s)
+           (dist-confidence (ParticleDist $pid $scale) $gt-c))
+        (O (- (dist-gt-open
+                $g
+                (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                ($agg-s $agg-c)
+                (ParticleDist $pid $scale)
+                $threshold
+                $proof-id
+                $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $gt-s))
+                       (f64_from_string $pos-s)
+                       (f64_from_string $neg-s)))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $gt-s))
+                       (pln_and_confidence_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $agg-c)
+                         (f64_from_string $gt-s)
+                         (f64_from_string $gt-c))
+                       (f64_from_string $pos-s)
+                       (f64_from_string $pos-c)
+                       (f64_from_string $neg-s)
+                       (f64_from_string $neg-c))))))))
+
+(exec-template
+  (exec 4
+        (, (dist-gt2-open
+             $g
+             (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+             ($agg-s $agg-c)
+             (ParticleDist $pida $scalea)
+             (ParticleDist $pidb $scaleb)
+             $proof-id
+             $evset)
+           (dist-gt2-strength (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb) $gt-s)
+           (dist-confidence (ParticleDist $pida $scalea) $ca)
+           (dist-confidence (ParticleDist $pidb $scaleb) $cb))
+        (O (- (dist-gt2-open
+                $g
+                (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+                ($agg-s $agg-c)
+                (ParticleDist $pida $scalea)
+                (ParticleDist $pidb $scaleb)
+                $proof-id
+                $evset))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $gt-s))
+                       (f64_from_string $pos-s)
+                       (f64_from_string $neg-s)))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (product_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $gt-s))
+                       (pln_and_confidence_f64
+                         (f64_from_string $agg-s)
+                         (f64_from_string $agg-c)
+                         (f64_from_string $gt-s)
+                         (min_f64
+                           (f64_from_string $ca)
+                           (f64_from_string $cb)))
+                       (f64_from_string $pos-s)
+                       (f64_from_string $pos-c)
+                       (f64_from_string $neg-s)
+                       (f64_from_string $neg-c))))))))
+
 ; Evidence-aware conjunction adapter.  It carries pool state for same-source
 ; marginal projections so a query over several projections of one (And ...)
 ; source counts that source once instead of multiplying/revising its marginals.

@@ -991,6 +991,19 @@
           ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
           ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
           ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
+          ($_dist-stats-active (mm2-remove-matches (dist-stats-active $dist-stats-dist)))
+          ($_dist-stat-contrib (mm2-remove-matches (dist-stat-contrib $dist-stat-dist $dist-stat-x $dist-stat-w $dist-stat-w2)))
+          ($_dist-stat-total (mm2-remove-matches (dist-stat-total $dist-stat-total-dist $dist-stat-total)))
+          ($_dist-stat-sumsq (mm2-remove-matches (dist-stat-sumsq $dist-stat-sumsq-dist $dist-stat-sumsq)))
+          ($_dist-confidence (mm2-remove-matches (dist-confidence $dist-confidence-dist $dist-confidence)))
+          ($_dist-gt-active (mm2-remove-matches (dist-gt-active $dist-gt-dist $dist-gt-threshold)))
+          ($_dist-gt-contrib (mm2-remove-matches (dist-gt-contrib $dist-gt-contrib-dist $dist-gt-contrib-threshold $dist-gt-contrib-x $dist-gt-contrib-mass)))
+          ($_dist-gt-strength (mm2-remove-matches (dist-gt-strength $dist-gt-strength-dist $dist-gt-strength-threshold $dist-gt-strength)))
+          ($_dist-gt-open (mm2-remove-matches (dist-gt-open $dist-gt-g $dist-gt-rule $dist-gt-agg $dist-gt-open-dist $dist-gt-open-threshold $dist-gt-proof-id $dist-gt-evset)))
+          ($_dist-gt2-active (mm2-remove-matches (dist-gt2-active $dist-gt2-lhs $dist-gt2-rhs)))
+          ($_dist-gt2-contrib (mm2-remove-matches (dist-gt2-contrib $dist-gt2-contrib-lhs $dist-gt2-contrib-rhs $dist-gt2-xa $dist-gt2-xb $dist-gt2-mass)))
+          ($_dist-gt2-strength (mm2-remove-matches (dist-gt2-strength $dist-gt2-strength-lhs $dist-gt2-strength-rhs $dist-gt2-strength)))
+          ($_dist-gt2-open (mm2-remove-matches (dist-gt2-open $dist-gt2-g $dist-gt2-rule $dist-gt2-agg $dist-gt2-open-lhs $dist-gt2-open-rhs $dist-gt2-proof-id $dist-gt2-evset)))
           ($_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset)))
           ($_inv (mm2-remove-matches (inv-checked $verdict2 $g $proof-id $evset))))
      cleaned))
@@ -1024,6 +1037,19 @@
           ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
           ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
           ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
+          ($_dist-stats-active (mm2-remove-matches (dist-stats-active $dist-stats-dist)))
+          ($_dist-stat-contrib (mm2-remove-matches (dist-stat-contrib $dist-stat-dist $dist-stat-x $dist-stat-w $dist-stat-w2)))
+          ($_dist-stat-total (mm2-remove-matches (dist-stat-total $dist-stat-total-dist $dist-stat-total)))
+          ($_dist-stat-sumsq (mm2-remove-matches (dist-stat-sumsq $dist-stat-sumsq-dist $dist-stat-sumsq)))
+          ($_dist-confidence (mm2-remove-matches (dist-confidence $dist-confidence-dist $dist-confidence)))
+          ($_dist-gt-active (mm2-remove-matches (dist-gt-active $dist-gt-dist $dist-gt-threshold)))
+          ($_dist-gt-contrib (mm2-remove-matches (dist-gt-contrib $dist-gt-contrib-dist $dist-gt-contrib-threshold $dist-gt-contrib-x $dist-gt-contrib-mass)))
+          ($_dist-gt-strength (mm2-remove-matches (dist-gt-strength $dist-gt-strength-dist $dist-gt-strength-threshold $dist-gt-strength)))
+          ($_dist-gt-open (mm2-remove-matches (dist-gt-open $dist-gt-g $dist-gt-rule $dist-gt-agg $dist-gt-open-dist $dist-gt-open-threshold $dist-gt-proof-id $dist-gt-evset)))
+          ($_dist-gt2-active (mm2-remove-matches (dist-gt2-active $dist-gt2-lhs $dist-gt2-rhs)))
+          ($_dist-gt2-contrib (mm2-remove-matches (dist-gt2-contrib $dist-gt2-contrib-lhs $dist-gt2-contrib-rhs $dist-gt2-xa $dist-gt2-xb $dist-gt2-mass)))
+          ($_dist-gt2-strength (mm2-remove-matches (dist-gt2-strength $dist-gt2-strength-lhs $dist-gt2-strength-rhs $dist-gt2-strength)))
+          ($_dist-gt2-open (mm2-remove-matches (dist-gt2-open $dist-gt2-g $dist-gt2-rule $dist-gt2-agg $dist-gt2-open-lhs $dist-gt2-open-rhs $dist-gt2-proof-id $dist-gt2-evset)))
           ($_open (mm2-remove-matches (open-proof $g $stv $proof-id $evset)))
           ($_inv (mm2-remove-matches (inv-checked $verdict2 $g $proof-id $evset)))
           ($_formula (mm2-remove-matches (formula-eval $formula-key $formula-pending)))
@@ -1105,6 +1131,13 @@
 (= (mm2-query $steps $kb (: $prf $type $tv))
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
+
+(= (mm2-query-wide $steps $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($_run (mm2-exec &mork (mm2-test-total-steps $steps)))
+            ($results (mm2-query-results $notsup $cqs))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        $results)))
 
@@ -1387,8 +1420,20 @@
 (= (mm2-last-arg $term)
    (if (is-expr $term) (mm2-last-list-item (cdr-atom $term)) $term))
 
+(= (mm2-test-query-tv-strength $steps $kb $query $expected)
+   (case (mm2-query $steps $kb $query)
+     (((cons (: $_prf $_type (STV $s $_c)) $_rest)
+       (mm2-test-float-value $s $expected))
+      ($other (mm2-test-equal no-result $expected)))))
+
+(= (mm2-test-query-tv-confidence $steps $kb $query $expected)
+   (case (mm2-query $steps $kb $query)
+     (((cons (: $_prf $_type (STV $_s $c)) $_rest)
+       (mm2-test-float-value $c $expected))
+      ($other (mm2-test-equal no-result $expected)))))
+
 (= (mm2-test-query-dist-gt-strength $steps $kb $query $threshold $expected)
-   (let* (($results (mm2-query $steps $kb $query))
+   (let* (($results (mm2-query-wide $steps $kb $query))
           ($_run (mm2-exec &mork 400)))
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
@@ -1397,7 +1442,7 @@
         ($other (mm2-test-equal no-result $expected))))))
 
 (= (mm2-test-query-dist-gt-strength-between $steps $kb $query $threshold $lo $hi)
-   (let* (($results (mm2-query $steps $kb $query))
+   (let* (($results (mm2-query-wide $steps $kb $query))
           ($_run (mm2-exec &mork 400)))
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
@@ -1406,7 +1451,7 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query-dist-gt-strength-confidence-over $steps $kb $query $threshold $slo $clo)
-   (let* (($results (mm2-query $steps $kb $query))
+   (let* (($results (mm2-query-wide $steps $kb $query))
           ($_run (mm2-exec &mork 400)))
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
@@ -1414,8 +1459,21 @@
            (mm2-test-equal (and (> $s $slo) (> $c $clo)) true)))
         ($other (mm2-test-equal no-result true))))))
 
+(= (mm2-test-query-dist-gt-between $steps $kb $query $threshold $slo $shi $clo $chi)
+   (let* (($results (mm2-query-wide $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $s $c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+           (mm2-test-equal
+             (and (> $s $slo)
+                  (and (< $s $shi)
+                       (and (> $c $clo) (< $c $chi))))
+             true)))
+        ($other (mm2-test-equal no-result true))))))
+
 (= (mm2-test-query-dist-gt-mp-between $steps $kb $query $threshold $ctv $slo $shi $clo $chi)
-   (let* (($results (mm2-query $steps $kb $query))
+   (let* (($results (mm2-query-wide $steps $kb $query))
           ($_run (mm2-exec &mork 400)))
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
@@ -1430,8 +1488,32 @@
              true)))
         ($other (mm2-test-equal no-result true))))))
 
+(= (mm2-test-query-dist-gt-mp-strength-between $steps $kb $query $threshold $ctv $slo $shi)
+   (let* (($results (mm2-query-wide $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $s $_c)
+              (mm2-formula-mp
+                (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+                $ctv)
+           (mm2-test-equal (and (> $s $slo) (< $s $shi)) true)))
+        ($other (mm2-test-equal no-result true))))))
+
+(= (mm2-test-query-dist-gt-mp-confidence-over $steps $kb $query $threshold $ctv $clo)
+   (let* (($results (mm2-query-wide $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (let (STV $_s $c)
+              (mm2-formula-mp
+                (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
+                $ctv)
+           (mm2-test-equal (> $c $clo) true)))
+        ($other (mm2-test-equal no-result true))))))
+
 (= (mm2-test-query-particle-pairs $steps $kb $query $expected)
-   (let* (($results (mm2-query $steps $kb $query))
+   (let* (($results (mm2-query-wide $steps $kb $query))
           ($_run (mm2-exec &mork 400)))
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)
@@ -1448,7 +1530,7 @@
       ($_ false))))
 
 (= (mm2-test-query-particle-pairs-between $steps $kb $query $expected)
-   (let* (($results (mm2-query $steps $kb $query))
+   (let* (($results (mm2-query-wide $steps $kb $query))
           ($_run (mm2-exec &mork 400)))
      (case $results
        (((cons (: $_prf $type $_tv) $_rest)

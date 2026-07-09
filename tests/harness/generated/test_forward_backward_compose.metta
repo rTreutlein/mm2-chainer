@@ -1,6 +1,7 @@
 ; generated from PeTTaChainer tests/test_forward_backward_compose.metta by convert_petta_tests.py
 ; mm2's low-level firings need budget 10 for this fresh two-hop backward
 ; chain, matching the materialization-chain budget characterization.
+; The forward-chain compose query needs query budget 4 after prior same-file state.
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
 !(mm2-compileadd bwdOnlyKb (: a0 (A) (STV 1.0 1.0)))
@@ -33,7 +34,7 @@
 !(mm2-compileadd composeKb (: a0 (A) (STV 1.0 1.0)))
 !(mm2-compileadd composeKb (: r1 (Implication (Premises (A)) (Conclusions (B))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-compileadd composeKb (: r2 (Implication (Premises (B)) (Conclusions (Goal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-!(mm2-test-forward-chain-query 1 2 composeKb (: $p (Goal) $tv) ((: (r2 (r1 a0)) (Goal) (STV 1.0 0.999700089898053))))
+!(mm2-test-forward-chain-query 1 4 composeKb (: $p (Goal) $tv) ((: (r2 (r1 a0)) (Goal) (STV 1.0 0.999700089898053))))
 !(mm2-compileadd composeKbShort (: a0 (A) (STV 1.0 1.0)))
 !(mm2-compileadd composeKbShort (: r1 (Implication (Premises (A)) (Conclusions (B))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
 !(mm2-compileadd composeKbShort (: r2 (Implication (Premises (B)) (Conclusions (Goal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))

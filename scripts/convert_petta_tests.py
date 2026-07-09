@@ -18,7 +18,8 @@ unreduced terms in the run report — that's the gap list.
 
 Files whose tests are entirely out of scope are skipped; query-oriented tests
 are generated even when they also have older hand-written harness coverage.
-Some distribution files are generated as documented direct-helper subsets.
+Some distribution files omit PeTTa's particle-store pruning helpers, which are
+runtime resource-management tests rather than chainer rule semantics.
 """
 
 import re
@@ -35,12 +36,12 @@ SKIP_FILES = {
     "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
 }
 
-PARTIAL_DIRECT_DIST_FILES = {
-    "test_particle_values.metta",
-}
+PARTIAL_DIRECT_DIST_FILES = set()
 
-PARTIAL_FOLD_VALUE_FILES = {
-    "test_distribution_values.metta",
+PARTIAL_FOLD_VALUE_FILES = set()
+
+PARTIAL_PARTICLE_STORE_FILES = {
+    "test_particle_values.metta",
 }
 
 PARTIAL_PREFIX_FILES = {
@@ -176,6 +177,9 @@ def convert_test(expr):
     if cached_base_rate is not None:
         kb, pat = cached_base_rate
         return ["mm2-test-cached-base-rate", kb, pat, rename_calls(expected)]
+    query_tv_component = query_tv_component_test(queryish, expected)
+    if query_tv_component is not None:
+        return query_tv_component
     dist_gt = dist_greater_than_test(queryish, expected)
     if dist_gt is not None:
         return dist_gt
@@ -369,6 +373,15 @@ def contains_head(expr, name):
     return any(contains_head(item, name) for item in expr)
 
 
+def contains_head_prefix(expr, prefix):
+    if not isinstance(expr, list):
+        return False
+    h = head(expr)
+    if isinstance(h, str) and h.startswith(prefix):
+        return True
+    return any(contains_head_prefix(item, prefix) for item in expr)
+
+
 def numeric_pattern_helper_test(queryish):
     if head(queryish) == "joint-cond-add-sample":
         return queryish
@@ -482,6 +495,10 @@ def dist_greater_than_test(queryish, expected):
     if expected != "true" or head(result) != "and" or len(result) != 3:
         return None
     lhs, rhs = result[1], result[2]
+    ranges = stv_condition_ranges(result)
+    if ranges is not None:
+        slo, shi, clo, chi = ranges
+        return ["mm2-test-query-dist-gt-between", *query_args, threshold, slo, shi, clo, chi]
     if head(lhs) == ">" and len(lhs) == 3 and lhs[1] == "$s" and head(rhs) == "<" and len(rhs) == 3 and rhs[1] == "$s":
         return ["mm2-test-query-dist-gt-strength-between", *query_args, threshold, lhs[2], rhs[2]]
     if head(lhs) == ">" and len(lhs) == 3 and lhs[1] == "$s" and head(rhs) == ">" and len(rhs) == 3 and rhs[1] == "$c":
@@ -500,6 +517,25 @@ def stv_condition_ranges(condition):
     if "$s" not in lowers or "$s" not in uppers or "$c" not in lowers or "$c" not in uppers:
         return None
     return lowers["$s"], uppers["$s"], lowers["$c"], uppers["$c"]
+
+
+def stv_strength_range(condition):
+    lowers = {}
+    uppers = {}
+    for clause in flatten_and(condition):
+        if head(clause) == ">" and len(clause) == 3 and clause[1] == "$s":
+            lowers["$s"] = clause[2]
+        elif head(clause) == "<" and len(clause) == 3 and clause[1] == "$s":
+            uppers["$s"] = clause[2]
+    if "$s" not in lowers or "$s" not in uppers:
+        return None
+    return lowers["$s"], uppers["$s"]
+
+
+def stv_confidence_lower(condition):
+    if head(condition) == ">" and len(condition) == 3 and condition[1] == "$c":
+        return condition[2]
+    return None
 
 
 def dist_greater_than_mp_test(queryish, expected):
@@ -523,21 +559,45 @@ def dist_greater_than_mp_test(queryish, expected):
     if premise[1] != mm2_last_arg(binding[2]):
         return None
     ranges = stv_condition_ranges(condition)
-    if ranges is None:
-        return None
-    slo, shi, clo, chi = ranges
-    return [
-        "mm2-test-query-dist-gt-mp-between",
-        rename_calls(query[1]),
-        rename_calls(query[2]),
-        rename_calls(query[3]),
-        rename_calls(premise[2]),
-        rename_calls(ctv),
-        slo,
-        shi,
-        clo,
-        chi,
-    ]
+    if ranges is not None:
+        slo, shi, clo, chi = ranges
+        return [
+            "mm2-test-query-dist-gt-mp-between",
+            rename_calls(query[1]),
+            rename_calls(query[2]),
+            rename_calls(query[3]),
+            rename_calls(premise[2]),
+            rename_calls(ctv),
+            slo,
+            shi,
+            clo,
+            chi,
+        ]
+    strength_range = stv_strength_range(condition)
+    if strength_range is not None:
+        slo, shi = strength_range
+        return [
+            "mm2-test-query-dist-gt-mp-strength-between",
+            rename_calls(query[1]),
+            rename_calls(query[2]),
+            rename_calls(query[3]),
+            rename_calls(premise[2]),
+            rename_calls(ctv),
+            slo,
+            shi,
+        ]
+    confidence_lower = stv_confidence_lower(condition)
+    if confidence_lower is not None:
+        return [
+            "mm2-test-query-dist-gt-mp-confidence-over",
+            rename_calls(query[1]),
+            rename_calls(query[2]),
+            rename_calls(query[3]),
+            rename_calls(premise[2]),
+            rename_calls(ctv),
+            confidence_lower,
+        ]
+    return None
 
 
 def flatten_and(expr):
@@ -616,6 +676,33 @@ def query_tv_test(queryish, expected):
     ]
 
 
+def query_tv_component_test(queryish, expected):
+    if head(queryish) != "let" or len(queryish) != 4:
+        return None
+    binding, query, body = queryish[1], queryish[2], queryish[3]
+    if head(binding) != ":" or len(binding) != 4:
+        return None
+    if head(query) != "query" or len(query) != 4 or query[3] != binding:
+        return None
+    if head(body) != "let" or len(body) != 4:
+        return None
+    if body[1] != ["STV", "$s", "$c"] or body[2] != binding[3]:
+        return None
+    if body[3] == "$s":
+        helper = "mm2-test-query-tv-strength"
+    elif body[3] == "$c":
+        helper = "mm2-test-query-tv-confidence"
+    else:
+        return None
+    return [
+        helper,
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        rename_calls(expected),
+    ]
+
+
 def forward_chain_query_test(queryish, expected):
     if head(queryish) != "let" or len(queryish) != 4:
         return None
@@ -690,8 +777,10 @@ def apply_file_adaptations(path_name, out):
     if path_name == "test_forward_backward_compose.metta":
         out.insert(1, "; mm2's low-level firings need budget 10 for this fresh two-hop backward")
         out.insert(2, "; chain, matching the materialization-chain budget characterization.")
+        out.insert(3, "; The forward-chain compose query needs query budget 4 after prior same-file state.")
         return [
             line.replace("!(mm2-test-query 4 bwdOnlyKb (: $p (Goal) $tv)", "!(mm2-test-query 10 bwdOnlyKb (: $p (Goal) $tv)")
+                .replace("!(mm2-test-forward-chain-query 1 2 composeKb", "!(mm2-test-forward-chain-query 1 4 composeKb")
             for line in out
         ]
 
@@ -784,6 +873,7 @@ def convert_file(path):
     ]
     direct_dist_only = path.name in PARTIAL_DIRECT_DIST_FILES
     fold_value_only = path.name in PARTIAL_FOLD_VALUE_FILES
+    particle_store_tail = path.name in PARTIAL_PARTICLE_STORE_FILES
     prefix_only = path.name in PARTIAL_PREFIX_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
     if direct_dist_only:
@@ -808,6 +898,9 @@ def convert_file(path):
                 out.append("!" + show(converted))
             continue
         if kind == "bang" and head(expr) == "test":
+            if particle_store_tail and contains_head_prefix(expr, "ParticleStore"):
+                out.append("; Remaining source forms exercise PeTTa ParticleStore pruning and are intentionally omitted here.")
+                break
             if forward_prefix_only:
                 converted = forward_has_derived_test(expr[1], expr[2])
                 if converted is not None:

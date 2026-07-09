@@ -15,6 +15,7 @@
 ;   [subgoals] OrFormula*                                         -> adapterOrN
 ;   [subgoals] AndFormula* (MP $agg (CTV ..))                     -> ruleN ctv
 ;   [subgoal]  Compute + [subgoal] AndFormula* MP                 -> ruleN compute-plus-ctv
+;   [subgoals] DistGreaterThan* AndFormula MP                     -> ruleN dist-gt-ctv
 ;   [subgoal]  FoldAllValue ParticleAddBernoulliFromSTV MP        -> ruleN fold-value-bernoulli-ctv
 ;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> ruleN not-ctv
 ;   [subgoals] NotFormula AndFormula (MP $agg (CTV ..))           -> ruleN not-and-ctv
@@ -400,6 +401,18 @@
                           (and (== $ns 0.0) (== $nc 1.0)))))
          (dist-map2-ctv-kind $fun $lhs $rhs $dist-out ($ps $pc) ($ns $nc))
          (unsupported-tail $tail)))
+      ((cons (cpu DistGreaterThanFormula ($dist $threshold) $gt-tv)
+         (cons (cpu AndFormula ($prem-tv $gt-tv2) $agg)
+           (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())))
+       (if (and (== $gt-tv $gt-tv2) (== $agg $agg2))
+         (dist-gt-ctv-kind $dist $threshold ($ps $pc) ($ns $nc))
+         (unsupported-tail $tail)))
+      ((cons (cpu DistGreaterThanDistFormula ($lhs $rhs) $gt-tv)
+         (cons (cpu AndFormula ($prem-tv $gt-tv2) $agg)
+           (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())))
+       (if (and (== $gt-tv $gt-tv2) (== $agg $agg2))
+         (dist-gt-dist-ctv-kind $lhs $rhs ($ps $pc) ($ns $nc))
+         (unsupported-tail $tail)))
       ((cons (cpu FoldAllCompiled $fold-args $fold-out)
          (cons (cpu AndFormula ($prem-tv (STV 1.0 1.0)) $agg)
            (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())))
@@ -578,6 +591,12 @@
        $rid
        (dist-map2-ctv $pos (map2 $fun $lhs $rhs $neg))
        $ptypes)))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (dist-gt-ctv-kind $dist $threshold $pos $neg))
+   (ruleN $ctype $rid (dist-gt-ctv $pos (gt $dist $threshold $neg)) $ptypes))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (dist-gt-dist-ctv-kind $lhs $rhs $pos $neg))
+   (ruleN $ctype $rid (dist-gt-dist-ctv $pos (gt2 $lhs $rhs $neg)) $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (avg-dist-ctv-kind $pat $value $dist-out $pos $neg))
    (case (mm2-ir-dist-avg-rule-data $ctype $dist-out)

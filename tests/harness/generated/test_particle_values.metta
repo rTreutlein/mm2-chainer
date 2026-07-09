@@ -1,5 +1,4 @@
 ; generated from PeTTaChainer tests/test_particle_values.metta by convert_petta_tests.py
-; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
 !(mm2-init)
 !(mm2-test-DistGreaterThanFormula (ParticleFromPairs ((0 0.25) (2 0.75))) 1 (STV 0.75 0.07407407407407407))
@@ -10,4 +9,25 @@
 !(mm2-test-DistGreaterThanFormula (ParticleMap (|-> ($x) (+ $x 1)) (ParticleFromPairs ((0 0.25) (2 0.75)))) 2 (STV 0.75 0.07407407407407407))
 !(mm2-test-DistGreaterThanFormula (ParticleMap2 + (ParticleFromPairs ((170 0.5) (180 0.5))) (ParticleFromPairs ((160 1.0)))) 335 (STV 0.5 0.09090909090909091))
 !(mm2-test-DistGreaterThanFormula (ParticleMap2 (|-> ($a $b) (/ (+ $a $b) 2)) (ParticleFromPairs ((180 1.0))) (ParticleFromPairs ((160 1.0)))) 169 (STV 1.0 0.047619047619047616))
-; Remaining source forms start at compileadd/FoldAllValue query coverage and are intentionally omitted here.
+!(mm2-compileadd kb (: countryHeightA (CountryHeightDist countryA (ParticleFromPairs ((170 0.5) (180 0.5)))) (STV 1.0 1.0)))
+!(mm2-compileadd kb (: countryHeightB (CountryHeightDist countryB (ParticleFromPairs ((175 1.0)))) (STV 1.0 1.0)))
+!(mm2-compileadd kb (: compareHeightsRule (Implication (Premises (CountryHeightDist countryA $heightA) (CountryHeightDist countryB $heightB) (GreaterThan $heightA $heightB)) (Conclusions (Taller countryA countryB))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
+!(mm2-test-query-tv-strength 40 kb (: $prf (Taller countryA countryB) $tv) 0.5)
+!(mm2-test-query-tv-confidence 40 kb (: $prf (Taller countryA countryB) $tv) 0.047619047618071425)
+!(mm2-compileadd kb (: kidp1 (Kid kidp1) (STV 1.0 1.0)))
+!(mm2-compileadd kb (: kidp2 (Kid kidp2) (STV 1.0 1.0)))
+!(mm2-compileadd kb (: roomp1 (Room roomp1) (STV 1.0 1.0)))
+!(mm2-compileadd kb (: roomp2 (Room roomp2) (STV 1.0 1.0)))
+!(mm2-compileadd kb (: inp11 (In roomp1 kidp1) (STV 0.5 1.0)))
+!(mm2-compileadd kb (: inp12 (In roomp1 kidp2) (STV 0.5 1.0)))
+!(mm2-compileadd kb (: inp21 (In roomp2 kidp1) (STV 0.2 1.0)))
+!(mm2-compileadd kb (: inp22 (In roomp2 kidp2) (STV 0.3 1.0)))
+!(mm2-compileadd kb (: cntKidInParticleRule (Implication (Premises (Room $room) (FoldAllValue (In $room $kid) (ParticleFromPairs ((0 1.0))) ParticleAddBernoulliFromSTV -> $dist)) (Conclusions (CntKidInParticle $room $dist))) (CTV (STV 1.0 0.8) (STV 0.0 1.0))))
+!(mm2-compileadd kb (: playTogetherParticleRule (Implication (Premises (Room $room) (CntKidInParticle $room $cnt) (GreaterThan $cnt 1)) (Conclusions (PlayTogetherParticleIn $room))) (CTV (STV 1.0 0.75) (STV 0.0 1.0))))
+!(mm2-test-query-dist-gt-between 40 kb (: $prf (CntKidInParticle roomp1 $cnt) $tv) 1 0.2499 0.2501 0.11764 0.11765)
+!(mm2-test-query-dist-gt-between 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 0.0599 0.0601 0.0977 0.0978)
+!(mm2-test-query-dist-gt-mp-between 40 kb (: $prf (CntKidInParticle roomp1 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.2499 0.2501 0.09 0.13)
+!(mm2-test-query-dist-gt-mp-strength-between 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0599 0.0601)
+!(mm2-test-query-dist-gt-mp-confidence-over 40 kb (: $prf (CntKidInParticle roomp1 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0)
+!(mm2-test-query-dist-gt-mp-confidence-over 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0)
+; Remaining source forms exercise PeTTa ParticleStore pruning and are intentionally omitted here.

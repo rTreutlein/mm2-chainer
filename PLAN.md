@@ -626,15 +626,15 @@ Bernoulli source per matching scoped binary fact, and includes the initial
 distribution as a separate source so the convolution matches PeTTa's
 `ParticleAddBernoulliFromSTV` count distribution.
 
-This generated file is still a prefix: the downstream `GreaterThan` rule over
-the FoldAllValue result and the CTVMP helper tail are intentionally omitted.
-The new FoldAllValue templates use early phase-2 contribution feeders because
+At this stage the generated file was still a prefix: the downstream
+`GreaterThan` rule over the FoldAllValue result and the CTVMP helper tail were
+intentionally omitted. The FoldAllValue templates use early phase-2 contribution feeders because
 `dist-sum` must be consumed in MORK's sink phase, and a late phase-E proof
 opener so normal premise/proof scheduling is perturbed as little as possible.
 The forward-chain harness round budget is 250 to account for the extra global
 runtime templates.
 
-Latest corpus snapshot after this adjustment:
+Historical corpus snapshot after this adjustment:
 
     totals: pass=212 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
@@ -647,9 +647,36 @@ rule CTV with `CTVModusPonensFormula`, and check the PeTTa strength/confidence
 ranges. This covers the helper tail without pretending the omitted
 `PlayTogetherIn` rule has runtime `GreaterThan` premise support.
 
-Latest corpus snapshot after this adjustment:
+Historical corpus snapshot after this adjustment:
 
     totals: pass=214 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
+## Distribution GreaterThan rule premises (DONE 2026-07-09)
+
+Compiled `GreaterThan` premises over distributions now run as real rule
+pseudo-premises instead of harness-only helper checks. The translator recognizes
+PeTTa IR tails of the form `DistGreaterThanFormula`/`DistGreaterThanDistFormula`
+followed by `AndFormula` and `CTVModusPonensFormula`, emitting structured
+`dist-gt-ctv` and `dist-gt-dist-ctv` rule kinds. The runtime computes the
+comparison strength with wide `fsum` aggregations over `dist-pair` facts,
+derives confidence from pair effective-N (`neff / (neff + 20)`), folds the
+comparison TV into the factual premise aggregate with `AndFormula` confidence,
+and opens the final MP proof.
+
+`test_distribution_values.metta` now generates the downstream
+`PlayTogetherIn` rule instead of omitting it, and `test_particle_values.metta`
+now covers the `CountryHeightDist -> Taller` rule plus the FoldAllValue
+particle-count query/helper tail. The only omitted particle-values tail is
+PeTTa's `ParticleStore*` pruning/resource-management helpers.
+
+Distribution readback helpers use the positive-test budget cap, because the
+query result can be open but not yet merged at the narrow query cap after prior
+same-file distribution state. The forward-chain compose generated fixture also
+uses query budget 4, the smallest passing cap after prior same-file state.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=247 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
 ## Next
 
@@ -695,9 +722,10 @@ Latest corpus snapshot after this adjustment:
    the older hand-ported query tests, direct distribution-helper coverage, and
    numeric-pattern query-prefix coverage, and forward materialization prefix
    coverage, and dist-vs-dist helper coverage, and numeric-pattern helper
-   completion, FoldAllValue distribution-query prefix coverage, and
-   FoldAllValue distribution CTVMP helper-tail coverage):
-   pass=214 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   completion, FoldAllValue distribution-query prefix coverage,
+   FoldAllValue distribution CTVMP helper-tail coverage, and real
+   distribution `GreaterThan` rule-premise coverage):
+   pass=247 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -787,8 +815,9 @@ Latest corpus snapshot after this adjustment:
    The two `forward-chain` assertions in `test_forward_backward_compose` now
    run through `mm2-test-forward-chain-query`. This is not a general PeTTa
    forward chainer: it advances MM2's existing open materialization goals for a
-   bounded number of steps before running the follow-up query, preserving the
-   positive budget-2 and negative budget-1 outcomes in that fixture.
+   bounded number of steps before running the follow-up query. The positive
+   compose query uses budget 4 after prior same-file state, while the negative
+   short-budget fixture still uses budget 1.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
@@ -799,12 +828,12 @@ Latest corpus snapshot after this adjustment:
    upstream `test_*.metta` file not generated is the explicit out-of-scope
    benchmark generator. `test_forward_chainer` is generated as a forward
    materialization subset; its PeTTa-specific agenda/proof bookkeeping tail is
-   intentionally omitted in the generated file. `test_distribution_values` is
-   generated through the FoldAllValue distribution query plus local CTVMP helper
-   tail; its `PlayTogetherIn` rule with a `GreaterThan` premise remains omitted
-   because that rule path is not asserted by the source test.
-   `test_particle_values` remains a direct-helper subset, and the
-   numeric-pattern distribution file is now fully generated. Omitted
+   intentionally omitted in the generated file. `test_distribution_values` now
+   includes the downstream `PlayTogetherIn` `GreaterThan` rule, and
+   `test_particle_values` now generates the country-height `Taller` rule plus
+   the FoldAllValue particle-count query/helper tail. Its remaining omitted
+   tail is PeTTa's `ParticleStore*` pruning/resource-management helper section.
+   The numeric-pattern distribution file is fully generated. Omitted
    helper/query-tail sections are documented in the generated files. Keep any
    future non-query harness additions explicit
    about whether they exercise MM2 runtime behavior or PeTTa helper/compiler
