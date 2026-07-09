@@ -1071,6 +1071,15 @@ chain cases exercise the public agenda loop, while fanout cases use explicit
 source facts with a size-scaled source budget so wider documented samples remain
 clean benchmark inputs instead of accidentally measuring the fixed per-source
 round cap.
+`scripts/bench-query-scale.sh` adds the analogous synthetic backward-query
+scale benchmark. It currently covers implication query depth and same-order
+And projection width, repeats each case with a startup baseline, and rejects
+dirty or unstable verdict samples. Wider reordered And projection remains an
+opt-in investigation shape rather than a default because width 8 already fails
+the current clean-verdict contract and width 16 was too slow for interactive
+triage. Same-order And projection width 12 is clean but slow enough to keep out
+of the default and README-sized command; the first sample measured about
+9688 ms net.
 
 Rejected performance experiments:
 

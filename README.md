@@ -131,6 +131,22 @@ form, zero pass verdicts, or unstable verdict counts across repeated runs.
 Fanout cases use `mm2-forward-chain-from-facts` with a size-scaled source budget;
 chain cases use the public `mm2-forward-chain` agenda loop.
 
+For backward-query work, use a synthetic scale benchmark that separates
+implication chain depth from same-order And projection width:
+
+```bash
+bash scripts/bench-query-scale.sh
+MM2_QUERY_BENCH_CHAIN_DEPTHS="4 8 12 16" MM2_QUERY_BENCH_AND_WIDTHS="4 8" bash scripts/bench-query-scale.sh
+```
+
+It writes median gross and baseline-subtracted timings to
+`outputs/query_scale_bench.tsv` and per-run samples to
+`outputs/query_scale_bench_runs.tsv`. Like the forward scale benchmark, it
+fails on runtime errors, close/fail verdicts, unsupported/skipped forms, zero
+pass verdicts, or unstable verdict counts across repeated runs. And projection
+width 12 is clean but intentionally left opt-in because it is much slower than
+the default widths.
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling
