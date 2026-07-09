@@ -23,6 +23,8 @@ Repository layout:
   - `independent.mm2`: parallel satisfaction of independent goals
 - `scripts/`
   - `build-runtime.sh`: assemble ordered runtime parts into one aux file
+  - `convert_dumppln_to_mm2_rules.py`: regenerate `rules/full_rules.mm2`
+    from the sibling ConceptNet `dumppln.txt` export
   - `run-full.sh`: run the full pipeline
   - `run-reduced.sh`: run the reduced STV merge example
   - `run-priority-demo.sh`: run the scheduler demo
@@ -52,6 +54,13 @@ bash scripts/run-chain.sh
 bash scripts/run-cyclic.sh
 bash scripts/run-independent.sh
 bash scripts/test.sh
+```
+
+Regenerate the ConceptNet rule export after rebuilding the sibling `cnet`
+dump:
+
+```bash
+python3 scripts/convert_dumppln_to_mm2_rules.py ../cnet/dumppln.txt rules/full_rules.mm2
 ```
 
 `scripts/test.sh` first syntax-checks the shell runners, verifies the generated
