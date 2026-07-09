@@ -66,6 +66,14 @@ side-log files live under `outputs/` and are managed by the runner scripts.
 After each corpus run, `outputs/harness_perf.tsv` lists generated files sorted
 slowest-first by elapsed milliseconds.
 
+For focused iteration on a generated fixture, pass one or more file stems or
+paths:
+
+```bash
+bash scripts/run-harness-corpus.sh test_forward_chainer
+bash scripts/run-harness-corpus.sh tests/harness/generated/test_math.metta
+```
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling

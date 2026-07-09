@@ -10,6 +10,11 @@
 # runaway query keeps the verdicts produced before it. Each petta process gets a
 # distinct MM2_HARNESS_VERDICT_LOG path so corpus files can run in parallel.
 #
+# Optional arguments restrict the run to generated file names, stems, or paths:
+#
+#   bash scripts/run-harness-corpus.sh test_forward_chainer
+#   bash scripts/run-harness-corpus.sh tests/harness/generated/test_math.metta
+#
 # Verdicts: mm2-test-pass / mm2-test-close / mm2-test-FAIL, plus
 #   unsupported-ir = IR shapes the translator/runtime cannot express yet
 #   skipped        = converter-level PeTTa test forms not ported to MM2
@@ -133,7 +138,30 @@ run_one_file() {
     > "$metrics"
 }
 
-mapfile -t files < <(find tests/harness/generated -maxdepth 1 -type f -name 'test_*.metta' | sort)
+mapfile -t all_files < <(find tests/harness/generated -maxdepth 1 -type f -name 'test_*.metta' | sort)
+
+full_corpus=0
+if [ "$#" -eq 0 ]; then
+  full_corpus=1
+  files=("${all_files[@]}")
+else
+  files=()
+  for requested in "$@"; do
+    case "$requested" in
+      *.metta)
+        candidate="$requested"
+        ;;
+      *)
+        candidate="tests/harness/generated/$requested.metta"
+        ;;
+    esac
+    if [ ! -f "$candidate" ]; then
+      echo "generated test not found: $requested" >&2
+      exit 2
+    fi
+    files+=("$candidate")
+  done
+fi
 
 active_jobs=0
 suite_start_ns="$(now_ns)"
@@ -224,8 +252,8 @@ if [ "$total_fail" -ne 0 ] ||
    [ "$total_coverage_err" -ne 0 ] ||
    [ "$total_adapted_err" -ne 0 ] ||
    [ "$total_adapted" -gt "$max_total_adapted" ] ||
-   [ "$total_pass" -lt "$min_total_pass" ]; then
-  if [ "$total_pass" -lt "$min_total_pass" ]; then
+   { [ "$full_corpus" -eq 1 ] && [ "$total_pass" -lt "$min_total_pass" ]; }; then
+  if [ "$full_corpus" -eq 1 ] && [ "$total_pass" -lt "$min_total_pass" ]; then
     echo "corpus pass count regressed: got $total_pass, expected at least $min_total_pass" >&2
   fi
   if [ "$total_adapted" -gt "$max_total_adapted" ]; then
