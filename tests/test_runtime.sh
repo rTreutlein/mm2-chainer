@@ -34,6 +34,14 @@ assert_no_line_regex() {
   fi
 }
 
+assert_line_regex() {
+  local file="$1"
+  local pattern="$2"
+  if ! grep -Eq "$pattern" "$file"; then
+    fail "expected matching line in $file: $pattern"
+  fi
+}
+
 assert_eq() {
   local got="$1"
   local want="$2"
@@ -450,6 +458,23 @@ EOF
   assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
 }
 
+run_ir_inversion_key_shape_test() {
+  local src="outputs/test_ir_inversion_key_shape.metta"
+  local out="outputs/test_ir_inversion_key_shape.out"
+
+  cat > "$src" <<'EOF'
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer)
+!(mm2-init)
+!(mm2-ir-emit-rule r ((kb MAIN Nil) (P alice)) (pcons ((kb MAIN Nil) (Q alice)) pnil) (inv-kind (0.8 0.9) (brfold ((kb MAIN Nil) (P $x))) (brfold ((kb MAIN Nil) (Q $x))) unguarded))
+!(mm2-ir-emit-rule r ((kb MAIN Nil) (P alice)) (pcons ((kb MAIN Nil) (Q alice)) pnil) (inv-kind (0.8 0.9) (brfold ((kb MAIN Nil) (P $x))) (brfold ((kb MAIN Nil) (Q $x))) guarded))
+EOF
+
+  petta "$src" > "$out"
+
+  assert_line_regex "$out" '^[(]ruleN [(][(]kb MAIN Nil[)] [(]P alice[)][)] r [(]inv [(]0[.]8 0[.]9[)] [(]brpat [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)] [(][(]kb MAIN Nil[)] [(]Q [$]_[0-9]+[)][)][)][)] [(]pcons [(][(]kb MAIN Nil[)] [(]Q alice[)][)] pnil[)][)]$'
+  assert_line_regex "$out" '^[(]ruleN .*[(]brpat [(]guarded-base-rate r antecedent .*[(]guarded-base-rate r consequent '
+}
+
 # Two rules proving the same goal from the same premises must produce two
 # distinct proofs (the proof token includes the rule TV). Shaped after
 # PeTTaChainer's test_lifting_merge diffImplKb; exact pooled-value parity is
@@ -546,6 +571,7 @@ run_reference_three_premise_test
 run_reference_nary_conjunction_test
 run_reference_stv_implication_test
 run_reference_implication_inversion_test
+run_ir_inversion_key_shape_test
 run_same_premise_rules_test
 run_ffi_harness_test
 run_open_multiple_proofs_demo_test
