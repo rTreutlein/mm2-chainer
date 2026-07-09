@@ -1116,6 +1116,12 @@ Rejected performance experiments:
   (3799 ms net in a 5-run sample), but broke `test_forward_chainer` with
   29 pass / 1 fail. The helper consumed the agenda before a later proof-count
   assertion expected the public `&kb` readback sync.
+- Distribution greater-than readback cache: caching
+  `DistGreaterThanFormula` by distribution/threshold preserved focused
+  semantics, but a 5-run benchmark did not improve the target fixtures:
+  `test_particle_values` measured 935 ms net, `test_distribution_values`
+  584 ms net, `test_rectangle_area` 243 ms net, and `test_height_average`
+  228 ms net, all roughly flat to slightly worse than the prior samples.
 
 ## Corpus inventory guard (DONE 2026-07-09)
 
