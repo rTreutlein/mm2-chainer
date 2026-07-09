@@ -1033,7 +1033,10 @@
           ($_pair-counts (mm2-remove-matches (pair-counts $pair-out $pair-counts $pair-value)))
           ($_or-stv (mm2-remove-matches (or-stv $or-g $or-rule-id $or-pos $or-neg $or-stv $or-proof-id $or-evset)))
           ($_avg-active (mm2-remove-matches (avg-dist-active $avg-result-pid $avg-pat $avg-value)))
+          ($_fold-bernoulli (mm2-remove-matches (fold-value-bernoulli-active $fold-bernoulli-pid $fold-bernoulli-pat $fold-bernoulli-source $fold-bernoulli-init)))
+          ($_fold-bernoulli-contrib (mm2-remove-matches (fold-value-bernoulli-contrib $fold-bernoulli-contrib-pid $fold-bernoulli-contrib-source $fold-bernoulli-contrib-x $fold-bernoulli-contrib-mass)))
           ($_dist-avg (mm2-remove-matches (dist-average $avg-pid $avg-pat2 $avg-x $avg-w)))
+          ($_dist-sum (mm2-remove-matches (dist-sum $dist-sum-pid $dist-sum-source $dist-sum-x $dist-sum-w)))
           ($_dist-map-active (mm2-remove-matches (dist-map2-active $map-fun $map-lhs $map-rhs)))
           ($_dist-map-contrib (mm2-remove-matches (dist-map2-contrib $map-pid $map-source $map-pair)))
           ($_fsum (mm2-remove-matches (fsum $fsum-out $fsum-sum $fsum-mass $fsum-source)))
@@ -1116,8 +1119,9 @@
 ; emits open materialization goals for the relevant rule conclusions, so a
 ; bounded MM2 run advances those side effects before the follow-up query.
 ; A forward-chain round reopens only this KB's materialization goals, but MORK's
-; exec loop still services durable base-rate refresh templates globally.
-(= (mm2-forward-chain-steps-per-round) 225)
+; exec loop still services durable base-rate and distribution feeder templates
+; globally.
+(= (mm2-forward-chain-steps-per-round) 250)
 
 (= (mm2-forward-chain $rounds $_kb)
    (let* (($scope (mm2-ir-scope-kb $_kb))
@@ -1408,6 +1412,33 @@
        (((cons (: $_prf $type $_tv) $_rest)
          (let (STV $s $c) (mm2-DistGreaterThanFormula (mm2-last-arg $type) $threshold)
            (mm2-test-equal (and (> $s $slo) (> $c $clo)) true)))
+        ($other (mm2-test-equal no-result true))))))
+
+(= (mm2-test-query-particle-pairs $steps $kb $query $expected)
+   (let* (($results (mm2-query $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (mm2-test-equal (mm2-dist-pairs (mm2-last-arg $type)) $expected))
+        ($other (mm2-test-equal no-result $expected))))))
+
+(= (mm2-particle-pairs-between? $actual $expected)
+   (case ($actual $expected)
+     (((() ()) true)
+      (((cons ($x $w) $rest) (cons ($x $lo $hi) $expected-rest))
+       (and (> $w $lo)
+            (and (< $w $hi)
+                 (mm2-particle-pairs-between? $rest $expected-rest))))
+      ($_ false))))
+
+(= (mm2-test-query-particle-pairs-between $steps $kb $query $expected)
+   (let* (($results (mm2-query $steps $kb $query))
+          ($_run (mm2-exec &mork 400)))
+     (case $results
+       (((cons (: $_prf $type $_tv) $_rest)
+         (mm2-test-equal
+           (mm2-particle-pairs-between? (mm2-dist-pairs (mm2-last-arg $type)) $expected)
+           true))
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query $steps $kb (: $prf $type $tv) $expected)

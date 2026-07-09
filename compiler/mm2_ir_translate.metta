@@ -15,6 +15,7 @@
 ;   [subgoals] OrFormula*                                         -> adapterOrN
 ;   [subgoals] AndFormula* (MP $agg (CTV ..))                     -> ruleN ctv
 ;   [subgoal]  Compute + [subgoal] AndFormula* MP                 -> ruleN compute-plus-ctv
+;   [subgoal]  FoldAllValue ParticleAddBernoulliFromSTV MP        -> ruleN fold-value-bernoulli-ctv
 ;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> ruleN not-ctv
 ;   [subgoals] NotFormula AndFormula (MP $agg (CTV ..))           -> ruleN not-and-ctv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
@@ -104,6 +105,31 @@
          ($scope ($head $arg1 $arg2 $arg3 (ParticleDist (dist-average $scope $head $arg1 $arg2 $arg3) 1.0)))
          (dist-average $scope $head $arg1 $arg2 $arg3)))
       ($other (notsupported-ir (dist-avg-conclusion $ctype $dist-out))))))
+
+(= (mm2-ir-dist-sum-rule-data $ctype $dist-out)
+   (case $ctype
+     ((($scope ($head $dist-out))
+       (dist-sum-rule-data
+         ($scope ($head (ParticleDist (dist-sum $scope $head) 1.0)))
+         (dist-sum $scope $head)))
+      (($scope ($head $arg1 $dist-out))
+       (dist-sum-rule-data
+         ($scope ($head $arg1 (ParticleDist (dist-sum $scope $head $arg1) 1.0)))
+         (dist-sum $scope $head $arg1)))
+      (($scope ($head $arg1 $arg2 $dist-out))
+       (dist-sum-rule-data
+         ($scope ($head $arg1 $arg2 (ParticleDist (dist-sum $scope $head $arg1 $arg2) 1.0)))
+         (dist-sum $scope $head $arg1 $arg2)))
+      (($scope ($head $arg1 $arg2 $arg3 $dist-out))
+       (dist-sum-rule-data
+         ($scope ($head $arg1 $arg2 $arg3 (ParticleDist (dist-sum $scope $head $arg1 $arg2 $arg3) 1.0)))
+         (dist-sum $scope $head $arg1 $arg2 $arg3)))
+      ($other (notsupported-ir (dist-sum-conclusion $ctype $dist-out))))))
+
+(= (mm2-ir-last-list-item (cons $x ())) $x)
+(= (mm2-ir-last-list-item (cons $_x $rest)) (mm2-ir-last-list-item $rest))
+(= (mm2-ir-last-arg $term)
+   (if (is-expr $term) (mm2-ir-last-list-item (cdr-atom $term)) $term))
 
 ; --- kb scoping --------------------------------------------------------------
 ; Goal-level terms are scoped by the IR's own kb field: ($kb-triple $term).
@@ -272,6 +298,25 @@
          unsupported-foldall))
       ($other unsupported-foldall))))
 
+(= (mm2-ir-foldall-bernoulli $cpu)
+   (case $cpu
+     (((cpu FoldAllCompiled
+        ($kbid
+         $pat
+         extract-tv
+         (ParticleDist $init-pid $init-scale)
+         ParticleAddBernoulliFromSTV
+         identity
+         result-tv)
+       $out)
+       (let $skb (mm2-ir-scope-kb $kbid)
+         (fold-value-bernoulli
+           ($skb $pat)
+           (mm2-ir-last-arg $pat)
+           (ParticleDist $init-pid $init-scale)
+           $out)))
+      ($other unsupported-foldall))))
+
 (= (mm2-ir-foldall-or $cpu)
    (case $cpu
      (((cpu FoldAllCompiled ($kbid $pat extract-tv (STV 0.0 1.0) OrFormula identity result-tv) $out)
@@ -311,6 +356,23 @@
      (inv-kind $pos $fa $fb $mode)
      (unsupported-tail $tail)))
 
+(= (mm2-ir-foldall-ctv-kind $fold $agg $agg2 $ps $pc $ns $nc $tail)
+   (case (mm2-ir-foldall-dist-average $fold)
+     (((fold-dist-average $pat $value $dist-out)
+       (if (and (== $agg $agg2)
+                (and (== $ps 1.0)
+                     (and (== $pc 1.0)
+                          (and (== $ns 0.0) (== $nc 1.0)))))
+         (avg-dist-ctv-kind $pat $value $dist-out ($ps $pc) ($ns $nc))
+         (unsupported-tail $tail)))
+      ($other
+       (case (mm2-ir-foldall-bernoulli $fold)
+         (((fold-value-bernoulli $pat $source $init $dist-out)
+           (if (== $agg $agg2)
+             (fold-value-bernoulli-ctv-kind $pat $source $init $dist-out ($ps $pc) ($ns $nc))
+             (unsupported-tail $tail)))
+          ($other2 (unsupported-tail $tail))))))))
+
 (= (mm2-ir-classify $tail)
    (case $tail
      ((() identity)
@@ -341,15 +403,7 @@
       ((cons (cpu FoldAllCompiled $fold-args $fold-out)
          (cons (cpu AndFormula ($prem-tv (STV 1.0 1.0)) $agg)
            (cons (cpu CTVModusPonensFormula ($agg2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())))
-       (case (mm2-ir-foldall-dist-average (cpu FoldAllCompiled $fold-args $fold-out))
-         (((fold-dist-average $pat $value $dist-out)
-           (if (and (== $agg $agg2)
-                    (and (== $ps 1.0)
-                         (and (== $pc 1.0)
-                              (and (== $ns 0.0) (== $nc 1.0)))))
-             (avg-dist-ctv-kind $pat $value $dist-out ($ps $pc) ($ns $nc))
-             (unsupported-tail $tail)))
-          ($other (unsupported-tail $tail)))))
+       (mm2-ir-foldall-ctv-kind (cpu FoldAllCompiled $fold-args $fold-out) $agg $agg2 $ps $pc $ns $nc $tail))
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (if (== $not $not2)
@@ -533,6 +587,18 @@
          $rid
          (avg-dist-ctv $pos (avg $result-pid $pat $value $neg))
          $ptypes))
+      ($other $other))))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (fold-value-bernoulli-ctv-kind $pat $source $init $dist-out $pos $neg))
+   (case (mm2-ir-dist-sum-rule-data $ctype $dist-out)
+     (((dist-sum-rule-data $result-ctype $result-pid)
+       (superpose (
+         (ruleN
+           $result-ctype
+           $rid
+           (fold-value-bernoulli-ctv $pos (bernoulli $result-pid $pat $source $init $neg))
+           $ptypes)
+         (mm2-ir-superpose-list (mm2-ir-dist-atoms $init)))))
       ($other $other))))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (not-ctv-kind $pos $neg))

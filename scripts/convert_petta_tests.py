@@ -36,8 +36,11 @@ SKIP_FILES = {
 }
 
 PARTIAL_DIRECT_DIST_FILES = {
-    "test_distribution_values.metta",
     "test_particle_values.metta",
+}
+
+PARTIAL_FOLD_VALUE_FILES = {
+    "test_distribution_values.metta",
 }
 
 PARTIAL_PREFIX_FILES = {
@@ -176,6 +179,9 @@ def convert_test(expr):
     dist_gt = dist_greater_than_test(queryish, expected)
     if dist_gt is not None:
         return dist_gt
+    particle_pairs = query_particle_pairs_test(queryish, expected)
+    if particle_pairs is not None:
+        return particle_pairs
     if head(queryish) == "tv-confidence" and len(queryish) == 2:
         return [
             "mm2-test-tv-confidence",
@@ -480,6 +486,63 @@ def dist_greater_than_test(queryish, expected):
     return None
 
 
+def flatten_and(expr):
+    if head(expr) == "and" and len(expr) == 3:
+        return flatten_and(expr[1]) + flatten_and(expr[2])
+    return [expr]
+
+
+def query_particle_pairs_test(queryish, expected):
+    if expected != "true" or head(queryish) != "let" or len(queryish) != 4:
+        return None
+    binding, query, body = queryish[1], queryish[2], queryish[3]
+    if head(binding) != ":" or len(binding) != 4:
+        return None
+    if head(query) != "query" or len(query) != 4 or query[3] != binding:
+        return None
+    if head(body) != "let" or len(body) != 4:
+        return None
+    pair_bindings, formula, condition = body[1], body[2], body[3]
+    if head(formula) != "ParticlePairs" or len(formula) != 2:
+        return None
+    if formula[1] != mm2_last_arg(binding[2]):
+        return None
+
+    keys = {}
+    lowers = {}
+    uppers = {}
+    for clause in flatten_and(condition):
+        if head(clause) == "==" and len(clause) == 3 and is_var(clause[1]):
+            keys[clause[1]] = clause[2]
+        elif head(clause) == ">" and len(clause) == 3 and is_var(clause[1]):
+            lowers[clause[1]] = clause[2]
+        elif head(clause) == "<" and len(clause) == 3 and is_var(clause[1]):
+            uppers[clause[1]] = clause[2]
+
+    pairs = []
+    for pair in pair_bindings:
+        if not isinstance(pair, list) or len(pair) != 2:
+            return None
+        k, v = pair
+        if k not in keys or v not in lowers or v not in uppers:
+            return None
+        pairs.append([keys[k], lowers[v], uppers[v]])
+
+    return [
+        "mm2-test-query-particle-pairs-between",
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        pairs,
+    ]
+
+
+def mm2_last_arg(term):
+    if isinstance(term, list) and term:
+        return term[-1]
+    return term
+
+
 def query_tv_test(queryish, expected):
     if head(queryish) != "let" or len(queryish) != 4:
         return None
@@ -666,10 +729,13 @@ def convert_file(path):
         "!(mm2-init)",
     ]
     direct_dist_only = path.name in PARTIAL_DIRECT_DIST_FILES
+    fold_value_only = path.name in PARTIAL_FOLD_VALUE_FILES
     prefix_only = path.name in PARTIAL_PREFIX_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
     if direct_dist_only:
         out.insert(1, "; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet")
+    if fold_value_only:
+        out.insert(1, "; FoldAllValue distribution-query subset; downstream GreaterThan rule checks are not generated yet")
     if prefix_only:
         out.insert(1, "; supported query-prefix subset; later numeric distribution helpers are not generated yet")
     if forward_prefix_only:
@@ -679,6 +745,9 @@ def convert_file(path):
         if direct_dist_only and kind == "bang" and head(expr) == "compileadd":
             out.append("; Remaining source forms start at compileadd/FoldAllValue query coverage and are intentionally omitted here.")
             break
+        if fold_value_only and kind == "bang" and head(expr) == "compileadd" and contains_head(expr, "PlayTogetherIn"):
+            out.append("; OMITTED downstream GreaterThan rule over FoldAllValue output: " + show(expr)[:160])
+            continue
         if kind == "bang" and head(expr) == "import!":
             converted = convert_import(expr)
             if converted is not None:
@@ -696,6 +765,9 @@ def convert_file(path):
             if converted is not None:
                 out.append("!" + show(converted))
                 continue
+            if fold_value_only:
+                out.append("; Remaining source forms start at CTVMP helper coverage over FoldAllValue distributions and are intentionally omitted here.")
+                break
             if prefix_only:
                 out.append("; Remaining source forms start at numeric distribution helper coverage and are intentionally omitted here.")
                 break

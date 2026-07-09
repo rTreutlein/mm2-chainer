@@ -59,3 +59,72 @@
            (fact-evidence $pat $stv $evset)
            (proved $pat $stv $proof-id $evset))
         (O (or-stv $g $rule-id $pos $neg $stv $proof-id $evset))))
+
+; FoldAllValue with ParticleAddBernoulliFromSTV materializes a count
+; distribution: each matching fact TV contributes a Bernoulli source, and
+; dist-sum convolves the sources with the initial distribution.
+; The proof opener runs late to avoid perturbing generic MP/revision scheduling;
+; contribution feeders stay in phase 2 so dist-sum is consumed by MORK's sink pass.
+(exec-template
+  (exec E
+        (, (wait-premises
+             $g
+             (fold-value-bernoulli-ctv
+               ($pos-s $pos-c)
+               (bernoulli $result-pid $pat $source (ParticleDist $init-pid $init-scale) ($neg-s $neg-c)))
+             pnil
+             ($premise-s $premise-c)
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (fold-value-bernoulli-ctv
+                  ($pos-s $pos-c)
+                  (bernoulli $result-pid $pat $source (ParticleDist $init-pid $init-scale) ($neg-s $neg-c)))
+                pnil
+                ($premise-s $premise-c)
+                $proof-id
+                $evset))
+           (+ (fold-value-bernoulli-active $result-pid $pat $source (ParticleDist $init-pid $init-scale)))
+           (pure (open-proof $g $proof-stv $proof-id $evset)
+                 $proof-stv
+                 (tuple
+                   (f64_to_string
+                     (pln_mp_strength_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $pos-s)
+                       (f64_from_string $neg-s)))
+                   (f64_to_string
+                     (pln_mp_confidence_f64
+                       (f64_from_string $premise-s)
+                       (f64_from_string $premise-c)
+                       (f64_from_string $pos-s)
+                       (f64_from_string $pos-c)
+                       (f64_from_string $neg-s)
+                       (f64_from_string $neg-c))))))))
+
+(exec-template
+  (exec 2
+        (, (fold-value-bernoulli-active $result-pid $pat $_source (ParticleDist $init-pid $_init-scale))
+           (dist-pair $init-pid $x $w))
+        (O (+ (fold-value-bernoulli-contrib $result-pid (fold-init $init-pid) $x $w)))))
+
+(exec-template
+  (exec 2
+        (, (fold-value-bernoulli-active $result-pid ($scope ($rel $arg $source)) $source $_init)
+           (fact ($scope ($rel $arg $source)) ($s $c)))
+        (O (pure (fold-value-bernoulli-contrib $result-pid (fold-fact $rel $arg $source) 0.0 $zero-mass)
+                 $zero-mass
+                 (f64_to_string
+                   (sub_f64
+                     (f64_from_string 1.0)
+                     (product_f64 (f64_from_string $s) (f64_from_string $c)))))
+           (pure (fold-value-bernoulli-contrib $result-pid (fold-fact $rel $arg $source) 1.0 $one-mass)
+                 $one-mass
+                 (f64_to_string
+                   (product_f64 (f64_from_string $s) (f64_from_string $c)))))))
+
+(exec-template
+  (exec 2
+        (, (fold-value-bernoulli-contrib $result-pid $source $x $mass))
+        (O (dist-sum $result-pid $source $x $mass))))

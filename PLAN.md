@@ -548,10 +548,9 @@ The converter now emits partial generated files for
 the direct `ParticlePairs`, `DistGreaterThanFormula`, and
 `DistGreaterThanDistFormula` assertions by exporting PeTTa-created
 `ParticleDist` pairs into MORK and then using MM2's distribution pair readback /
-probability-confidence calculation. The later
-`FoldAllValue`/query particle-store sections remain intentionally omitted from
-these generated files until distributional query semantics are modeled more
-generally.
+probability-confidence calculation. The `FoldAllValue` query prefix in
+`test_distribution_values` is covered by the later FoldAllValue distribution
+query work below.
 
 Latest corpus snapshot after this adjustment:
 
@@ -616,6 +615,29 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=210 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
+## FoldAllValue distribution query prefix (DONE 2026-07-09)
+
+`test_distribution_values.metta` now covers the first two
+`FoldAllValue ... ParticleAddBernoulliFromSTV` query checks. The translator
+recognizes the FoldAllValue + `CTVModusPonensFormula` IR tail and emits a
+deterministic output `ParticleDist` backed by MORK's new `dist-sum` sink. The
+runtime opens the rule proof with the actual MP confidence, activates one
+Bernoulli source per matching scoped binary fact, and includes the initial
+distribution as a separate source so the convolution matches PeTTa's
+`ParticleAddBernoulliFromSTV` count distribution.
+
+This generated file is still a prefix: the downstream `GreaterThan` rule over
+the FoldAllValue result and the CTVMP helper tail are intentionally omitted.
+The new FoldAllValue templates use early phase-2 contribution feeders because
+`dist-sum` must be consumed in MORK's sink phase, and a late phase-E proof
+opener so normal premise/proof scheduling is perturbed as little as possible.
+The forward-chain harness round budget is 250 to account for the extra global
+runtime templates.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=212 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
@@ -660,8 +682,8 @@ Latest corpus snapshot after this adjustment:
    the older hand-ported query tests, direct distribution-helper coverage, and
    numeric-pattern query-prefix coverage, and forward materialization prefix
    coverage, and dist-vs-dist helper coverage, and numeric-pattern helper
-   completion):
-   pass=210 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   completion, and FoldAllValue distribution-query prefix coverage):
+   pass=212 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -763,10 +785,12 @@ Latest corpus snapshot after this adjustment:
    upstream `test_*.metta` file not generated is the explicit out-of-scope
    benchmark generator. `test_forward_chainer` is generated as a forward
    materialization subset; its PeTTa-specific agenda/proof bookkeeping tail is
-   intentionally omitted in the generated file. Two distribution files are
-   generated as direct-helper subsets, while the numeric-pattern distribution
-   file is now fully generated. Omitted helper/query-tail sections are
-   documented in the generated files. Keep any future non-query harness additions explicit
+   intentionally omitted in the generated file. `test_distribution_values` is
+   generated as a FoldAllValue distribution-query prefix,
+   `test_particle_values` remains a direct-helper subset, and the
+   numeric-pattern distribution file is now fully generated. Omitted
+   helper/query-tail sections are documented in the generated files. Keep any
+   future non-query harness additions explicit
    about whether they exercise MM2 runtime behavior or PeTTa helper/compiler
    state.
    The converter now also preserves the known MM2-specific generated-fixture

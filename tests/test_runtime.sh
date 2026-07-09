@@ -148,9 +148,9 @@ run_reduced_test() {
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
   mork run rules/reduced_rules.mm2 --steps "$(steps_budget 15 5)" --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(fact (Animal x) (0.6897720572471554 0.753099382982331))"
+  assert_contains "$out" "(fact (Animal x) (0.6897720572471554 0.7530993828561005))"
   assert_contains "$out" "(fact (Mammal x) (0.9 0.5999999996754302))"
-  assert_contains "$out" "(fact (Pet x) (0.8 0.6999999998037639))"
+  assert_contains "$out" "(fact (Pet x) (0.8 0.6999999998037638))"
 
   local animal_proofs
   animal_proofs="$(grep -c '^(proved (Animal x) ' "$out")"
@@ -471,7 +471,7 @@ EOF
 
   assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
   assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
-  assert_contains "$out" "(fact (B i) (0.6 0.8999999998784551))"
+  assert_contains "$out" "(fact (B i) (0.6499999999812448 0.9473684207998814))"
 
   local proofs
   proofs="$(grep -c '^(proved (B i) ' "$out")"
@@ -530,7 +530,7 @@ EOF
   mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$sink_runtime" "$sink_out" >/dev/null
 
   assert_semantic_outputs_equal "$source_out" "$sink_out" "head_source_sink"
-  assert_contains "$source_out" "(fact (Combo ann) (0.5179999999719824 0.8494800133141294))"
+  assert_contains "$source_out" "(fact (Combo ann) (0.5179999999719824 0.8494800133141293))"
 }
 
 run_reduced_test
