@@ -117,7 +117,7 @@ generate_chain_fixture() {
 generate_fanout_fixture() {
   local width="$1"
   local file="$2"
-  local rounds=$(((width + 63) / 64))
+  local rounds=$(((width + 31) / 32))
   local i
 
   {
