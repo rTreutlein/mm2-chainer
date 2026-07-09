@@ -931,7 +931,7 @@ def forward_chainer_omission_reason(queryish, expected):
         return "OMITTED PeTTa forward CPU-placeholder cleanup check"
     converted = forward_has_derived_test(queryish, expected)
     if converted is not None and expected == "false" and converted[2] == "deltakb":
-        return "OMITTED PeTTa one-agenda-pop forward budget check"
+        return "OMITTED PeTTa one-agenda-pop forward budget check: MM2 forward-chain advances the whole KB in one broad pass"
     return None
 
 
@@ -1099,7 +1099,7 @@ def convert_file(path):
     particle_store_tail = path.name in PARTIAL_PARTICLE_STORE_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
     if forward_prefix_only:
-        out.insert(1, "; forward materialization subset; PeTTa agenda/proof-store internals are documented omissions")
+        out.insert(1, "; forward materialization subset; PeTTa agenda-step internals are documented omissions")
     unsupported = 0
     for kind, expr in forms:
         if particle_store_tail and kind == "bang":

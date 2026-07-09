@@ -790,6 +790,20 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=240 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=1 adapted=16 flagged-files=0
 
+## Forward agenda-step omission classification (DONE 2026-07-09)
+
+The only remaining generated omission is the first `deltakb` tiny-budget
+forward check in `test_forward_chainer.metta`. PeTTa's first
+`forward-chain 1` call pops one agenda item and intentionally has not derived
+`DeltaGoal` yet; MM2's harness-level `mm2-forward-chain` reopens the KB's
+materialization goals and advances them as a broad MORK pass, so `DeltaGoal`
+is already present after one MM2 forward round. The generated omission now
+names this agenda-step mismatch directly.
+
+Latest corpus snapshot after this classification:
+
+    totals: pass=240 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=1 adapted=16 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
