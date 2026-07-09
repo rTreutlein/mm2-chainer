@@ -27,11 +27,13 @@
 !(mm2-compileadd selectedkb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd selectedkb (: lowFact (LowPriority) (STV 1.0 0.8)))
 !(mm2-compileadd selectedkb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (SelectedGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-; OMITTED PeTTa selected/fact-seeded forward agenda check: (test (let $_ (forward-chain-from 1 selectedkb (LowPriority)) (forward-has-derived? selectedkb (SelectedGoal))) true)
+; ADAPTED PeTTa selected forward agenda check: MM2 checks materialization after a whole-KB forward pass
+!(mm2-test-forward-has-derived 1 selectedkb (SelectedGoal) true)
 !(mm2-compileadd factseedkb (: highFact (HighPriority) (STV 1.0 1.0)))
 !(mm2-compileadd factseedkb (: lowFact (LowPriority) (STV 1.0 0.8)))
 !(mm2-compileadd factseedkb (: lowToGoal (Implication (Premises (LowPriority)) (Conclusions (FactSeedGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-; OMITTED PeTTa selected/fact-seeded forward agenda check: (test (let* (($facts (collapse (match &kb ((LowPriority) (factseedkb MAIN Nil) $prf $tv) ((LowPriority) (factseedkb MAIN Nil) $prf $tv)))) ($_ (forward-chain-fr
+; ADAPTED PeTTa fact-seeded forward agenda check: MM2 checks materialization after a whole-KB forward pass
+!(mm2-test-forward-has-derived 1 factseedkb (FactSeedGoal) true)
 !(mm2-compileadd ruleaddkb (: oldSeed (RuleSeed) (STV 1.0 1.0)))
 !(mm2-test-forward-has-derived 1 ruleaddkb (RuleAddGoal) false)
 !(mm2-compileadd ruleaddkb (: seedToGoal (Implication (Premises (RuleSeed)) (Conclusions (RuleAddGoal))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
@@ -39,4 +41,5 @@
 !(mm2-compileadd dedupekb (: dedupeSeed (DedupeSeed) (STV 1.0 0.4)))
 !(mm2-compileadd dedupekb (: dedupeRule (Implication (Premises (DedupeSeed)) (Conclusions (DedupeGoal))) (CTV (STV 1.0 0.5) (STV 0.0 1.0))))
 ; OMITTED PeTTa forward agenda dirty-state check: (test (forward-agenda-dirty? dedupekb) true)
-; OMITTED PeTTa forward CPU-placeholder cleanup check: (test (let* (($_ (forward-chain 10 dedupekb)) ($cpu-call-tvs (collapse (match &kb ((DedupeGoal) (dedupekb MAIN Nil) $prf (cpu-call $steps $fun $args)) true))))
+; ADAPTED PeTTa forward CPU-placeholder cleanup check: MM2 checks the materialized output fact
+!(mm2-test-forward-has-derived 10 dedupekb (DedupeGoal) true)

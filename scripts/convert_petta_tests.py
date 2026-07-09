@@ -743,6 +743,85 @@ def forward_has_derived_test(queryish, expected):
     ]
 
 
+def binding_value(bindings, var):
+    for binding in bindings:
+        if isinstance(binding, list) and len(binding) == 2 and binding[0] == var:
+            return binding[1]
+    return None
+
+
+def forward_binding(bindings):
+    for binding in bindings:
+        if not isinstance(binding, list) or len(binding) != 2:
+            continue
+        value = binding[1]
+        if head(value) in {"forward-chain", "forward-chain-from", "forward-chain-from-facts"}:
+            return value
+    return None
+
+
+def match_pattern_from_collapse(expr):
+    if head(expr) != "collapse" or len(expr) != 2:
+        return None
+    match = expr[1]
+    if head(match) != "match" or len(match) != 4 or match[1] != "&kb":
+        return None
+    return match[2]
+
+
+def scoped_pattern_kb_type(pattern):
+    if not isinstance(pattern, list) or len(pattern) != 4:
+        return None
+    typ, scope = pattern[0], pattern[1]
+    if not isinstance(scope, list) or len(scope) != 3:
+        return None
+    return scope[0], typ
+
+
+def forward_chainer_materialization_adaptation(queryish, expected):
+    if expected != "true":
+        return None
+
+    if head(queryish) == "let" and len(queryish) == 4:
+        forward, derived = queryish[2], queryish[3]
+        if head(forward) == "forward-chain-from" and len(forward) == 4:
+            if head(derived) == "forward-has-derived?" and len(derived) == 3 and forward[2] == derived[1]:
+                return (
+                    "ADAPTED PeTTa selected forward agenda check: MM2 checks materialization after a whole-KB forward pass",
+                    ["mm2-test-forward-has-derived", rename_calls(forward[1]), rename_calls(forward[2]), rename_calls(derived[2]), "true"],
+                )
+        return None
+
+    if head(queryish) != "let*" or len(queryish) != 3:
+        return None
+    bindings, body = queryish[1], queryish[2]
+    forward = forward_binding(bindings)
+    if forward is None:
+        return None
+
+    if head(forward) == "forward-chain-from-facts" and len(forward) == 4:
+        if head(body) == "forward-has-derived?" and len(body) == 3 and forward[2] == body[1]:
+            return (
+                "ADAPTED PeTTa fact-seeded forward agenda check: MM2 checks materialization after a whole-KB forward pass",
+                ["mm2-test-forward-has-derived", rename_calls(forward[1]), rename_calls(forward[2]), rename_calls(body[2]), "true"],
+            )
+
+    if head(forward) != "forward-chain" or len(forward) != 3:
+        return None
+    rounds, kb = forward[1], forward[2]
+
+    if head(body) == "==" and len(body) == 3 and body[2] == [] and is_var(body[1]):
+        pattern = match_pattern_from_collapse(binding_value(bindings, body[1]))
+        scoped = scoped_pattern_kb_type(pattern)
+        if scoped is not None and scoped[0] == kb and head(pattern[3]) == "cpu-call":
+            return (
+                "ADAPTED PeTTa forward CPU-placeholder cleanup check: MM2 checks the materialized output fact",
+                ["mm2-test-forward-has-derived", rename_calls(rounds), rename_calls(kb), rename_calls(scoped[1]), "true"],
+            )
+
+    return None
+
+
 def forward_chainer_omission_reason(queryish, expected):
     if contains_head(queryish, "forward-agenda-dirty?"):
         return "OMITTED PeTTa forward agenda dirty-state check"
@@ -944,6 +1023,12 @@ def convert_file(path):
             continue
         if kind == "bang" and head(expr) == "test":
             if forward_prefix_only:
+                adapted = forward_chainer_materialization_adaptation(expr[1], expr[2])
+                if adapted is not None:
+                    reason, converted = adapted
+                    out.append("; " + reason)
+                    out.append("!" + show(converted))
+                    continue
                 omitted = forward_chainer_omission_reason(expr[1], expr[2])
                 if omitted is not None:
                     out.append("; " + omitted + ": " + short_snippet(expr))

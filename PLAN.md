@@ -702,7 +702,21 @@ pruning, and the pruning-only fixture fact.
 
 Latest corpus snapshot after this adjustment:
 
-    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+    totals: pass=225 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
+## Forward source-materialization adaptations (DONE 2026-07-09)
+
+`test_forward_chainer.metta` now converts the materialization-compatible
+parts of PeTTa's `forward-chain-from`, `forward-chain-from-facts`, and
+CPU-placeholder cleanup checks. These are intentionally documented as
+adaptations: MM2 still does not model PeTTa's selected-source agenda or
+proof-store internals, but it now verifies the reachable output facts for
+`SelectedGoal`, `FactSeedGoal`, and `DedupeGoal`.
+
+Latest corpus snapshot after this adjustment, run serially because the harness
+side log is process-global:
+
+    totals: pass=228 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
 ## Next
 
@@ -752,8 +766,9 @@ Latest corpus snapshot after this adjustment:
    FoldAllValue distribution CTVMP helper-tail coverage, real
    distribution `GreaterThan` rule-premise coverage, and selective
    forward-materialization tail coverage, and explicit per-form
-   ParticleStore resource-management omissions):
-   pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   ParticleStore resource-management omissions, and adapted forward
+   source-materialization checks):
+   pass=228 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -848,8 +863,9 @@ Latest corpus snapshot after this adjustment:
    short-budget fixture still uses budget 1.
    `test_forward_chainer` now continues past PeTTa proof-count/proof-store
    assertions and converts the materialization-compatible derivedness checks:
-   initial path closure, eventual `DeltaGoal`, and rule-added-after-first-run
-   false/true behavior.
+   initial path closure, eventual `DeltaGoal`, selected/fact-seeded forward
+   materialization, rule-added-after-first-run false/true behavior, and the
+   dedupe CPU-placeholder cleanup's reachable-output side.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
@@ -874,7 +890,8 @@ Latest corpus snapshot after this adjustment:
    state.
    The converter now also preserves the known MM2-specific generated-fixture
    adaptations for materialization/two-hop budgets, best-first intent checks,
-   openAndFair's capped budget, and `DistGreaterThanFormula` helper tests.
+   openAndFair's capped budget, forward source-materialization checks, and
+   `DistGreaterThanFormula` helper tests.
    Distributional fact terms now export PeTTa `ParticleDist` pairs as
    `dist-pair` atoms in the MORK space.  Identity-CTV `Map2Dist *` rules now
    derive deterministic output `ParticleDist` ids and materialize their pairs

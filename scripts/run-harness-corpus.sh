@@ -8,6 +8,8 @@
 # happens (see mm2-log-line in compiler/mm2_chainer.metta); this runner
 # counts from that side log so a timeout on a runaway query keeps the
 # verdicts produced before it.
+# Do not run another mm2 harness petta process in parallel with this script:
+# the side log path is shared by compiler/mm2_chainer.metta.
 #
 # Verdicts: mm2-test-pass / mm2-test-close / mm2-test-FAIL, plus
 #   unsupported-ir = IR shapes the translator/runtime cannot express yet
