@@ -949,12 +949,16 @@ Latest corpus snapshot after this adjustment:
 ## Corpus timing visibility (DONE 2026-07-09)
 
 `scripts/run-harness-corpus.sh` now records elapsed time for each generated
-fixture plus the total corpus runtime in `outputs/harness_report.txt`. This
-keeps performance visible in the normal gate output while preserving the
-existing semantic pass/close/fail/unsupported/skipped/omitted/adapted checks.
+fixture plus the total corpus runtime in `outputs/harness_report.txt`, and
+writes `outputs/harness_perf.tsv` sorted slowest-first for quick hotspot
+inspection. This keeps performance visible in the normal gate output while
+preserving the existing semantic pass/close/fail/unsupported/skipped/omitted/adapted checks.
 The runner also assigns each petta process a distinct
 `MM2_HARNESS_VERDICT_LOG` side log and runs the corpus with
 `MM2_HARNESS_JOBS=4` by default, while preserving deterministic report order.
+For focused iteration, optional file stems/paths restrict the run and write
+`outputs/harness_report.focus.txt` plus `outputs/harness_perf.focus.tsv`, leaving
+the last full-corpus reports intact.
 
 The first timed run showed `test_forward_chainer` as the slowest generated
 fixture at about 4.0 s. `mm2-forward-chain-loop` now stops once the source

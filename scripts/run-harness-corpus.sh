@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the converted PeTTaChainer test corpus (tests/harness/generated/*)
 # against the mm2 runtime via petta + mork_ffi, one petta process per file,
-# and write a per-file verdict report to outputs/harness_report.txt.
+# and write per-file verdict/timing reports under outputs/.
 #
 # petta only prints bang results at exit, so the harness also appends every
 # verdict / notsupported marker durably to a side log as it happens (see
@@ -14,6 +14,9 @@
 #
 #   bash scripts/run-harness-corpus.sh test_forward_chainer
 #   bash scripts/run-harness-corpus.sh tests/harness/generated/test_math.metta
+#
+# Focused runs use outputs/harness_report.focus.txt and
+# outputs/harness_perf.focus.tsv so full-corpus report artifacts stay intact.
 #
 # Verdicts: mm2-test-pass / mm2-test-close / mm2-test-FAIL, plus
 #   unsupported-ir = IR shapes the translator/runtime cannot express yet
