@@ -674,9 +674,23 @@ query result can be open but not yet merged at the narrow query cap after prior
 same-file distribution state. The forward-chain compose generated fixture also
 uses query budget 4, the smallest passing cap after prior same-file state.
 
-Latest corpus snapshot after this adjustment:
+Historical corpus snapshot after this adjustment:
 
     totals: pass=247 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
+
+## Selective forward-chainer materialization tail (DONE 2026-07-09)
+
+`test_forward_chainer.metta` now continues through the whole source file
+instead of stopping after the first PeTTa proof-count check. The converter
+emits the forward materialization checks that match mm2's current harness
+model, and leaves agenda/proof-store internals as explicit inline omissions.
+New generated assertions cover eventual `DeltaGoal` derivation and the
+`ruleaddkb` behavior where no goal is derived before the rule exists, then the
+goal is derived after the rule is added.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=225 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0
 
 ## Next
 
@@ -723,9 +737,10 @@ Latest corpus snapshot after this adjustment:
    numeric-pattern query-prefix coverage, and forward materialization prefix
    coverage, and dist-vs-dist helper coverage, and numeric-pattern helper
    completion, FoldAllValue distribution-query prefix coverage,
-   FoldAllValue distribution CTVMP helper-tail coverage, and real
-   distribution `GreaterThan` rule-premise coverage):
-   pass=247 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
+   FoldAllValue distribution CTVMP helper-tail coverage, real
+   distribution `GreaterThan` rule-premise coverage, and selective
+   forward-materialization tail coverage):
+   pass=225 close=0 fail=0 unsupported-ir=0 skipped=0 flagged-files=0,
    wall time under a minute including verification.  The hand harness is separate and currently reports
    `HARNESS: 10 pass, 0 close, 0 fail`.
    No supported failures, closes, or unsupported IR remain in the generated
@@ -818,6 +833,10 @@ Latest corpus snapshot after this adjustment:
    bounded number of steps before running the follow-up query. The positive
    compose query uses budget 4 after prior same-file state, while the negative
    short-budget fixture still uses budget 1.
+   `test_forward_chainer` now continues past PeTTa proof-count/proof-store
+   assertions and converts the materialization-compatible derivedness checks:
+   initial path closure, eventual `DeltaGoal`, and rule-added-after-first-run
+   false/true behavior.
 18. **STV-rule inversion materialization guard**:
    Single-premise STV inverses now use guarded base-rate keys and emit the
    consequent materialization goal.  The focused harness assertion in
@@ -827,8 +846,9 @@ Latest corpus snapshot after this adjustment:
 19. Converter gaps: no generated corpus tests are currently skipped. The only
    upstream `test_*.metta` file not generated is the explicit out-of-scope
    benchmark generator. `test_forward_chainer` is generated as a forward
-   materialization subset; its PeTTa-specific agenda/proof bookkeeping tail is
-   intentionally omitted in the generated file. `test_distribution_values` now
+   materialization subset; its PeTTa-specific agenda/proof bookkeeping checks
+   are intentionally omitted inline while later materialization-compatible
+   assertions continue to be converted. `test_distribution_values` now
    includes the downstream `PlayTogetherIn` `GreaterThan` rule, and
    `test_particle_values` now generates the country-height `Taller` rule plus
    the FoldAllValue particle-count query/helper tail. Its remaining omitted

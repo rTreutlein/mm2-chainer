@@ -742,6 +742,29 @@ def forward_has_derived_test(queryish, expected):
     ]
 
 
+def forward_chainer_omission_reason(queryish, expected):
+    if contains_head(queryish, "forward-agenda-dirty?"):
+        return "OMITTED PeTTa forward agenda dirty-state check"
+    if contains_head(queryish, "forward-chain-from") or contains_head(queryish, "forward-chain-from-facts"):
+        return "OMITTED PeTTa selected/fact-seeded forward agenda check"
+    if contains_head(queryish, "proof-atom-evidence-set"):
+        return "OMITTED PeTTa forward proof-store evidence check"
+    if contains_head(queryish, "list-count"):
+        return "OMITTED PeTTa forward proof-count check"
+    if contains_head(queryish, "merge/revision"):
+        return "OMITTED PeTTa forward proof-token merge-shape check"
+    if contains_head(queryish, "cpu-call"):
+        return "OMITTED PeTTa forward CPU-placeholder cleanup check"
+    converted = forward_has_derived_test(queryish, expected)
+    if converted is not None and expected == "false" and converted[2] == "deltakb":
+        return "OMITTED PeTTa one-agenda-pop forward budget check"
+    return None
+
+
+def short_snippet(expr, limit=160):
+    return show(expr)[:limit].rstrip()
+
+
 def cached_base_rate_test(queryish):
     if head(queryish) != "let" or len(queryish) != 4:
         return None
@@ -883,7 +906,7 @@ def convert_file(path):
     if prefix_only:
         out.insert(1, "; supported query-prefix subset; later numeric distribution helpers are not generated yet")
     if forward_prefix_only:
-        out.insert(1, "; forward materialization subset; PeTTa forward agenda/proof bookkeeping is not generated yet")
+        out.insert(1, "; forward materialization subset; PeTTa agenda/proof-store internals are documented omissions")
     unsupported = 0
     for kind, expr in forms:
         if direct_dist_only and kind == "bang" and head(expr) == "compileadd":
@@ -902,12 +925,16 @@ def convert_file(path):
                 out.append("; Remaining source forms exercise PeTTa ParticleStore pruning and are intentionally omitted here.")
                 break
             if forward_prefix_only:
+                omitted = forward_chainer_omission_reason(expr[1], expr[2])
+                if omitted is not None:
+                    out.append("; " + omitted + ": " + short_snippet(expr))
+                    continue
                 converted = forward_has_derived_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
                     continue
-                out.append("; Remaining source forms start at PeTTa forward agenda/proof bookkeeping coverage and are intentionally omitted here.")
-                break
+                out.append("; OMITTED PeTTa forward-chainer-specific form: " + short_snippet(expr))
+                continue
             converted = convert_test(expr)
             if converted is not None:
                 out.append("!" + show(converted))
