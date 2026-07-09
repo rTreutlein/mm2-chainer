@@ -1221,18 +1221,22 @@ path during normal test runs.
    them), so long files lose output on kill — hence the side log; `swrite`
    + open/write/nl/close via callPredicate is the durable-logging idiom.
 
-## Key findings that drive the design
+## Rule-TV semantic parity implementation (DONE 2026-07-09)
 
-1. **The current mm2 rule application is not PeTTa-parity.** It computes the
-   proof TV as `(rule-s*prem-s, rule-c*prem-c)`. PeTTa applies
+The runtime now uses PeTTa-style rule application instead of the original
+product shortcut.  The implementation is split between MORK helper primitives
+and mm2 runtime/compiler wiring:
+
+1. **Rule application uses PeTTa's contextual-TV formulas.** The old runtime
+   computed proof TVs as `(rule-s*prem-s, rule-c*prem-c)`. PeTTa applies
    `CTVModusPonensFormula(premiseAggTV, ruleCTV)` (tv_formulas.metta):
    - strength `= bs_a*as + bs_na*(1-as)`
    - confidence `= ideal-mp-confidence(as, ac, bs_a, bc_a, bs_na, bc_na)`
      (second-order variance propagation, `VarsB = as^2*Va + (1-as)^2*Vna +
      (bs_a-bs_na)^2*Vz + Vz*(Va+Vna)`, then `ideal-conf-from-var`).
-   E.g. PeTTa's own open-query test (rule CTV `((1.0 1.0)(0.0 1.0))`, exact
-   premise) yields conf `0.9998000399670116`, not `1.0`. So the existing mm2
-   test expectations (products) must be recomputed, not preserved.
+   PeTTa's own open-query test (rule CTV `((1.0 1.0)(0.0 1.0))`, exact
+   premise) yields conf `0.9998000399670116`, not `1.0`; the runtime tests now
+   pin the recomputed values.
 2. **Rule TVs are CTVs.** `compileadd` rules authored with
    `(CTV (STV s+ c+) (STV s- c-))` use that CTV directly. Rules authored with
    a plain `(STV s c)` get a *derived* CTV at rule-fire time:
@@ -1248,8 +1252,8 @@ path during normal test runs.
      `ImplicationCTVFormula` coerces to `(STV 0.0 0.0)`.
 3. **`confidence-to-count` parity:** PeTTa uses
    `c*800/(1 - min(c, 0.9999))` (chainer_utils.metta:149). MORK's
-   `pln_confidence_to_count` uses `8e6` for `c>=1` (same value) but diverges
-   for `c` in `(0.9999, 1)`. Unify MORK's helper to the PeTTa formula.
+   helper now uses the same formula, avoiding divergence for `c` in
+   `(0.9999, 1)`.
 4. **MM2 execution model** (from MORK space.rs / sinks.rs): one exec fires per
    step; execs run in lexicographic priority order (`0,1,3,4,...,B,C,Z`); the
    `Z` loop re-seeds all `exec-template`s each round. Each output template of
@@ -1258,20 +1262,16 @@ path during normal test runs.
    unify data-with-vars against ground facts (this is how `Goal`/`ruleN`
    matching already works — MORK commit e551924).
 
-## Design
+## Implemented Design
 
 ### 1. MORK pure ops (kernel/src/pure.rs)
-
-Next to `pln_and_confidence_f64`:
 
 - `pln_negative_branch_strength_f64(sa, sb, sb_a)` — NegativeBranchStrength.
 - `pln_mp_strength_f64(as, bs_a, bs_na)` — `bs_a*as + bs_na*(1-as)`.
 - `pln_mp_confidence_f64(as, ac, bs_a, bc_a, bs_na, bc_na)` —
   ideal-mp-confidence, sharing the existing `pln_ideal_var` /
   `pln_ideal_conf_from_var` helpers.
-- Change `pln_confidence_to_count` to `800*c/(1 - min(c,0.9999))` (c<=0 -> 0).
-
-Register all in `register()`.
+- `pln_confidence_to_count` follows `800*c/(1 - min(c,0.9999))` (c<=0 -> 0).
 
 ### 2. MORK base-rate fold sink (kernel/src/sinks.rs)
 
@@ -1348,16 +1348,16 @@ port) before regenerating the rest.
 backend (like `run_reference_nary_conjunction_test` does with `petta`),
 build the runtime, run, assert `(fact (B x) (0.6 0.8999998649685302))`.
 
-## Risks / open questions
+## Residual caveat
 
-- Variable-vs-variable unification for `(base-rate $ante ...)` matching
-  (data pattern against data pattern) — validate early with a micro .mm2
-  experiment before building everything on it.
+- Variable-vs-variable unification for `(base-rate $ante ...)` matching is now
+  covered by `run_reference_stv_implication_test`, which pins the maintained
+  `(base-rate (A $a) ...)` and `(base-rate (B $a) ...)` facts produced from
+  copied base-rate patterns.
 - Structurally different but unifiable patterns (e.g. `(P $x $y)` vs
   `(P $x c)`) would cross-match base-rate keys; acceptable for now.
-- Sink no-op when recomputed value equals old (avoid churn) — compare bytes
-  in finalize.
-- `outputs/` contains stale generated files; regenerate via scripts.
+- `BaseRateSink` compares the serialized old/new values in `finalize` and
+  avoids rewriting unchanged base-rate facts.
 
 ## How to run
 

@@ -410,6 +410,8 @@ EOF
 
   assert_contains "$compiler_out" "(fact (A x) (1.0 0.9))"
   assert_contains "$compiler_out" "(, (Goal (B x)))"
+  assert_contains "$out" '(base-rate (A $a) (1 0.0011237357972281184))'
+  assert_contains "$out" '(base-rate (B $a) (0.6 0.0011237356288179173))'
   assert_contains "$out" "(fact (B x) (0.6 0.8999998649685302))"
 }
 
