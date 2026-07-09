@@ -40,6 +40,5 @@
 !(mm2-test-forward-has-derived 2 ruleaddkb (RuleAddGoal) true)
 !(mm2-compileadd dedupekb (: dedupeSeed (DedupeSeed) (STV 1.0 0.4)))
 !(mm2-compileadd dedupekb (: dedupeRule (Implication (Premises (DedupeSeed)) (Conclusions (DedupeGoal))) (CTV (STV 1.0 0.5) (STV 0.0 1.0))))
-; ADAPTED PeTTa forward agenda dirty-state check: MM2 checks that forward goals are registered
-!(mm2-test-forward-has-goals dedupekb true)
+!(mm2-test-equal (mm2-forward-agenda-dirty? dedupekb) true)
 !(mm2-test-equal (let* (($_ (mm2-forward-chain 10 dedupekb)) ($cpu-call-tvs (collapse (match &kb ((DedupeGoal) (dedupekb MAIN Nil) $prf (cpu-call $steps $fun $args)) true)))) (== $cpu-call-tvs ())) true)

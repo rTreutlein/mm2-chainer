@@ -136,6 +136,8 @@ def rename_calls(e):
         e[0] = "mm2-forward-chain-from-facts"
     elif head(e) == "forward-has-derived?":
         e[0] = "mm2-forward-derived?"
+    elif head(e) == "forward-agenda-dirty?":
+        e[0] = "mm2-forward-agenda-dirty?"
     elif head(e) == "set-base-rate":
         e[0] = "mm2-set-base-rate"
     elif head(e) == "clear-base-rate":
@@ -799,15 +801,15 @@ def scoped_pattern_kb_type(pattern):
     return scope[0], typ
 
 
+def forward_chainer_agenda_dirty_test(queryish, expected):
+    if head(queryish) == "forward-agenda-dirty?" and len(queryish) == 2:
+        return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
+    return None
+
+
 def forward_chainer_materialization_adaptation(queryish, expected):
     if expected != "true":
         return None
-
-    if head(queryish) == "forward-agenda-dirty?" and len(queryish) == 2:
-        return (
-            "ADAPTED PeTTa forward agenda dirty-state check: MM2 checks that forward goals are registered",
-            ["mm2-test-forward-has-goals", rename_calls(queryish[1]), "true"],
-        )
 
     if head(queryish) == "let" and len(queryish) == 4:
         forward, derived = queryish[2], queryish[3]
@@ -1192,6 +1194,10 @@ def convert_file(path):
                     out.append("!" + show(converted))
                     continue
                 converted = forward_chainer_source_materialization_test(expr[1], expr[2])
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
+                converted = forward_chainer_agenda_dirty_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
                     continue

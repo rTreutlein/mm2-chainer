@@ -1244,6 +1244,9 @@
    (let $scope (mm2-ir-scope-kb $kb)
      (not (== (mm2-forward-chain-goals $scope) ()))))
 
+(= (mm2-forward-agenda-dirty? $kb)
+   (mm2-forward-has-goals? $kb))
+
 (= (mm2-forward-derived? $kb $type)
    (let $g ((mm2-ir-scope-kb $kb) $type)
      (not (== (collapse (match &mork (fact $g ($s $c)) true)) ()))))
