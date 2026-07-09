@@ -63,6 +63,8 @@ slow fixtures are visible in the normal gate output. Corpus files run in
 parallel with 4 jobs by default; set positive-integer `MM2_HARNESS_JOBS=1` for
 serial debugging or a higher value for local timing experiments. Harness
 side-log files live under `outputs/` and are managed by the runner scripts.
+After each corpus run, `outputs/harness_perf.tsv` lists generated files sorted
+slowest-first by elapsed milliseconds.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 

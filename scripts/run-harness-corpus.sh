@@ -26,7 +26,9 @@ mkdir -p outputs/harness_logs
 bash scripts/build-runtime.sh outputs/harness_runtime.mm2
 
 report="outputs/harness_report.txt"
+perf_report="outputs/harness_perf.tsv"
 : > "$report"
+: > "$perf_report"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0 total_ms=0
 min_total_pass=259
@@ -197,6 +199,19 @@ done
   echo "---"
   echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted time=$(format_ms "$suite_ms")s file-time=$(format_ms "$total_ms")s flagged-files=$((total_err + total_coverage_err + total_adapted_err))"
 } >> "$report"
+
+{
+  printf 'file\tduration_ms\tpass\tclose\tfail\tunsupported_ir\tskipped\tomitted\tadapted\tstatus\n'
+  for f in "${files[@]}"; do
+    metrics="outputs/harness_logs/$(basename "$f" .metta).metrics"
+    if [ ! -s "$metrics" ]; then
+      continue
+    fi
+    IFS=$'\t' read -r name status duration_ms pass close fail unsup_ir skipped omitted adapted < "$metrics"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$name" "$duration_ms" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$omitted" "$adapted" "$status"
+  done | sort -t $'\t' -k2,2nr
+} > "$perf_report"
 
 cat "$report"
 
