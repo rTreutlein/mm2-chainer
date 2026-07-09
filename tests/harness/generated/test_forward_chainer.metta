@@ -20,7 +20,8 @@
 !(mm2-compileadd mergekb (: ruleStable (Implication (Premises (BasePremise)) (Conclusions (SwitchGoal))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))
 ; ADAPTED PeTTa forward proof-token merge-shape check: MM2 checks canonical materialized readback proof token
 !(mm2-test-forward-query-proofs 50 10 mergekb (: $prf (SwitchGoal) $tv) (mm2-merged))
-; OMITTED PeTTa forward proof-store evidence check: (test (let* (($_ (forward-chain 50 mergekb)) ($ev-ok (collapse (match &kb ((SwitchGoal) (mergekb MAIN Nil) $prf $tv) (== (proof-atom-evidence-set ((SwitchGoal)
+; ADAPTED PeTTa forward proof-store evidence check: MM2 checks merged fact-evidence union, not PeTTa single proof-store token
+!(mm2-test-equal (let $_forward (mm2-forward-chain 50 mergekb) (collapse (match &mork (fact-evidence ((mergekb MAIN Nil) (SwitchGoal)) $stv (pcons (fact-ev ((mergekb MAIN Nil) (BasePremise))) (pcons (fact-ev ((mergekb MAIN Nil) (WeakPremise))) (pcons (rule-ev (ruleStable $stable-proof)) (pcons (rule-ev (ruleHighThenDrop $drop-proof)) pnil))))) true))) (true))
 ; ADAPTED PeTTa forward proof-count check: MM2 checks materialized fact count
 !(mm2-test-forward-fact-count 50 mergekb (SwitchGoal) 1)
 !(mm2-compileadd deltakb (: highFact (HighPriority) (STV 1.0 1.0)))

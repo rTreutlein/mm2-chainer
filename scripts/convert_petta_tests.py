@@ -861,6 +861,61 @@ def forward_chainer_merge_token_adaptation(queryish, expected):
     )
 
 
+def forward_chainer_evidence_union_adaptation(queryish, expected):
+    if expected != "true" or not contains_head(queryish, "proof-atom-evidence-set"):
+        return None
+    if head(queryish) != "let*" or len(queryish) != 3:
+        return None
+    bindings, body = queryish[1], queryish[2]
+    forward = forward_binding(bindings)
+    if head(forward) != "forward-chain" or len(forward) != 3:
+        return None
+    if head(body) != "not" or len(body) != 2:
+        return None
+    nonempty = body[1]
+    if head(nonempty) != "==" or len(nonempty) != 3 or nonempty[2] != [] or not is_var(nonempty[1]):
+        return None
+    pattern = match_pattern_from_collapse(binding_value(bindings, nonempty[1]))
+    scoped = scoped_pattern_kb_type(pattern)
+    if scoped is None or scoped[0] != "mergekb" or scoped[1] != ["SwitchGoal"]:
+        return None
+    scope = ["mergekb", "MAIN", "Nil"]
+    evidence = [
+        "pcons",
+        ["fact-ev", [scope, ["BasePremise"]]],
+        [
+            "pcons",
+            ["fact-ev", [scope, ["WeakPremise"]]],
+            [
+                "pcons",
+                ["rule-ev", ["ruleStable", "$stable-proof"]],
+                ["pcons", ["rule-ev", ["ruleHighThenDrop", "$drop-proof"]], "pnil"],
+            ],
+        ],
+    ]
+    return (
+        "ADAPTED PeTTa forward proof-store evidence check: MM2 checks merged fact-evidence union, not PeTTa single proof-store token",
+        [
+            "mm2-test-equal",
+            [
+                "let",
+                "$_forward",
+                ["mm2-forward-chain", rename_calls(forward[1]), rename_calls(forward[2])],
+                [
+                    "collapse",
+                    [
+                        "match",
+                        "&mork",
+                        ["fact-evidence", [scope, ["SwitchGoal"]], "$stv", evidence],
+                        "true",
+                    ],
+                ],
+            ],
+            ["true"],
+        ],
+    )
+
+
 def forward_chainer_omission_reason(queryish, expected):
     if contains_head(queryish, "forward-agenda-dirty?"):
         return "OMITTED PeTTa forward agenda dirty-state check"
@@ -1074,6 +1129,12 @@ def convert_file(path):
                     out.append("!" + show(converted))
                     continue
                 adapted = forward_chainer_merge_token_adaptation(expr[1], expr[2])
+                if adapted is not None:
+                    reason, converted = adapted
+                    out.append("; " + reason)
+                    out.append("!" + show(converted))
+                    continue
+                adapted = forward_chainer_evidence_union_adaptation(expr[1], expr[2])
                 if adapted is not None:
                     reason, converted = adapted
                     out.append("; " + reason)
