@@ -1462,6 +1462,31 @@
 (= (mm2-dist-pairs (ParticleDist $pid $_scale))
    (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))
 
+(= (mm2-particle-store-count)
+   (list-count (collapse (match &mork (dist-pair $pid $x $w) ($pid $x $w)))))
+
+(= (mm2-particle-store-clear)
+   (let* (($_pairs (mm2-remove-matches (dist-pair $pid $x $w)))
+          ($_dist (mm2-remove-matches (dist-particle-dist $term $pid)))
+          ($_point-pair (mm2-remove-matches (dist-point-pair $pid $x $w)))
+          ($_point-dist (mm2-remove-matches (dist-point-dist $term $x $w))))
+     ()))
+
+(= (mm2-particle-set-budget $n) (change-state! mm2_particle_budget $n))
+
+(= (mm2-particle-get-budget)
+   (let $mb (catch (get-state mm2_particle_budget))
+     (if-error $mb 512 $mb)))
+
+(= (mm2-particle-store-prune-kb)
+   (let $_clear (mm2-particle-store-clear)
+     (mm2-particle-store-count)))
+
+(= (mm2-store-ParticleFromPairs $pairs)
+   (let $dist (ParticleFromPairs $pairs)
+     (let $_export (mm2-export-dist $dist)
+       $dist)))
+
 (= (mm2-export-dist-pairs $_pid ()) ())
 (= (mm2-export-dist-pairs $pid (cons ($x $w) $rest))
    (let $_add (add-atom &mork (dist-pair $pid $x $w))

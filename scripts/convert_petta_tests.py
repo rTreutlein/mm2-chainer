@@ -18,9 +18,8 @@ unreduced terms in the run report — that's the gap list.
 
 Files whose tests are entirely out of scope are skipped; query-oriented tests
 are generated even when they also have older hand-written harness coverage.
-Some distribution files omit PeTTa's particle-store pruning helpers as explicit
-per-form comments; those are runtime resource-management tests rather than
-chainer rule semantics.
+Distribution helper-state checks are routed to MM2-visible store facades where
+they are not part of chainer rule semantics.
 """
 
 import re
@@ -143,6 +142,27 @@ def rename_calls(e):
         e[0] = "mm2-clear-base-rate"
     elif head(e) == "store-computed-base-rate!":
         e[0] = "mm2-store-computed-base-rate!"
+    return e
+
+
+PARTICLE_STORE_RENAMES = {
+    "ParticleStoreClear": "mm2-particle-store-clear",
+    "ParticleStoreCount": "mm2-particle-store-count",
+    "ParticleStorePruneKB": "mm2-particle-store-prune-kb",
+    "ParticleSetBudget": "mm2-particle-set-budget",
+    "ParticleGetBudget": "mm2-particle-get-budget",
+    "ParticleFromPairs": "mm2-store-ParticleFromPairs",
+}
+
+
+def rename_particle_store_calls(e):
+    if not isinstance(e, list):
+        return e
+    e = [rename_particle_store_calls(x) for x in e]
+    h = head(e)
+    mapped = PARTICLE_STORE_RENAMES.get(h) if isinstance(h, str) else None
+    if mapped is not None:
+        e[0] = mapped
     return e
 
 
@@ -992,31 +1012,19 @@ def forward_chainer_omission_reason(queryish, expected):
     return None
 
 
-def particle_store_adaptation(expr):
+def particle_store_test(expr):
     if head(expr) == "test" and len(expr) == 3:
         queryish = expr[1]
         if contains_head(queryish, "ParticleSetBudget") or contains_head(queryish, "ParticleGetBudget"):
-            return (
-                "ADAPTED PeTTa ParticleStore budget helper check: runs PeTTa helper state, not MM2 dist-pair storage",
-                ["mm2-test-equal", rename_calls(queryish), rename_calls(expr[2])],
-            )
+            return ["mm2-test-equal", rename_particle_store_calls(queryish), rename_calls(expr[2])]
         if contains_head(queryish, "ParticleStorePruneKB"):
-            return (
-                "ADAPTED PeTTa ParticleStore pruning/resource-management check: runs PeTTa helper state, not MM2 dist-pair storage",
-                ["mm2-test-equal", rename_calls(queryish), rename_calls(expr[2])],
-            )
+            return ["mm2-test-equal", rename_particle_store_calls(queryish), rename_calls(expr[2])]
         if contains_head_prefix(queryish, "ParticleStore"):
-            return (
-                "ADAPTED PeTTa ParticleStore resource-management check: runs PeTTa helper state, not MM2 dist-pair storage",
-                ["mm2-test-equal", rename_calls(queryish), rename_calls(expr[2])],
-            )
+            return ["mm2-test-equal", rename_particle_store_calls(queryish), rename_calls(expr[2])]
     if head(expr) == "compileadd" and len(expr) == 3:
         stmt = expr[2]
         if head(stmt) == ":" and len(stmt) >= 2 and stmt[1] == "keptParticleFact":
-            return (
-                "ADAPTED PeTTa ParticleStore pruning fixture fact: retained for PeTTa helper-state prune coverage",
-                rename_calls(expr),
-            )
+            return rename_particle_store_calls(rename_calls(expr))
     return None
 
 
@@ -1160,10 +1168,8 @@ def convert_file(path):
     unsupported = 0
     for kind, expr in forms:
         if particle_store_tail and kind == "bang":
-            adapted = particle_store_adaptation(expr)
-            if adapted is not None:
-                reason, converted = adapted
-                out.append("; " + reason)
+            converted = particle_store_test(expr)
+            if converted is not None:
                 out.append("!" + show(converted))
                 continue
         if kind == "bang" and head(expr) == "import!":

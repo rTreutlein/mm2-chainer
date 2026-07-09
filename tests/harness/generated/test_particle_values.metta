@@ -30,17 +30,10 @@
 !(mm2-test-query-dist-gt-mp-strength-between 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0599 0.0601)
 !(mm2-test-query-dist-gt-mp-confidence-over 40 kb (: $prf (CntKidInParticle roomp1 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0)
 !(mm2-test-query-dist-gt-mp-confidence-over 40 kb (: $prf (CntKidInParticle roomp2 $cnt) $tv) 1 (CTV (STV 1.0 0.75) (STV 0.0 1.0)) 0.0)
-; ADAPTED PeTTa ParticleStore resource-management check: runs PeTTa helper state, not MM2 dist-pair storage
-!(mm2-test-equal (progn (ParticleStoreClear) (ParticleStoreCount)) 0)
-; ADAPTED PeTTa ParticleStore budget helper check: runs PeTTa helper state, not MM2 dist-pair storage
-!(mm2-test-equal (progn (ParticleSetBudget 128) (ParticleGetBudget)) 128)
-; ADAPTED PeTTa ParticleStore budget helper check: runs PeTTa helper state, not MM2 dist-pair storage
-!(mm2-test-equal (progn (ParticleSetBudget 512) (ParticleGetBudget)) 512)
-; ADAPTED PeTTa ParticleStore resource-management check: runs PeTTa helper state, not MM2 dist-pair storage
-!(mm2-test-equal (progn (ParticleFromPairs ((1 0.6) (2 0.4))) (ParticleFromPairs ((3 1.0))) (ParticleStoreCount)) 3)
-; ADAPTED PeTTa ParticleStore pruning/resource-management check: runs PeTTa helper state, not MM2 dist-pair storage
-!(mm2-test-equal (progn (ParticleStorePruneKB) (ParticleStoreCount)) 0)
-; ADAPTED PeTTa ParticleStore pruning fixture fact: retained for PeTTa helper-state prune coverage
-!(mm2-compileadd kb (: keptParticleFact (CountryHeightDist keepCountry (ParticleFromPairs ((170 0.7) (180 0.3)))) (STV 1.0 1.0)))
-; ADAPTED PeTTa ParticleStore pruning/resource-management check: runs PeTTa helper state, not MM2 dist-pair storage
-!(mm2-test-equal (progn (ParticleFromPairs ((999 1.0))) (ParticleStorePruneKB)) 0)
+!(mm2-test-equal (progn (mm2-particle-store-clear) (mm2-particle-store-count)) 0)
+!(mm2-test-equal (progn (mm2-particle-set-budget 128) (mm2-particle-get-budget)) 128)
+!(mm2-test-equal (progn (mm2-particle-set-budget 512) (mm2-particle-get-budget)) 512)
+!(mm2-test-equal (progn (mm2-store-ParticleFromPairs ((1 0.6) (2 0.4))) (mm2-store-ParticleFromPairs ((3 1.0))) (mm2-particle-store-count)) 3)
+!(mm2-test-equal (progn (mm2-particle-store-prune-kb) (mm2-particle-store-count)) 0)
+!(mm2-compileadd kb (: keptParticleFact (CountryHeightDist keepCountry (mm2-store-ParticleFromPairs ((170 0.7) (180 0.3)))) (STV 1.0 1.0)))
+!(mm2-test-equal (progn (mm2-store-ParticleFromPairs ((999 1.0))) (mm2-particle-store-prune-kb)) 0)
