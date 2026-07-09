@@ -2,7 +2,7 @@
 
 harness_floor_table() {
   cat <<'EOF'
-test_backward_dag_helpers	34
+test_backward_dag_helpers	36
 test_backward_open_query_results	3
 test_base_rate_cache	10
 test_benchgen_metta	23

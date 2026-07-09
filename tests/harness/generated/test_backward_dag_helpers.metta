@@ -7,6 +7,8 @@
 !(mm2-test-term-confidence-CTVModusPonensFormula (STV 0.8 0.9) (CTV (STV 1.0 0.6) (STV 0.0 0.4)) 0.8999975376989856)
 !(mm2-test-CTVModusPonensFormula (STV 0.5 1.0) (CTV (STV 1.0 0.5) (STV 0.1 0.5)) (STV 0.55 0.916683750966784))
 !(mm2-test-CTVModusPonensFormula (STV 0.5 1.0) (CTV (STV 0.8 0.6) (STV 0.0 0.0)) (STV 0.4 0.8993337363827603))
+!(mm2-test-CTVModusPonensFormula (STV 1.0 1.0) (CTV (STV 0.9 0.950213) (STV 0 1)) (STV 0.9 0.9502129991872743))
+!(mm2-test-term-confidence-CTVModusPonensFormula (STV 1.0 1.0) (CTV (STV 0.9 0.950213) (STV 0 1)) 0.9502129991872743)
 !(mm2-test-term-confidence-NotFormula (STV 0.75 0.6) 0.6)
 !(mm2-test-term-confidence-AndFormula (STV 0.8 0.4) (STV 0.9 0.7) 0.47929561423062006)
 !(mm2-test-term-confidence-OrFormula (STV 0.8 0.4) (STV 0.9 0.7) 0.8322690087859733)

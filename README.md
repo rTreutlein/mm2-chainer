@@ -156,6 +156,18 @@ pass verdicts, or unstable verdict counts across repeated runs. And projection
 width 12 is clean but intentionally left opt-in because it is much slower than
 the default widths.
 
+For the full ConceptNet query modeled on PeTTaChainer's `x.metta`, run:
+
+```bash
+bash scripts/bench-conceptnet-query.sh
+MM2_CONCEPTNET_BENCH_RUNS=1 MM2_CONCEPTNET_BENCH_PETTA=0 bash scripts/bench-conceptnet-query.sh
+```
+
+It builds the `And (Own (i $a)) (Pet $a)` seed over `rules/full_rules.mm2`,
+records mm2/MORK timings, optionally compares against PeTTaChainer query-only
+timing, and writes per-exec MORK timing to
+`outputs/conceptnet_query_bench/profile.tsv`.
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling

@@ -229,13 +229,22 @@ def convert_test(expr):
             rename_calls(queryish[1]),
             rename_calls(expected),
         ]
-    if head(queryish) == "CTVModusPonensFormula" and len(queryish) == 3:
+    if head(queryish) in {"CTVModusPonensFormula", "CTVFormula"} and len(queryish) == 3:
         return [
             "mm2-test-CTVModusPonensFormula",
             rename_calls(queryish[1]),
             rename_calls(queryish[2]),
             rename_calls(expected),
         ]
+    if head(queryish) == "cpu-expected-confidence" and len(queryish) == 3:
+        fun, args = queryish[1], queryish[2]
+        if fun in {"CTVModusPonensFormula", "CTVFormula"} and isinstance(args, list) and len(args) == 2:
+            return [
+                "mm2-test-term-confidence-CTVModusPonensFormula",
+                rename_calls(args[0]),
+                rename_calls(args[1]),
+                rename_calls(expected),
+            ]
     if head(queryish) in {"AndFormula", "OrFormula", "LikelierThanFormula", "OrProjection"} and len(queryish) == 3:
         return [
             "mm2-test-" + head(queryish),
@@ -365,7 +374,7 @@ def term_confidence_test(queryish, expected):
     fun, args = term[1], term[2]
     if not isinstance(args, list):
         return None
-    if fun == "CTVModusPonensFormula" and len(args) == 2:
+    if fun in {"CTVModusPonensFormula", "CTVFormula"} and len(args) == 2:
         return [
             "mm2-test-term-confidence-CTVModusPonensFormula",
             rename_calls(args[0]),
@@ -388,6 +397,13 @@ def term_confidence_test(queryish, expected):
             rename_calls(expected),
         ]
     return None
+
+
+def ignored_test(expr):
+    if head(expr) != "test" or len(expr) != 3:
+        return False
+    queryish = expr[1]
+    return head(queryish) == "rule-marginal-score"
 
 
 def contains_head(expr, name):
@@ -1079,6 +1095,8 @@ def convert_file(path):
                 out.append("!" + show(converted))
             continue
         if kind == "bang" and head(expr) == "test":
+            if ignored_test(expr):
+                continue
             if benchgen_helper_state:
                 converted = benchgen_test(expr)
                 if converted is not None:
