@@ -969,6 +969,15 @@ Latest timed corpus snapshot after this adjustment:
 
     totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=14.988s file-time=55.563s flagged-files=0
 
+## Corpus inventory guard (DONE 2026-07-09)
+
+`scripts/check-generated-corpus.sh` now verifies that
+`tests/harness/generated/test_*.metta` exactly matches upstream
+PeTTaChainer `test_*.metta` files minus the explicit
+`test_benchgen_metta.metta` benchmark-generator skip. This turns the
+documented 36-of-37 source-file coverage into an executable gate, so a future
+converter-level skip cannot silently keep the generated corpus green.
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
