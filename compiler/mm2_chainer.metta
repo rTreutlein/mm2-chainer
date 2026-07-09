@@ -88,8 +88,19 @@
 ; kill of a runaway query would lose every verdict produced before it. Test
 ; verdicts and notsupported markers are therefore also appended durably to a
 ; side log as they happen; the corpus runner uses it for timeout/error files.
-(= (mm2-verdict-log)
+(= (mm2-env-verdict-log)
+   (collapse
+     (let $_
+          (callPredicate
+            (Predicate (getenv "MM2_HARNESS_VERDICT_LOG" $path)))
+       $path)))
+
+(= (mm2-verdict-log-path ())
    "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/outputs/harness_verdicts.log")
+(= (mm2-verdict-log-path (cons $path $_rest)) $path)
+
+(= (mm2-verdict-log)
+   (mm2-verdict-log-path (mm2-env-verdict-log)))
 
 (= (mm2-log-line $term)
    (let* (($path (mm2-verdict-log))

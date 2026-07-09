@@ -955,6 +955,9 @@ Latest corpus snapshot after this adjustment:
 fixture plus the total corpus runtime in `outputs/harness_report.txt`. This
 keeps performance visible in the normal gate output while preserving the
 existing semantic pass/close/fail/unsupported/skipped/omitted/adapted checks.
+The runner also assigns each petta process a distinct
+`MM2_HARNESS_VERDICT_LOG` side log and runs the corpus with
+`MM2_HARNESS_JOBS=4` by default, while preserving deterministic report order.
 
 The first timed run showed `test_forward_chainer` as the slowest generated
 fixture at about 4.0 s. `mm2-forward-chain-loop` now stops once the source
@@ -964,7 +967,7 @@ the follow-up corpus run.
 
 Latest timed corpus snapshot after this adjustment:
 
-    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=52.948s flagged-files=0
+    totals: pass=259 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=0 time=14.988s file-time=55.563s flagged-files=0
 
 ## Next
 

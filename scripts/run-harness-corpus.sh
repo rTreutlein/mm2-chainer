@@ -4,12 +4,11 @@
 # and write a per-file verdict report to outputs/harness_report.txt.
 #
 # petta only prints bang results at exit, so the harness also appends every
-# verdict / notsupported marker durably to outputs/harness_verdicts.log as it
-# happens (see mm2-log-line in compiler/mm2_chainer.metta). Successful files
-# are counted from their own stdout log; timeout/error files fall back to the
-# side log so a runaway query keeps the verdicts produced before it.
-# Do not run another mm2 harness petta process in parallel with this script:
-# the side log path is shared by compiler/mm2_chainer.metta.
+# verdict / notsupported marker durably to a side log as it happens (see
+# mm2-log-line in compiler/mm2_chainer.metta). Successful files are counted
+# from their own stdout log; timeout/error files fall back to the side log so a
+# runaway query keeps the verdicts produced before it. Each petta process gets a
+# distinct MM2_HARNESS_VERDICT_LOG path so corpus files can run in parallel.
 #
 # Verdicts: mm2-test-pass / mm2-test-close / mm2-test-FAIL, plus
 #   unsupported-ir = IR shapes the translator/runtime cannot express yet
@@ -27,12 +26,15 @@ mkdir -p outputs/harness_logs
 bash scripts/build-runtime.sh outputs/harness_runtime.mm2
 
 report="outputs/harness_report.txt"
-vlog="outputs/harness_verdicts.log"
 : > "$report"
 
 total_pass=0 total_close=0 total_fail=0 total_unsup_ir=0 total_skipped=0 total_omitted=0 total_adapted=0 total_err=0 total_coverage_err=0 total_adapted_err=0 total_ms=0
 min_total_pass=259
 max_total_adapted=0
+jobs="${MM2_HARNESS_JOBS:-4}"
+if [ "$jobs" -lt 1 ]; then
+  jobs=1
+fi
 
 now_ns() {
   date +%s%N
@@ -89,16 +91,21 @@ max_adapted_for_file() {
   echo 0
 }
 
-for f in tests/harness/generated/test_*.metta; do
+run_one_file() {
+  local f="$1"
+  local name log vlog metrics count_log status start_ns end_ns duration_ms
+  local pass close fail unsup_ir skipped omitted adapted
+
   name="$(basename "$f" .metta)"
   log="outputs/harness_logs/$name.log"
+  vlog="outputs/harness_logs/$name.verdicts.log"
+  metrics="outputs/harness_logs/$name.metrics"
   : > "$vlog"
   start_ns="$(now_ns)"
-  timeout 300 petta "$f" > "$log" 2>&1
+  MM2_HARNESS_VERDICT_LOG="$ROOT_DIR/$vlog" timeout 300 petta "$f" > "$log" 2>&1
   status=$?
   end_ns="$(now_ns)"
   duration_ms=$(((end_ns - start_ns) / 1000000))
-  duration_s="$(format_ms "$duration_ms")"
   count_log="$log"
   if [ $status -ne 0 ]; then
     count_log="$vlog"
@@ -111,6 +118,40 @@ for f in tests/harness/generated/test_*.metta; do
   omitted="$(grep -c '^; OMITTED' "$f" || true)"
   adapted="$(grep -c '^; ADAPTED' "$f" || true)"
   cat "$vlog" >> "$log"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$status" "$duration_ms" "$pass" "$close" "$fail" "$unsup_ir" "$skipped" "$omitted" "$adapted" \
+    > "$metrics"
+}
+
+mapfile -t files < <(find tests/harness/generated -maxdepth 1 -type f -name 'test_*.metta' | sort)
+
+active_jobs=0
+suite_start_ns="$(now_ns)"
+for f in "${files[@]}"; do
+  run_one_file "$f" &
+  active_jobs=$((active_jobs + 1))
+  if [ "$active_jobs" -ge "$jobs" ]; then
+    wait -n
+    active_jobs=$((active_jobs - 1))
+  fi
+done
+wait
+suite_end_ns="$(now_ns)"
+suite_ms=$(((suite_end_ns - suite_start_ns) / 1000000))
+
+for f in "${files[@]}"; do
+  name="$(basename "$f" .metta)"
+  log="outputs/harness_logs/$name.log"
+  metrics="outputs/harness_logs/$name.metrics"
+  if [ ! -s "$metrics" ]; then
+    printf '%-45s pass=%-3s close=%-3s fail=%-3s unsupported-ir=%-3s skipped=%-3s omitted=%-3s adapted=%-3s time=%ss %s\n' \
+      "$name" 0 0 0 0 0 0 0 "0.000" "ERROR" \
+      >> "$report"
+    total_err=$((total_err + 1))
+    continue
+  fi
+  IFS=$'\t' read -r name status duration_ms pass close fail unsup_ir skipped omitted adapted < "$metrics"
+  duration_s="$(format_ms "$duration_ms")"
   flag=""
   if [ $status -eq 124 ]; then
     flag="TIMEOUT"
@@ -146,7 +187,7 @@ done
 
 {
   echo "---"
-  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted time=$(format_ms "$total_ms")s flagged-files=$((total_err + total_coverage_err + total_adapted_err))"
+  echo "totals: pass=$total_pass close=$total_close fail=$total_fail unsupported-ir=$total_unsup_ir skipped=$total_skipped omitted=$total_omitted adapted=$total_adapted time=$(format_ms "$suite_ms")s file-time=$(format_ms "$total_ms")s flagged-files=$((total_err + total_coverage_err + total_adapted_err))"
 } >> "$report"
 
 cat "$report"

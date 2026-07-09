@@ -57,7 +57,9 @@ fail verdicts, unsupported IR, converter skips, omitted forms, or timeout/error
 files, and it also fails if the total pass count drops below the current
 coverage floor or an individual generated file drops below its current pass
 count. The corpus report also includes per-file and total elapsed time so slow
-fixtures are visible in the normal gate output.
+fixtures are visible in the normal gate output. Corpus files run in parallel
+with 4 jobs by default; set `MM2_HARNESS_JOBS=1` for serial debugging or a
+higher value for local timing experiments.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
