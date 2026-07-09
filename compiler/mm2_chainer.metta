@@ -71,6 +71,24 @@
                         (mm2-add-compiled $kb $rest)))
         ($other (mm2-add-compiled $kb $rest))))))
 
+(= (mm2-add-forward-triggers-for-premises $_g pnil) ())
+(= (mm2-add-forward-triggers-for-premises $g (pcons $prem $rest))
+   (let $_trigger (add-atom &mork (forward-trigger $prem $g))
+     (mm2-add-forward-triggers-for-premises $g $rest)))
+
+(= (mm2-add-forward-triggers-for-atom $atom)
+   (case $atom
+     (((ruleN $g $_kind $premises)
+       (mm2-add-forward-triggers-for-premises $g $premises))
+      ((ruleN $g $_rule-id $_kind $premises)
+       (mm2-add-forward-triggers-for-premises $g $premises))
+      ($_ ()))))
+
+(= (mm2-add-forward-triggers ()) ())
+(= (mm2-add-forward-triggers (cons $atom $rest))
+   (let $_trigger (mm2-add-forward-triggers-for-atom $atom)
+     (mm2-add-forward-triggers $rest)))
+
 (= (mm2-set-base-rate-key! $key ($s $c))
    (let $_old (mm2-remove-matches (base-rate $key $old))
      (let $stored (copy_term $key)
@@ -179,7 +197,9 @@
      logged))
 
 (= (mm2-compileadd $kb $stmt)
-   (let* (($added (mm2-add-compiled $kb (mm2-translate-all (collapse (compileadd $kb $stmt)))))
+   (let* (($atoms (mm2-translate-all (collapse (compileadd $kb $stmt))))
+          ($added (mm2-add-compiled $kb $atoms))
+          ($_forward-triggers (mm2-add-forward-triggers $atoms))
           ($_forward-dirty (mm2-clear-forward-agenda $kb))
           ($_computed-br (mm2-apply-computed-base-rate-overrides!))
           ($_user-br (mm2-apply-user-base-rate-overrides!))
@@ -190,7 +210,9 @@
 ; add-to-kb. Route those generated harness calls through the MM2 translator
 ; without shadowing PeTTaChainer's own add-to-kb, which compileadd still uses.
 (= (mm2-add-to-kb $stmt)
-   (let* (($added (mm2-add-compiled kb (mm2-translate-all (cons $stmt ()))))
+   (let* (($atoms (mm2-translate-all (cons $stmt ())))
+          ($added (mm2-add-compiled kb $atoms))
+          ($_forward-triggers (mm2-add-forward-triggers $atoms))
           ($_forward-dirty (mm2-clear-forward-agenda kb))
           ($_computed-br (mm2-apply-computed-base-rate-overrides!))
           ($_user-br (mm2-apply-user-base-rate-overrides!))
@@ -1368,21 +1390,11 @@
 (= (mm2-forward-fact-keys (cons $fact $rest))
    (cons (mm2-forward-fact-key $fact) (mm2-forward-fact-keys $rest)))
 
-(= (mm2-forward-premises-contain $fact (pcons $fact $_rest)) true)
-(= (mm2-forward-premises-contain $fact (pcons $_head $rest))
-   (mm2-forward-premises-contain $fact $rest))
-(= (mm2-forward-premises-contain $_fact pnil) false)
-
 (= (mm2-forward-goals-from-fact $fact)
-   (append
-     (collapse
-       (match &mork
-         (ruleN $g $kind $premises)
-         (let true (mm2-forward-premises-contain $fact $premises) (, (Goal $g)))))
-     (collapse
-       (match &mork
-         (ruleN $g $rid $kind $premises)
-         (let true (mm2-forward-premises-contain $fact $premises) (, (Goal $g)))))))
+   (collapse
+     (match &mork
+       (forward-trigger $fact $g)
+       (, (Goal $g)))))
 
 (= (mm2-forward-goals-from-facts ()) ())
 (= (mm2-forward-goals-from-facts (cons $fact $rest))
