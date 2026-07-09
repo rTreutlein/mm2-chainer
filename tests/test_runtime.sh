@@ -471,7 +471,9 @@ EOF
 
   petta "$src" > "$out"
 
-  assert_line_regex "$out" '^[(]ruleN [(][(]kb MAIN Nil[)] [(]P alice[)][)] r [(]inv [(]0[.]8 0[.]9[)] [(]brpat [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)] [(][(]kb MAIN Nil[)] [(]Q [$]_[0-9]+[)][)][)][)] [(]pcons [(][(]kb MAIN Nil[)] [(]Q alice[)][)] pnil[)][)]$'
+  assert_line_regex "$out" '^[(]ruleN [(][(]kb MAIN Nil[)] [(]P alice[)][)] r [(]inv [(]0[.]8 0[.]9[)] [(]brpat [(]base-rate-key r antecedent [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)][)] [(]base-rate-key r consequent [(][(]kb MAIN Nil[)] [(]Q [$]_[0-9]+[)][)][)][)][)] [(]pcons [(][(]kb MAIN Nil[)] [(]Q alice[)][)] pnil[)][)]$'
+  assert_line_regex "$out" '^[(]base-rate-def [(]base-rate-key r antecedent [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)][)] [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)][)]$'
+  assert_line_regex "$out" '^[(]base-rate-def [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)] [(][(]kb MAIN Nil[)] [(]P [$]_[0-9]+[)][)][)]$'
   assert_line_regex "$out" '^[(]ruleN .*[(]brpat [(]guarded-base-rate r antecedent .*[(]guarded-base-rate r consequent '
 }
 

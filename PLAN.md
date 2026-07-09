@@ -1360,10 +1360,12 @@ build the runtime, run, assert `(fact (B x) (0.6 0.8999998649685302))`.
 - Guarded STV-derived base-rate keys include the rule id and fold role
   (`antecedent` or `consequent`) so structurally different but unifiable
   antecedent/consequent patterns do not cross-match.
-- Unguarded CTV inversion deliberately keeps plain pattern keys for now. That
-  path is how manual/computed base-rate cache entries feed inversion, so
-  role-keying it requires keyed-cache propagation first. The runtime regression
-  `run_ir_inversion_key_shape_test` pins this split.
+- Unguarded CTV inversion uses role-keyed `base-rate-key` folds without the STV
+  self-derivation guard, while STV-derived CTV inversion uses
+  `guarded-base-rate`. The runtime regression `run_ir_inversion_key_shape_test`
+  pins that distinction. Unguarded inversion still emits the plain base-rate
+  support as a cache/materialization side effect, but the rule's `brpat` reads
+  from the role-keyed entries.
 - `BaseRateSink` compares the serialized old/new values in `finalize` and
   avoids rewriting unchanged base-rate facts.
 

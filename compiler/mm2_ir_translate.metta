@@ -267,6 +267,19 @@
      (((brfold $pat) (mm2-guarded-base-rate-support $pat $rule-id $role))
       ($other (mm2-ir-fold-support $other)))))
 
+(= (mm2-ir-keyed-fold-key $rule-id $role $fold)
+   (case $fold
+     (((brfold $pat) (mm2-base-rate-key $rule-id $role $pat))
+      ($other (mm2-ir-fold-key $other)))))
+
+(= (mm2-ir-keyed-fold-support $rule-id $role $fold)
+   (case $fold
+     (((brfold $pat)
+       (superpose (
+         (mm2-base-rate-support $rule-id $role $pat)
+         (mm2-base-rate-support $pat))))
+      ($other (mm2-ir-fold-support $other)))))
+
 (= (mm2-ir-foldall-sum $cpu)
    (case $cpu
      (((cpu FoldAllCompiled ($kbid $pat (extract-value $pat2 $value) 0 lambda_17 identity unit-stv) $out)
@@ -713,10 +726,10 @@
       ((inverted (bi-backward $base) with $_pa $_pb) true)
       ($other false))))
 
-(= (mm2-ir-inv-fold-key-for-mode unguarded $_rid $_role $fold) (mm2-ir-fold-key $fold))
+(= (mm2-ir-inv-fold-key-for-mode unguarded $rid $role $fold) (mm2-ir-keyed-fold-key $rid $role $fold))
 (= (mm2-ir-inv-fold-key-for-mode guarded $rid $role $fold) (mm2-ir-guarded-fold-key $rid $role $fold))
 
-(= (mm2-ir-inv-fold-support-for-mode unguarded $_rid $_role $fold) (mm2-ir-fold-support $fold))
+(= (mm2-ir-inv-fold-support-for-mode unguarded $rid $role $fold) (mm2-ir-keyed-fold-support $rid $role $fold))
 (= (mm2-ir-inv-fold-support-for-mode guarded $rid $role $fold) (mm2-ir-guarded-fold-support $rid $role $fold))
 
 (= (mm2-ir-forward-chain-goal-marker ($scope $type))
