@@ -37,15 +37,8 @@ SKIP_FILES = {
     "test_benchgen_metta.metta",      # benchmark generator, not a chainer test
 }
 
-PARTIAL_DIRECT_DIST_FILES = set()
-
-PARTIAL_FOLD_VALUE_FILES = set()
-
 PARTIAL_PARTICLE_STORE_FILES = {
     "test_particle_values.metta",
-}
-
-PARTIAL_PREFIX_FILES = {
 }
 
 PARTIAL_FORWARD_FILES = {
@@ -990,27 +983,12 @@ def convert_file(path):
         f"!(import! &self {HARNESS})",
         "!(mm2-init)",
     ]
-    direct_dist_only = path.name in PARTIAL_DIRECT_DIST_FILES
-    fold_value_only = path.name in PARTIAL_FOLD_VALUE_FILES
     particle_store_tail = path.name in PARTIAL_PARTICLE_STORE_FILES
-    prefix_only = path.name in PARTIAL_PREFIX_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
-    if direct_dist_only:
-        out.insert(1, "; direct distribution-helper subset; FoldAllValue/query particle semantics are not generated yet")
-    if fold_value_only:
-        out.insert(1, "; FoldAllValue distribution-query subset; PlayTogether GreaterThan rule is not generated yet")
-    if prefix_only:
-        out.insert(1, "; supported query-prefix subset; later numeric distribution helpers are not generated yet")
     if forward_prefix_only:
         out.insert(1, "; forward materialization subset; PeTTa agenda/proof-store internals are documented omissions")
     unsupported = 0
     for kind, expr in forms:
-        if direct_dist_only and kind == "bang" and head(expr) == "compileadd":
-            out.append("; Remaining source forms start at compileadd/FoldAllValue query coverage and are intentionally omitted here.")
-            break
-        if fold_value_only and kind == "bang" and head(expr) == "compileadd" and contains_head(expr, "PlayTogetherIn"):
-            out.append("; OMITTED downstream GreaterThan rule over FoldAllValue output: " + show(expr)[:160])
-            continue
         if particle_store_tail and kind == "bang":
             omitted = particle_store_omission_reason(expr)
             if omitted is not None:
@@ -1042,15 +1020,6 @@ def convert_file(path):
             converted = convert_test(expr)
             if converted is not None:
                 out.append("!" + show(converted))
-                continue
-            if fold_value_only:
-                out.append("; Remaining source forms start at unsupported FoldAllValue distribution coverage and are intentionally omitted here.")
-                break
-            if prefix_only:
-                out.append("; Remaining source forms start at numeric distribution helper coverage and are intentionally omitted here.")
-                break
-            if direct_dist_only:
-                out.append("; OMITTED direct distribution helper form: " + show(expr)[:160])
                 continue
             unsupported += 1
             out.append("; UNSUPPORTED test form: " + show(expr)[:160])
