@@ -50,6 +50,11 @@ bash scripts/run-independent.sh
 bash scripts/test.sh
 ```
 
+`scripts/test.sh` runs both the MM2 runtime regression suite and the generated
+PeTTaChainer corpus gate. The corpus gate fails if generated tests produce
+failures, unsupported IR, converter skips, omitted forms, or timeout/error
+files.
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling

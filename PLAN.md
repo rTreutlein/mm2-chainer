@@ -816,6 +816,17 @@ Latest corpus snapshot after this adjustment:
 
     totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
 
+## Full test entry point includes corpus (DONE 2026-07-09)
+
+`scripts/test.sh` now runs both `tests/test_runtime.sh` and the generated
+corpus gate. This makes the zero-failure/zero-unsupported/zero-skip/zero-
+omission corpus state part of the normal regression command rather than a
+separate manual check.
+
+Latest corpus snapshot after this adjustment:
+
+    totals: pass=241 close=0 fail=0 unsupported-ir=0 skipped=0 omitted=0 adapted=17 flagged-files=0
+
 ## Next
 
 1. **Triage order from the corpus report**: (a) ~~And/Or projection adapter
