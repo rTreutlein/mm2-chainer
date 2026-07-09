@@ -5,9 +5,9 @@
 #
 # petta only prints bang results at exit, so the harness also appends every
 # verdict / notsupported marker durably to outputs/harness_verdicts.log as it
-# happens (see mm2-log-line in compiler/mm2_chainer.metta); this runner
-# counts from that side log so a timeout on a runaway query keeps the
-# verdicts produced before it.
+# happens (see mm2-log-line in compiler/mm2_chainer.metta). Successful files
+# are counted from their own stdout log; timeout/error files fall back to the
+# side log so a runaway query keeps the verdicts produced before it.
 # Do not run another mm2 harness petta process in parallel with this script:
 # the side log path is shared by compiler/mm2_chainer.metta.
 #
@@ -36,12 +36,16 @@ for f in tests/harness/generated/*.metta; do
   : > "$vlog"
   timeout 300 petta "$f" > "$log" 2>&1
   status=$?
+  count_log="$log"
+  if [ $status -ne 0 ]; then
+    count_log="$vlog"
+  fi
+  pass="$(grep -c 'mm2-test-pass' "$count_log" || true)"
+  close="$(grep -c 'mm2-test-close' "$count_log" || true)"
+  fail="$(grep -c 'mm2-test-FAIL' "$count_log" || true)"
+  unsup_ir="$(grep -c 'notsupported-ir' "$count_log" || true)"
+  skipped="$(grep -c 'mm2-test-unsupported' "$count_log" || true)"
   cat "$vlog" >> "$log"
-  pass="$(grep -c 'mm2-test-pass' "$vlog" || true)"
-  close="$(grep -c 'mm2-test-close' "$vlog" || true)"
-  fail="$(grep -c 'mm2-test-FAIL' "$vlog" || true)"
-  unsup_ir="$(grep -c 'notsupported-ir' "$vlog" || true)"
-  skipped="$(grep -c 'mm2-test-unsupported' "$log" || true)"
   flag=""
   if [ $status -eq 124 ]; then
     flag="TIMEOUT"

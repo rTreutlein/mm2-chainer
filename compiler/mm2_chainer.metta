@@ -87,7 +87,7 @@
 ; petta collects all bang results and prints them only at exit, so a timeout
 ; kill of a runaway query would lose every verdict produced before it. Test
 ; verdicts and notsupported markers are therefore also appended durably to a
-; side log as they happen; the corpus runner counts from that log.
+; side log as they happen; the corpus runner uses it for timeout/error files.
 (= (mm2-verdict-log)
    "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/outputs/harness_verdicts.log")
 
