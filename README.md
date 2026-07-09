@@ -161,11 +161,20 @@ For the full ConceptNet query modeled on PeTTaChainer's `x.metta`, run:
 ```bash
 bash scripts/bench-conceptnet-query.sh
 MM2_CONCEPTNET_BENCH_RUNS=1 MM2_CONCEPTNET_BENCH_PETTA=0 bash scripts/bench-conceptnet-query.sh
+MM2_CONCEPTNET_BENCH_OBJECTS=32 MM2_CONCEPTNET_BENCH_PET_DISTRACTORS=64 MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS=64 bash scripts/bench-conceptnet-query.sh
 ```
 
-It builds the `And (Own (i $a)) (Pet $a)` seed over `rules/full_rules.mm2`,
-records mm2/MORK timings, optionally compares against PeTTaChainer query-only
-timing, and writes per-exec MORK timing to
+It builds the `And (Own (i $a)) (Pet $a)` seed over `rules/full_rules.mm2`.
+By default it uses 8 complete answer objects, 8 Pet-only distractors, 8
+Own-only distractors, and 16 unrelated distractor facts. Complete objects keep a
+`Dog -> Pet` route so the default run has a stable expected answer count, but
+objects after `max` and `ann` also get extra Pet-side facts such as `Cat`,
+`Bird`, and `Ferret`, and their Own-side route cycles through predicates such as
+`Possess`, `Hold`, and `Ain`. Set `MM2_CONCEPTNET_BENCH_OBJECTS=2` and all
+distractor counts to `0` for the old two-object probe.
+
+The script records mm2/MORK timings, optionally compares against PeTTaChainer
+query-only timing, and writes per-exec MORK timing to
 `outputs/conceptnet_query_bench/profile.tsv`.
 
 The STV pipeline takes more MM2 steps than the original chainer because it separates:

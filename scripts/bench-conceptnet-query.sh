@@ -6,7 +6,8 @@
 # PeTTaChainer x.metta probe:
 #
 #   Goal: (And (Own (i $a)) (Pet $a))
-#   Facts: Dog/Have for max and ann
+#   Facts: mixed Pet-side and Own-side routes for complete answer objects,
+#          plus optional one-sided and unrelated distractors.
 #
 # Defaults:
 #   MM2_CONCEPTNET_BENCH_RUNS=3
@@ -14,6 +15,10 @@
 #   MM2_CONCEPTNET_BENCH_TIMEOUT=180
 #   MM2_CONCEPTNET_BENCH_PETTA=1
 #   MM2_CONCEPTNET_BENCH_TIMING=1
+#   MM2_CONCEPTNET_BENCH_OBJECTS=8
+#   MM2_CONCEPTNET_BENCH_PET_DISTRACTORS=8
+#   MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS=8
+#   MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS=16
 #
 # Reports:
 #   outputs/conceptnet_query_bench/runs.tsv
@@ -31,10 +36,17 @@ timeout_s="${MM2_CONCEPTNET_BENCH_TIMEOUT:-180}"
 run_petta="${MM2_CONCEPTNET_BENCH_PETTA:-1}"
 petta_steps="${MM2_CONCEPTNET_BENCH_PETTA_STEPS:-$steps}"
 run_timing="${MM2_CONCEPTNET_BENCH_TIMING:-1}"
+objects="${MM2_CONCEPTNET_BENCH_OBJECTS:-8}"
+pet_distractors="${MM2_CONCEPTNET_BENCH_PET_DISTRACTORS:-8}"
+own_distractors="${MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS:-8}"
+other_distractors="${MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS:-16}"
 out_dir="${MM2_CONCEPTNET_BENCH_OUT_DIR:-outputs/conceptnet_query_bench}"
 petta_root="${PETTACHAINER_ROOT:-$ROOT_DIR/../PeTTaChainer}"
 lock_dir="outputs/.bench-conceptnet-query.lock"
 petta_tmp=""
+
+pet_routes=(Cat Bird Ferret Frog Horse Puppy Snake Turtle CompanionAnimal BestLoved Darling PairedEndTag)
+own_routes=(Possess Hold Ain Beat Confess Responsible Have)
 
 require_nonnegative_int() {
   local name="$1"
@@ -86,24 +98,134 @@ cleanup() {
   fi
 }
 
+positive_object_name() {
+  local idx="$1"
+  case "$idx" in
+    1) printf 'max' ;;
+    2) printf 'ann' ;;
+    *) printf 'obj%03d' "$idx" ;;
+  esac
+}
+
+answer_own_route_for() {
+  local idx="$1"
+  local route_idx
+
+  if [ "$idx" -le 2 ]; then
+    printf 'Have'
+    return
+  fi
+
+  route_idx=$(((idx - 3) % ${#own_routes[@]}))
+  printf '%s' "${own_routes[$route_idx]}"
+}
+
+pet_route_for() {
+  local idx="$1"
+  local route_idx
+
+  route_idx=$(((idx - 1) % ${#pet_routes[@]}))
+  printf '%s' "${pet_routes[$route_idx]}"
+}
+
+own_route_for() {
+  local idx="$1"
+  local route_idx
+
+  route_idx=$(((idx - 1) % ${#own_routes[@]}))
+  printf '%s' "${own_routes[$route_idx]}"
+}
+
+other_distractor_term() {
+  local idx="$1"
+  local obj
+  obj="$(printf 'other%03d' "$idx")"
+
+  case $(((idx - 1) % 10)) in
+    0) printf '(Car %s)' "$obj" ;;
+    1) printf '(Toy %s)' "$obj" ;;
+    2) printf '(Keep %s)' "$obj" ;;
+    3) printf '(Person %s)' "$obj" ;;
+    4) printf '(Have %s)' "$obj" ;;
+    5) printf '(Dog (i %s))' "$obj" ;;
+    6) printf '(Possess %s)' "$obj" ;;
+    7) printf '(Cat (i %s))' "$obj" ;;
+    8) printf '(Ball %s)' "$obj" ;;
+    9) printf '(Machine %s)' "$obj" ;;
+  esac
+}
+
+emit_mm2_fact() {
+  local term="$1"
+  local proof_id="$2"
+
+  printf '(fact %s (1.0 1.0))\n' "$term"
+  printf '(fact-evidence %s (1.0 1.0) (pcons (fact-ev %s) pnil))\n' "$term" "$term"
+  printf '(proved %s (1.0 1.0) %s (pcons (fact-ev %s) pnil))\n' "$term" "$proof_id" "$term"
+}
+
+emit_petta_fact() {
+  local term="$1"
+  local proof_id="$2"
+
+  printf '!(compileadd (kb) (: %s %s (STV 1.0 1.0)))\n' "$proof_id" "$term"
+}
+
+emit_seed_facts() {
+  local format="$1"
+  local i obj pet_pred extra_pet_pred own_pred term
+  local emit_fact
+
+  case "$format" in
+    mm2) emit_fact=emit_mm2_fact ;;
+    petta) emit_fact=emit_petta_fact ;;
+    *)
+      echo "unknown seed format: $format" >&2
+      exit 2
+      ;;
+  esac
+
+  for i in $(seq 1 "$objects"); do
+    obj="$(positive_object_name "$i")"
+    own_pred="$(answer_own_route_for "$i")"
+    "$emit_fact" "(Dog $obj)" "seed_complete_${i}_dog"
+    if [ "$i" -gt 2 ]; then
+      extra_pet_pred="$(pet_route_for "$((i - 2))")"
+      "$emit_fact" "($extra_pet_pred $obj)" "seed_complete_${i}_pet_extra"
+    fi
+    "$emit_fact" "($own_pred (i $obj))" "seed_complete_${i}_own"
+  done
+
+  for i in $(seq 1 "$pet_distractors"); do
+    obj="$(printf 'petonly%03d' "$i")"
+    pet_pred="$(pet_route_for "$i")"
+    "$emit_fact" "($pet_pred $obj)" "seed_pet_only_$i"
+  done
+
+  for i in $(seq 1 "$own_distractors"); do
+    obj="$(printf 'ownonly%03d' "$i")"
+    own_pred="$(own_route_for "$i")"
+    "$emit_fact" "($own_pred (i $obj))" "seed_own_only_$i"
+  done
+
+  for i in $(seq 1 "$other_distractors"); do
+    term="$(other_distractor_term "$i")"
+    "$emit_fact" "$term" "seed_other_$i"
+  done
+}
+
 write_seed() {
   local seed="$1"
-  cat > "$seed" <<'EOF'
-(, (Goal (And (Own (i $a)) (Pet $a))))
-(adapterN (And (Own (i $a)) (Pet $a)) (pcons (Own (i $a)) (pcons (Pet $a) pnil)))
-(fact (Dog max) (1.0 1.0))
-(fact-evidence (Dog max) (1.0 1.0) (pcons (fact-ev (Dog max)) pnil))
-(proved (Dog max) (1.0 1.0) max_dog (pcons (fact-ev (Dog max)) pnil))
-(fact (Dog ann) (1.0 1.0))
-(fact-evidence (Dog ann) (1.0 1.0) (pcons (fact-ev (Dog ann)) pnil))
-(proved (Dog ann) (1.0 1.0) ann_cat (pcons (fact-ev (Dog ann)) pnil))
-(fact (Have (i max)) (1.0 1.0))
-(fact-evidence (Have (i max)) (1.0 1.0) (pcons (fact-ev (Have (i max))) pnil))
-(proved (Have (i max)) (1.0 1.0) i_have_max (pcons (fact-ev (Have (i max))) pnil))
-(fact (Have (i ann)) (1.0 1.0))
-(fact-evidence (Have (i ann)) (1.0 1.0) (pcons (fact-ev (Have (i ann))) pnil))
-(proved (Have (i ann)) (1.0 1.0) i_have_ann (pcons (fact-ev (Have (i ann))) pnil))
+  cat > "$seed" <<EOF
+; generated ConceptNet query seed
+; complete answer objects: $objects
+; pet-only distractors: $pet_distractors
+; own-only distractors: $own_distractors
+; unrelated distractors: $other_distractors
+(, (Goal (And (Own (i \$a)) (Pet \$a))))
+(adapterN (And (Own (i \$a)) (Pet \$a)) (pcons (Own (i \$a)) (pcons (Pet \$a) pnil)))
 EOF
+  emit_seed_facts mm2 >> "$seed"
 }
 
 parse_mork_counters() {
@@ -131,10 +253,12 @@ write_petta_probe() {
 !(import! &self (library lib_import))
 !(static-import! &self ../../../cnet/rules_dump)
 (= (kb) kb5b10000f8f9f4f0dbd120f99aa0f43ce)
-!(compileadd (kb) (: max_dog (Dog max) (STV 1.0 1.0)))
-!(compileadd (kb) (: ann_cat (Dog ann) (STV 1.0 1.0)))
-!(compileadd (kb) (: i_have_max (Have (i max)) (STV 1.0 1.0)))
-!(compileadd (kb) (: i_have_ann (Have (i ann)) (STV 1.0 1.0)))
+; generated ConceptNet query seed
+; complete answer objects: $objects
+; pet-only distractors: $pet_distractors
+; own-only distractors: $own_distractors
+; unrelated distractors: $other_distractors
+$(emit_seed_facts petta)
 !(let*
    ((\$t0 (current-time))
     (\$res (collapse (query $petta_steps (kb) (: \$prf (And (Own (i \$a)) (Pet \$a)) \$tv))))
@@ -277,6 +401,10 @@ require_positive_int MM2_CONCEPTNET_BENCH_RUNS "$runs"
 require_nonnegative_int MM2_CONCEPTNET_BENCH_STEPS "$steps"
 require_nonnegative_int MM2_CONCEPTNET_BENCH_PETTA_STEPS "$petta_steps"
 require_positive_int MM2_CONCEPTNET_BENCH_TIMEOUT "$timeout_s"
+require_positive_int MM2_CONCEPTNET_BENCH_OBJECTS "$objects"
+require_nonnegative_int MM2_CONCEPTNET_BENCH_PET_DISTRACTORS "$pet_distractors"
+require_nonnegative_int MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS "$own_distractors"
+require_nonnegative_int MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS "$other_distractors"
 
 mkdir -p outputs
 if ! mkdir "$lock_dir" 2>/dev/null; then
