@@ -41,6 +41,8 @@ Repository layout:
   - ignored generated results from the scripts
 - `docs/`
   - `runtime-diagram.md`: Mermaid diagrams for runtime assembly and execution flow
+  - `mork-mm2-migration.md`: generic-vs-PLN MORK boundary, migrated operations,
+    and benchmark checkpoints
 
 Quick usage:
 
