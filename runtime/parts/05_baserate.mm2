@@ -48,22 +48,23 @@
   (exec 1
         (, (base-rate-contribution $patQ $old $source $weighted $confidence))
         (O (- (base-rate-contribution $patQ $old $source $weighted $confidence))
-           (vfsum
-             (base-rate-sums $patQ $old $sums)
-             $sums
-             ($weighted $confidence)
+           (fsum
+             (base-rate-weighted-sum $patQ $old $sum)
+             $sum
+             $weighted
+             $source)
+           (fsum
+             (base-rate-confidence-sum $patQ $old $sum)
+             $sum
+             $confidence
              $source))))
 
 (exec-template
   (exec 2
-        (, (base-rate-sums
-             $patQ
-             ($old-s $old-c)
-             ($weighted-sum $confidence-sum)))
-        (O (- (base-rate-sums
-                $patQ
-                ($old-s $old-c)
-                ($weighted-sum $confidence-sum)))
+        (, (base-rate-weighted-sum $patQ ($old-s $old-c) $weighted-sum)
+           (base-rate-confidence-sum $patQ ($old-s $old-c) $confidence-sum))
+        (O (- (base-rate-weighted-sum $patQ ($old-s $old-c) $weighted-sum))
+           (- (base-rate-confidence-sum $patQ ($old-s $old-c) $confidence-sum))
            (pure
              (base-rate-candidate $patQ ($old-s $old-c) $candidate)
              $candidate
