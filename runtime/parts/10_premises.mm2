@@ -12,10 +12,15 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
-                       (f64_from_string $premise-s)
-                       (f64_from_string $pos-s)
-                       (f64_from_string $neg-s)))
+                     (sum_f64
+                       (product_f64
+                         (f64_from_string $pos-s)
+                         (f64_from_string $premise-s))
+                       (product_f64
+                         (f64_from_string $neg-s)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (f64_from_string $premise-s)))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (f64_from_string $premise-s)
@@ -35,10 +40,15 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $premise-s))
-                       (f64_from_string $pos-s)
-                       (f64_from_string $neg-s)))
+                     (sum_f64
+                       (product_f64
+                         (f64_from_string $pos-s)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (f64_from_string $premise-s)))
+                       (product_f64
+                         (f64_from_string $neg-s)
+                         (f64_from_string $premise-s))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (sub_f64 (f64_from_string 1.0) (f64_from_string $premise-s))
@@ -60,10 +70,15 @@
                    (f64_to_string
                      (sub_f64
                        (f64_from_string 1.0)
-                       (pln_mp_strength_f64
-                         (f64_from_string $premise-s)
-                         (f64_from_string $pos-s)
-                         (f64_from_string $neg-s))))
+                       (sum_f64
+                         (product_f64
+                           (f64_from_string $pos-s)
+                           (f64_from_string $premise-s))
+                         (product_f64
+                           (f64_from_string $neg-s)
+                           (sub_f64
+                             (f64_from_string 1.0)
+                             (f64_from_string $premise-s))))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (f64_from_string $premise-s)
@@ -89,13 +104,18 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
-                       (f64_from_string $premise-s)
-                       (f64_from_string $rule-s)
-                       (pln_negative_branch_strength_f64
-                         (f64_from_string $ante-s)
-                         (f64_from_string $cons-s)
-                         (f64_from_string $rule-s))))
+                     (sum_f64
+                       (product_f64
+                         (f64_from_string $rule-s)
+                         (f64_from_string $premise-s))
+                       (product_f64
+                         (pln_negative_branch_strength_f64
+                           (f64_from_string $ante-s)
+                           (f64_from_string $cons-s)
+                           (f64_from_string $rule-s))
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (f64_from_string $premise-s)))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (f64_from_string $premise-s)
@@ -426,12 +446,19 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
+                     (sum_f64
                        (product_f64
-                         (f64_from_string $agg-s)
-                         (f64_from_string $prem-s))
-                       (f64_from_string $pos-s)
-                       (f64_from_string $neg-s)))
+                         (f64_from_string $pos-s)
+                         (product_f64
+                           (f64_from_string $agg-s)
+                           (f64_from_string $prem-s)))
+                       (product_f64
+                         (f64_from_string $neg-s)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (product_f64
+                             (f64_from_string $agg-s)
+                             (f64_from_string $prem-s))))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (product_f64
@@ -765,12 +792,19 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
+                     (sum_f64
                        (product_f64
-                         (f64_from_string $agg-s)
-                         (f64_from_string $gt-s))
-                       (f64_from_string $pos-s)
-                       (f64_from_string $neg-s)))
+                         (f64_from_string $pos-s)
+                         (product_f64
+                           (f64_from_string $agg-s)
+                           (f64_from_string $gt-s)))
+                       (product_f64
+                         (f64_from_string $neg-s)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (product_f64
+                             (f64_from_string $agg-s)
+                             (f64_from_string $gt-s))))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (product_f64
@@ -811,12 +845,19 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
+                     (sum_f64
                        (product_f64
-                         (f64_from_string $agg-s)
-                         (f64_from_string $gt-s))
-                       (f64_from_string $pos-s)
-                       (f64_from_string $neg-s)))
+                         (f64_from_string $pos-s)
+                         (product_f64
+                           (f64_from_string $agg-s)
+                           (f64_from_string $gt-s)))
+                       (product_f64
+                         (f64_from_string $neg-s)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (product_f64
+                             (f64_from_string $agg-s)
+                             (f64_from_string $gt-s))))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (product_f64
@@ -1164,16 +1205,21 @@
                        (f64_from_string $cons-c)
                        (f64_from_string $pos-s)))
                    (f64_to_string
-                     (pln_mp_strength_f64
-                       (f64_from_string $premise-s)
-                       (pln_inv_strength_f64
-                         (f64_from_string $ante-s)
-                         (f64_from_string $cons-s)
-                         (f64_from_string $pos-s))
-                       (pln_inv_strength_f64
-                         (f64_from_string $ante-s)
-                         (sub_f64 (f64_from_string 1.0) (f64_from_string $cons-s))
-                         (sub_f64 (f64_from_string 1.0) (f64_from_string $pos-s)))))
+                     (sum_f64
+                       (product_f64
+                         (pln_inv_strength_f64
+                           (f64_from_string $ante-s)
+                           (f64_from_string $cons-s)
+                           (f64_from_string $pos-s))
+                         (f64_from_string $premise-s))
+                       (product_f64
+                         (pln_inv_strength_f64
+                           (f64_from_string $ante-s)
+                           (sub_f64 (f64_from_string 1.0) (f64_from_string $cons-s))
+                           (sub_f64 (f64_from_string 1.0) (f64_from_string $pos-s)))
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (f64_from_string $premise-s)))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (f64_from_string $premise-s)

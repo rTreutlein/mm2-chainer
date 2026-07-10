@@ -224,7 +224,7 @@ Truth-value propagation matches PeTTaChainer's formulas (tv_formulas.metta):
 premise lists fold with `AndFormula` (product strength, idealized product
 confidence) and rule application is `CTVModusPonensFormula` (idealized
 second-order modus ponens), implemented as MORK pure ops
-(`pln_and_confidence_f64`, `pln_mp_strength_f64`, `pln_mp_confidence_f64`,
+(`pln_and_confidence_f64`, `pln_mp_confidence_f64`,
 `pln_negative_branch_strength_f64`).
 
 Current script defaults:

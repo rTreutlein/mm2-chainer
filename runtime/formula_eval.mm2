@@ -10,10 +10,15 @@
                  $stv
                  (tuple
                    (f64_to_string
-                     (pln_mp_strength_f64
-                       (f64_from_string $as)
-                       (f64_from_string $ps)
-                       (f64_from_string $ns)))
+                     (sum_f64
+                       (product_f64
+                         (f64_from_string $ps)
+                         (f64_from_string $as))
+                       (product_f64
+                         (f64_from_string $ns)
+                         (sub_f64
+                           (f64_from_string 1.0)
+                           (f64_from_string $as)))))
                    (f64_to_string
                      (pln_mp_confidence_f64
                        (f64_from_string $as)
