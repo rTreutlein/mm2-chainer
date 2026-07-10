@@ -40,12 +40,15 @@ The MM2 runtime now owns:
 
 - modus-ponens strength arithmetic;
 - negative-branch strength arithmetic;
-- unguarded base-rate contribution generation, aggregation, formula
-  evaluation, confidence policy, and canonical fact replacement.
+- And, Or, and marginal-projection scalar arithmetic.
 
-The custom `fold-base-rate` sink remains only for guarded folds that must
-exclude alpha-equivalent rule evidence. Native MORK operators for MP strength
-and negative-branch strength have been removed from the PLN branch.
+The corresponding native MORK operators have been removed from the PLN branch.
+
+The unguarded base-rate fold was also translated to MM2 as an experiment, then
+reverted after the base-rate-heavy fixture regressed by about 11%. Both guarded
+and unguarded folds therefore remain in the custom `fold-base-rate` sink. The
+generic `vfsum` facility added for that experiment remains useful and belongs
+on the upstream-oriented branch.
 
 ## Benchmark checkpoints
 
@@ -59,6 +62,7 @@ and should be interpreted as directional rather than microbenchmarks.
 | MM2 fold with two scalar reductions | 1473 | 1807 |
 | MM2 fold with one `vfsum` | 1462 | 1820 |
 | Plus MM2 negative-branch strength | 1458 | 1796 |
+| Base-rate MM2 fold reverted | 1475 | 1783 |
 
 The light implication case regressed about 2%, while the deliberately
 base-rate-heavy cache fixture regressed about 11%. Combining the reducers did
@@ -69,6 +73,12 @@ reduction sink.
 The generic direct-MORK first-answer benchmark showed no meaningful idle cost
 from registering `group-collect`: chain depth 4 changed from 183 to 182 ms,
 chain depth 8 from 298 to 294 ms, and adapter width 8 from 161 to 160 ms.
+
+After translating the five projection helpers, five-run gross medians were
+2592 ms for `test_backward_dag_helpers` and 1941 ms for `test_logic_config`.
+Those are below the last stored corpus samples (2669 and 1972 ms), so this
+conversion shows no evidence of a slowdown, although the stored samples are
+not a controlled paired benchmark.
 
 ## Remaining custom PLN boundary
 

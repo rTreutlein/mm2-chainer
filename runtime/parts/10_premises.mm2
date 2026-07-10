@@ -1098,14 +1098,23 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_and_proj_strength_f64
-                       (f64_from_string $sab)
-                       (f64_from_string $ev-s)))
+                     (ifnz
+                       (eq_f64 (f64_from_string $ev-s) (f64_from_string 0.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (min_f64
+                         (div_f64
+                           (f64_from_string $sab)
+                           (f64_from_string $ev-s))
+                         (f64_from_string 1.0))))
                    (f64_to_string
-                     (pln_and_proj_confidence_f64
-                       (f64_from_string $cab)
-                       (f64_from_string $ev-c)
-                       (f64_from_string $ev-s))))))))
+                     (ifnz
+                       (eq_f64 (f64_from_string $ev-s) (f64_from_string 0.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (min_f64
+                         (f64_from_string $cab)
+                         (f64_from_string $ev-c)))))))))
 
 ; OrProjection: element strength = clamp((s_compound - s_evidence) /
 ; (1 - s_evidence), 0, 1); (0 0) when the evidence strength is one.
@@ -1117,14 +1126,28 @@
                  $proof-stv
                  (tuple
                    (f64_to_string
-                     (pln_or_proj_strength_f64
-                       (f64_from_string $sab)
-                       (f64_from_string $ev-s)))
+                     (ifnz
+                       (eq_f64 (f64_from_string $ev-s) (f64_from_string 1.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (clamp_f64
+                         (div_f64
+                           (sub_f64
+                             (f64_from_string $sab)
+                             (f64_from_string $ev-s))
+                           (sub_f64
+                             (f64_from_string 1.0)
+                             (f64_from_string $ev-s)))
+                         (f64_from_string 0.0)
+                         (f64_from_string 1.0))))
                    (f64_to_string
-                     (pln_or_proj_confidence_f64
-                       (f64_from_string $cab)
-                       (f64_from_string $ev-c)
-                       (f64_from_string $ev-s))))))))
+                     (ifnz
+                       (eq_f64 (f64_from_string $ev-s) (f64_from_string 1.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (min_f64
+                         (f64_from_string $cab)
+                         (f64_from_string $ev-c)))))))))
 
 ; AndMarginalProjection: single-premise projection with the marginal count
 ; heuristic: strength = s_compound, confidence from the count
@@ -1138,9 +1161,31 @@
                  (tuple
                    (f64_to_string (f64_from_string $sab))
                    (f64_to_string
-                     (pln_marginal_proj_confidence_f64
-                       (f64_from_string $sab)
-                       (f64_from_string $cab))))))))
+                     (ifnz
+                       (lte_f64 (f64_from_string $cab) (f64_from_string 0.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (div_f64
+                         (product_f64
+                           (f64_from_string $sab)
+                           (div_f64
+                             (f64_from_string $cab)
+                             (sub_f64
+                               (f64_from_string 1.0)
+                               (min_f64
+                                 (f64_from_string $cab)
+                                 (f64_from_string 0.9999)))))
+                         (sum_f64
+                           (product_f64
+                             (f64_from_string $sab)
+                             (div_f64
+                               (f64_from_string $cab)
+                               (sub_f64
+                                 (f64_from_string 1.0)
+                                 (min_f64
+                                   (f64_from_string $cab)
+                                   (f64_from_string 0.9999)))))
+                           (f64_from_string 1.0))))))))))
 
 ; Total-implication rules (kind (proj ctvpair)) conclude a contextual TV
 ; assembled structurally from their two premises: the positive-context

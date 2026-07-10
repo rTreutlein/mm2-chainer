@@ -101,14 +101,28 @@
                  $stv
                  (tuple
                    (f64_to_string
-                     (pln_or_proj_strength_f64
-                       (f64_from_string $sab)
-                       (f64_from_string $sa)))
+                     (ifnz
+                       (eq_f64 (f64_from_string $sa) (f64_from_string 1.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (clamp_f64
+                         (div_f64
+                           (sub_f64
+                             (f64_from_string $sab)
+                             (f64_from_string $sa))
+                           (sub_f64
+                             (f64_from_string 1.0)
+                             (f64_from_string $sa)))
+                         (f64_from_string 0.0)
+                         (f64_from_string 1.0))))
                    (f64_to_string
-                     (pln_or_proj_confidence_f64
-                       (f64_from_string $cab)
-                       (f64_from_string $ca)
-                       (f64_from_string $sa))))))))
+                     (ifnz
+                       (eq_f64 (f64_from_string $sa) (f64_from_string 1.0))
+                       then (f64_from_string 0.0)
+                       else
+                       (min_f64
+                         (f64_from_string $cab)
+                         (f64_from_string $ca)))))))))
 
 (exec-template
   (exec 4
