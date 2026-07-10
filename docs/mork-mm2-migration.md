@@ -16,6 +16,8 @@ The upstream-oriented branch currently provides:
 - ordered `group-collect` into canonical `pcons` lists;
 - explicitly ordered grouped floating-point reductions;
 - ordered vector floating-point sums through `vfsum`;
+- parameterized binomial-estimate, product/ratio variance, and
+  confidence-from-variance numerical primitives;
 - compact `Display` formatting for floating-point results;
 - initialized substitution buffers for aggregate sinks.
 
@@ -80,12 +82,22 @@ Those are below the last stored corpus samples (2669 and 1972 ms), so this
 conversion shows no evidence of a slowdown, although the stored samples are
 not a controlled paired benchmark.
 
+An inversion-formula translation was rejected and reverted. In five-run
+measurements, `test_idealized_confidence` increased from 2039 to 2391 ms
+(about 17%) and `test_implication_inversion` from 1475 to 1703 ms (about 15%).
+The process baseline also drifted upward, but the formula-heavy fixture's
+baseline-subtracted median still increased from 581 to 765 ms. The generic
+uncertainty primitives remain on the upstream-oriented branch, while the
+compact PLN inversion operator remains in the PLN extension.
+
 ## Remaining custom PLN boundary
 
 Good next migration candidates are scalar confidence/projection formulas once
 their repeated subexpressions can be named without adding many runtime phases.
 The following should remain custom until stronger generic facilities exist:
 
+- inversion confidence and consistency, until MM2 supports local bindings or
+  fused formula evaluation without nested interpreter overhead;
 - guarded alpha-equivalent evidence filtering;
 - shared-evidence proof factoring, which evaluates proof graphs against a
   consistent fact/proof snapshot and counterfactual premise overrides;
