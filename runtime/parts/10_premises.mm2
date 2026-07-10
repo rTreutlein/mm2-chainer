@@ -109,10 +109,25 @@
                          (f64_from_string $rule-s)
                          (f64_from_string $premise-s))
                        (product_f64
-                         (pln_negative_branch_strength_f64
-                           (f64_from_string $ante-s)
+                         (ifnz
+                           (gte_f64
+                             (f64_from_string $ante-s)
+                             (f64_from_string 1.0))
+                           then
                            (f64_from_string $cons-s)
-                           (f64_from_string $rule-s))
+                           else
+                           (clamp_f64
+                             (div_f64
+                               (sub_f64
+                                 (f64_from_string $cons-s)
+                                 (product_f64
+                                   (f64_from_string $ante-s)
+                                   (f64_from_string $rule-s)))
+                               (sub_f64
+                                 (f64_from_string 1.0)
+                                 (f64_from_string $ante-s)))
+                             (f64_from_string 0.0)
+                             (f64_from_string 1.0)))
                          (sub_f64
                            (f64_from_string 1.0)
                            (f64_from_string $premise-s)))))
@@ -122,10 +137,25 @@
                        (f64_from_string $premise-c)
                        (f64_from_string $rule-s)
                        (f64_from_string $rule-c)
-                       (pln_negative_branch_strength_f64
-                         (f64_from_string $ante-s)
+                       (ifnz
+                         (gte_f64
+                           (f64_from_string $ante-s)
+                           (f64_from_string 1.0))
+                         then
                          (f64_from_string $cons-s)
-                         (f64_from_string $rule-s))
+                         else
+                         (clamp_f64
+                           (div_f64
+                             (sub_f64
+                               (f64_from_string $cons-s)
+                               (product_f64
+                                 (f64_from_string $ante-s)
+                                 (f64_from_string $rule-s)))
+                             (sub_f64
+                               (f64_from_string 1.0)
+                               (f64_from_string $ante-s)))
+                           (f64_from_string 0.0)
+                           (f64_from_string 1.0)))
                        (product_f64
                          (f64_from_string 0.25)
                          (min_f64
