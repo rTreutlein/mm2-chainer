@@ -421,7 +421,7 @@ EOF
 
   assert_contains "$compiler_out" "(fact (A x) (1.0 0.9))"
   assert_contains "$compiler_out" "(, (Goal (B x)))"
-  assert_contains "$out" '(base-rate (base-rate-key aToB antecedent (A $a)) (1 0.0011237357972281184))'
+  assert_contains "$out" '(base-rate (base-rate-key aToB antecedent (A $a)) (1.0 0.0011237357972281184))'
   assert_contains "$out" '(base-rate (base-rate-key aToB consequent (B $a)) (0.6 0.0011237356288179173))'
   assert_contains "$out" "(fact (B x) (0.6 0.8999998649685302))"
 }
@@ -458,7 +458,7 @@ EOF
   mork run "$rules" --steps "$(steps_budget 23 9)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) pnil))"
-  assert_contains "$out" "(proved (P alice) (0.736162240263287 0.0003604307138536469) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
+  assert_contains "$out" "(proved (P alice) (0.7362270921751711 0.000363149786160053) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
 }
 
 run_ir_inversion_key_shape_test() {

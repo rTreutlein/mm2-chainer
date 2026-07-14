@@ -2,6 +2,19 @@
 ; functions below; these atoms make formula-level PeTTaChainer tests exercise
 ; the MM2 math path without compiling a synthetic rule.
 
+; Normalize binary runtime STV fields to textual numbers before PeTTa-side
+; formulas consume them. Most query readback can pass binary fields through
+; unchanged, but helpers such as mergetvs perform Prolog arithmetic directly.
+(exec-template
+  (exec 4
+        (, (formula-eval $key (NormalizeSTV (STV $s $c))))
+        (O (- (formula-eval $key (NormalizeSTV (STV $s $c))))
+           (pure (formula-result-stv $key $stv)
+                 $stv
+                 (tuple
+                   (f64_to_string $s)
+                   (f64_to_string $c))))))
+
 (exec-template
   (exec 4
         (, (formula-eval $key (CTVModusPonensFormula (STV $as $ac) (CTV (STV $ps $pc) (STV $ns $nc)))))
@@ -12,21 +25,21 @@
                    (f64_to_string
                      (sum_f64
                        (product_f64
-                         (f64_from_string $ps)
-                         (f64_from_string $as))
+                         $ps
+                         $as)
                        (product_f64
-                         (f64_from_string $ns)
+                         $ns
                          (sub_f64
-                           (f64_from_string 1.0)
-                           (f64_from_string $as)))))
+                           1.0
+                           $as))))
                    (f64_to_string
                      (pln_mp_confidence_f64
-                       (f64_from_string $as)
-                       (f64_from_string $ac)
-                       (f64_from_string $ps)
-                       (f64_from_string $pc)
-                       (f64_from_string $ns)
-                       (f64_from_string $nc))))))))
+                       $as
+                       $ac
+                       $ps
+                       $pc
+                       $ns
+                       $nc)))))))
 
 (exec-template
   (exec 4
@@ -37,14 +50,14 @@
                  (tuple
                    (f64_to_string
                      (product_f64
-                       (f64_from_string $s1)
-                       (f64_from_string $s2)))
+                       $s1
+                       $s2))
                    (f64_to_string
                      (pln_and_confidence_f64
-                       (f64_from_string $s1)
-                       (f64_from_string $c1)
-                       (f64_from_string $s2)
-                       (f64_from_string $c2))))))))
+                       $s1
+                       $c1
+                       $s2
+                       $c2)))))))
 
 (exec-template
   (exec 4
@@ -55,16 +68,16 @@
                  (tuple
                    (f64_to_string
                      (sub_f64
-                       (f64_from_string 1.0)
+                       1.0
                        (product_f64
-                         (sub_f64 (f64_from_string 1.0) (f64_from_string $s1))
-                         (sub_f64 (f64_from_string 1.0) (f64_from_string $s2)))))
+                         (sub_f64 1.0 $s1)
+                         (sub_f64 1.0 $s2))))
                    (f64_to_string
                      (pln_or_confidence_f64
-                       (f64_from_string $s1)
-                       (f64_from_string $c1)
-                       (f64_from_string $s2)
-                       (f64_from_string $c2))))))))
+                       $s1
+                       $c1
+                       $s2
+                       $c2)))))))
 
 (exec-template
   (exec 4
@@ -74,8 +87,8 @@
                  $stv
                  (tuple
                    (f64_to_string
-                     (sub_f64 (f64_from_string 1.0) (f64_from_string $s)))
-                   (f64_to_string (f64_from_string $c)))))))
+                     (sub_f64 1.0 $s))
+                   (f64_to_string $c))))))
 
 (exec-template
   (exec 4
@@ -86,12 +99,12 @@
                  (tuple
                    (f64_to_string
                      (product_f64
-                       (f64_from_string $sa)
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb))))
+                       $sa
+                       (sub_f64 1.0 $sb)))
                    (f64_to_string
                      (min_f64
-                       (f64_from_string $ca)
-                       (f64_from_string $cb))))))))
+                       $ca
+                       $cb)))))))
 
 (exec-template
   (exec 4
@@ -102,27 +115,27 @@
                  (tuple
                    (f64_to_string
                      (ifnz
-                       (eq_f64 (f64_from_string $sa) (f64_from_string 1.0))
-                       then (f64_from_string 0.0)
+                       (eq_f64 $sa 1.0)
+                       then 0.0
                        else
                        (clamp_f64
                          (div_f64
                            (sub_f64
-                             (f64_from_string $sab)
-                             (f64_from_string $sa))
+                             $sab
+                             $sa)
                            (sub_f64
-                             (f64_from_string 1.0)
-                             (f64_from_string $sa)))
-                         (f64_from_string 0.0)
-                         (f64_from_string 1.0))))
+                             1.0
+                             $sa))
+                         0.0
+                         1.0)))
                    (f64_to_string
                      (ifnz
-                       (eq_f64 (f64_from_string $sa) (f64_from_string 1.0))
-                       then (f64_from_string 0.0)
+                       (eq_f64 $sa 1.0)
+                       then 0.0
                        else
                        (min_f64
-                         (f64_from_string $cab)
-                         (f64_from_string $ca)))))))))
+                         $cab
+                         $ca))))))))
 
 (exec-template
   (exec 4
@@ -133,34 +146,34 @@
                  (tuple
                    (f64_to_string
                      (pln_inversion_valid_f64
-                       (f64_from_string $sa)
-                       (f64_from_string $ca)
-                       (f64_from_string $sb)
-                       (f64_from_string $cb)
-                       (f64_from_string $sb-a)))
+                       $sa
+                       $ca
+                       $sb
+                       $cb
+                       $sb-a))
                    (f64_to_string
                      (pln_inv_strength_f64
-                       (f64_from_string $sa)
-                       (f64_from_string $sb)
-                       (f64_from_string $sb-a)))
+                       $sa
+                       $sb
+                       $sb-a))
                    (f64_to_string
                      (pln_inv_confidence_f64
-                       (f64_from_string $sa)
-                       (f64_from_string $ca)
-                       (f64_from_string $sb)
-                       (f64_from_string $cb)
-                       (f64_from_string $sb-a)
-                       (f64_from_string $cb-a)))
+                       $sa
+                       $ca
+                       $sb
+                       $cb
+                       $sb-a
+                       $cb-a))
                    (f64_to_string
                      (pln_inv_strength_f64
-                       (f64_from_string $sa)
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb))
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb-a))))
+                       $sa
+                       (sub_f64 1.0 $sb)
+                       (sub_f64 1.0 $sb-a)))
                    (f64_to_string
                      (pln_inv_confidence_f64
-                       (f64_from_string $sa)
-                       (f64_from_string $ca)
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb))
-                       (f64_from_string $cb)
-                       (sub_f64 (f64_from_string 1.0) (f64_from_string $sb-a))
-                       (f64_from_string $cb-a))))))))
+                       $sa
+                       $ca
+                       (sub_f64 1.0 $sb)
+                       $cb
+                       (sub_f64 1.0 $sb-a)
+                       $cb-a)))))))

@@ -997,7 +997,7 @@ def apply_file_adaptations(path_name, out):
         rewrites = {
             "!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: (merge/revision (ruleStable baseFact) (ruleHighThenDrop (conjunction weakFact baseFact))) (SwitchGoal) (STV 1.0 0.7094641445679878))))": [
                 "!(mm2-test-query 0 kb (: $prf (SwitchGoal) $tv) ())",
-                "!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: mm2-merged (SwitchGoal) (STV 1 0.7094641445679878))))",
+                "!(mm2-test-query 10 kb (: $prf (SwitchGoal) $tv) ((: mm2-merged (SwitchGoal) (STV 1.0 0.7094641445679878))))",
             ],
             "!(mm2-test-query 0 kb (: $prf (SwitchGoal) $tv) ())": [],
             "!(mm2-test-query 4 kb (: $prf (SwitchGoal) $tv) ((: (ruleStable baseFact) (SwitchGoal) (STV 1.0 0.699950950923023))))": [],
@@ -1035,7 +1035,7 @@ def apply_file_adaptations(path_name, out):
                 "!(mm2-compileadd incumbentRevisionKb (: dToGoal (Implication (Premises (IncumbentD)) (Conclusions (IncumbentGoal))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))",
                 "!(mm2-compileadd incumbentRevisionKb (: aToB (Implication (Premises (IncumbentA)) (Conclusions (IncumbentB))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))",
                 "!(mm2-compileadd incumbentRevisionKb (: cToD (Implication (Premises (IncumbentC)) (Conclusions (IncumbentD))) (CTV (STV 1.0 0.7) (STV 0.0 1.0))))",
-                "!(mm2-test-query 14 incumbentRevisionKb (: $prf (IncumbentGoal) $tv) ((: (merge/revision (bToGoal directB) (dToGoal (cToD directC))) (IncumbentGoal) (STV 1 0.9039912235037112))))",
+                "!(mm2-test-query 14 incumbentRevisionKb (: $prf (IncumbentGoal) $tv) ((: (merge/revision (bToGoal directB) (dToGoal (cToD directC))) (IncumbentGoal) (STV 1.0 0.9039912235037112))))",
             ],
         }
         adapted = []

@@ -34,8 +34,8 @@
            (pure (pendingN $priority $g ($kind ($rule-s $rule-c) $extra) $premises)
                  $priority
                  (encode_hex
-                   (sub_f64 (f64_from_string 1.0)
-                            (f64_from_string $rule-c)))))))
+                   (sub_f64 1.0
+                            $rule-c))))))
 
 ; Compiled rules preserve their source proof token as rule evidence. This keeps
 ; byte-identical rules from collapsing and lets the merge sink distinguish
@@ -53,8 +53,8 @@
                    (pcons (rule-ev $rule-id) pnil))
                  $priority
                  (encode_hex
-                   (sub_f64 (f64_from_string 1.0)
-                            (f64_from_string $rule-c)))))))
+                   (sub_f64 1.0
+                            $rule-c))))))
 
 ; Projection rules (kind (proj and|or|marg)) extract one element of a compound
 ; (And ...) / (Or ...) fact.  The first premise is the compound itself; its TV

@@ -76,6 +76,39 @@ The generic direct-MORK first-answer benchmark showed no meaningful idle cost
 from registering `group-collect`: chain depth 4 changed from 183 to 182 ms,
 chain depth 8 from 298 to 294 ms, and adapter width 8 from 161 to 160 ms.
 
+## Binary truth values
+
+The MM2 runtime now keeps computed truth-value fields as binary `f64` symbols.
+Text is accepted when loading source rules and facts, and is produced only by
+explicit public formula-result adapters or by MORK serialization. This removes
+all `f64_from_string` calls and all internal `f64_to_string` calls from
+`runtime/parts`; `runtime/formula_eval.mm2` retains `f64_to_string` because its
+records are a textual test/API boundary.
+
+The MORK work splits cleanly by intended destination:
+
+- generic/upstream: numeric pure functions accept textual or binary `f64`
+  symbols, f32/f64 comparisons are registered, and expression serialization
+  has a callback that can render binary symbols without copying an expression;
+- PLN extension: STV, pooling, distribution, and reduction helpers accept both
+  representations and emit canonical finite binary STVs;
+- MM2 only: runtime formulas pass numeric values directly and inversion uses
+  symbolic `inv-valid` / `inv-invalid` control tags instead of matching a
+  computed numeric flag against textual `1.0` / `0.0`.
+
+On the matched ConceptNet `16:16:16:32`, 1000-step benchmark (three runs, both
+MORK binaries built from `revise-proofs` commit `9afa83c`), median inference
+time changed from 1439 ms to 1377 ms, a 4.3% improvement. The number of answers,
+unifications, and writes was unchanged; transitions fell from 1,387,599 to
+1,379,439.
+
+Serializing the complete 112 MB internal space is slower because every binary
+TV must be formatted at that diagnostic boundary: median total CLI wall time
+changed from 3525 ms to 4824 ms. That cost is outside the reported MORK
+execution interval and is not paid by normal FFI inference; FFI `match` formats
+only selected results. Full-space dumps should therefore be treated as a debug
+export benchmark, not an inference benchmark.
+
 After translating the five projection helpers, five-run gross medians were
 2592 ms for `test_backward_dag_helpers` and 1941 ms for `test_logic_config`.
 Those are below the last stored corpus samples (2669 and 1972 ms), so this

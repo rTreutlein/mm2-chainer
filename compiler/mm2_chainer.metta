@@ -393,6 +393,13 @@
           ($_add (add-atom &mork (formula-eval $key (CTVModusPonensFormula $prem $ctv)))))
      (mm2-formula-probe-result $key)))
 
+(= (mm2-formula-normalize-stv $stv)
+   (let* (($key mm2-formula-probe)
+          ($_runtime (mm2-ensure-formula-runtime))
+          ($_clear (mm2-clear-formula-probe $key))
+          ($_add (add-atom &mork (formula-eval $key (NormalizeSTV $stv)))))
+     (mm2-formula-probe-result $key)))
+
 (= (mm2-formula-and $a $b)
    (let* (($key mm2-formula-probe)
           ($_runtime (mm2-ensure-formula-runtime))
@@ -856,8 +863,14 @@
        (fact ($pos-shape $pos-type) ($fs $fc))
        (match &mork
          (proved ($pos-shape $pos-type) ($ps $pc) (scheduledN $pg $rule $premises) $evset)
-         (case (mergetvs (STV $fs $fc) (STV $ps $pc))
-           (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
+         (case (mm2-formula-normalize-stv (STV $fs $fc))
+           (((STV $nfs $nfc)
+             (case (mm2-formula-normalize-stv (STV $ps $pc))
+               (((STV $nps $npc)
+                 (case (mergetvs (STV $nfs $nfc) (STV $nps $npc))
+                   (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
+                    ($other empty))))
+                ($other empty))))
             ($other empty)))))))
 
 (= (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)

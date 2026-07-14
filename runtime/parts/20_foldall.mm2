@@ -89,24 +89,22 @@
            (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple
-                   (f64_to_string
-                     (sum_f64
+                   (sum_f64
                        (product_f64
-                         (f64_from_string $pos-s)
-                         (f64_from_string $premise-s))
+                         $pos-s
+                         $premise-s)
                        (product_f64
-                         (f64_from_string $neg-s)
+                         $neg-s
                          (sub_f64
-                           (f64_from_string 1.0)
-                           (f64_from_string $premise-s)))))
-                   (f64_to_string
-                     (pln_mp_confidence_f64
-                       (f64_from_string $premise-s)
-                       (f64_from_string $premise-c)
-                       (f64_from_string $pos-s)
-                       (f64_from_string $pos-c)
-                       (f64_from_string $neg-s)
-                       (f64_from_string $neg-c))))))))
+                           1.0
+                           $premise-s)))
+                   (pln_mp_confidence_f64
+                       $premise-s
+                       $premise-c
+                       $pos-s
+                       $pos-c
+                       $neg-s
+                       $neg-c))))))
 
 (exec-template
   (exec 2
@@ -120,14 +118,12 @@
            (fact ($scope ($rel $arg $source)) ($s $c)))
         (O (pure (fold-value-bernoulli-contrib $result-pid (fold-fact $rel $arg $source) 0.0 $zero-mass)
                  $zero-mass
-                 (f64_to_string
-                   (sub_f64
-                     (f64_from_string 1.0)
-                     (product_f64 (f64_from_string $s) (f64_from_string $c)))))
+                 (sub_f64
+                     1.0
+                     (product_f64 $s $c)))
            (pure (fold-value-bernoulli-contrib $result-pid (fold-fact $rel $arg $source) 1.0 $one-mass)
                  $one-mass
-                 (f64_to_string
-                   (product_f64 (f64_from_string $s) (f64_from_string $c)))))))
+                 (product_f64 $s $c)))))
 
 (exec-template
   (exec 2
