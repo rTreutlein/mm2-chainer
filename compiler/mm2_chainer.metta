@@ -133,9 +133,7 @@
 
 (= (mm2-add-forward-triggers-for-atom $atom)
    (case $atom
-     (((ruleN $g $_kind $premises)
-       (mm2-add-forward-triggers-for-premises $g $premises))
-      ((ruleN $g $_rule-id $_kind $premises)
+     (((ruleN $g $_rule-id $_kind $premises)
        (mm2-add-forward-triggers-for-premises $g $premises))
       ($_ ()))))
 
@@ -1160,8 +1158,7 @@
 
 (= (mm2-cleanup-goal $g)
    (let* (($_goal (mm2-remove-matches (, (Goal $g))))
-          ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises)))
-          ($_pending-named (mm2-remove-matches (pendingN $priority2 $g $rule-stv2 $premises2 $pending-evset)))
+          ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises $pending-evset)))
           ($_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset)))
           ($_or-waits (mm2-remove-matches (wait-premises-or $g $or-final-kind $or-rest $or-agg $or-proof-id $or-evset)))
           ($_pool-waits (mm2-remove-matches (wait-premises-pool $g $pool-rest $pool-state $pool-proof-id)))
@@ -1206,8 +1203,7 @@
 
 (= (mm2-clear-runtime-queue)
    (let* (($_goal (mm2-remove-matches (, (Goal $g))))
-          ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises)))
-          ($_pending-named (mm2-remove-matches (pendingN $priority2 $g $rule-stv2 $premises2 $pending-evset)))
+          ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises $pending-evset)))
           ($_waits (mm2-remove-matches (wait-premises $g $rule-stv $rest $agg $proof-id $evset)))
           ($_or-waits (mm2-remove-matches (wait-premises-or $g $or-final-kind $or-rest $or-agg $or-proof-id $or-evset)))
           ($_pool-waits (mm2-remove-matches (wait-premises-pool $g $pool-rest $pool-state $pool-proof-id)))

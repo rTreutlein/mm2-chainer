@@ -1025,19 +1025,6 @@
 ; premise machinery (seed + AndFormula fold) to produce the evidence TV.
 (exec-template
   (exec 4
-        (, (wait-head $g (proj $op) $head $others $proof-id $evset)
-           (fact $head ($head-s $head-c)))
-        (O (- (wait-head $g (proj $op) $head $others $proof-id $evset))
-           (+ (wait-premises
-                $g
-                (proj $op ($head-s $head-c))
-                $others
-                no-stv
-                $proof-id
-                (pcons (fact-ev $head) $evset))))))
-
-(exec-template
-  (exec 4
         (, (wait-head $g (proj $op $proj-id) $head $others $proof-id $evset)
            (fact $head ($head-s $head-c)))
         (O (- (wait-head $g (proj $op $proj-id) $head $others $proof-id $evset))
@@ -1051,19 +1038,13 @@
                   (projection-ev $proj-id $head ($head-s $head-c) $g)
                   (pcons (fact-ev $head) $evset)))))))
 
-(exec-template
-  (exec 4
-        (, (wait-premises $g (proj $op $proj-id ($head-s $head-c)) pnil $agg-stv $proof-id $evset))
-        (O (- (wait-premises $g (proj $op $proj-id ($head-s $head-c)) pnil $agg-stv $proof-id $evset))
-           (+ (wait-premises $g (proj $op ($head-s $head-c)) pnil $agg-stv $proof-id $evset)))))
-
 ; AndProjection: element strength = min(1, s_compound / s_evidence),
 ; confidence = min(c_compound, c_evidence); (0 0) when the evidence
 ; strength is zero.
 (exec-template
   (exec 4
-        (, (wait-premises $g (proj and ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
-        (O (- (wait-premises $g (proj and ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+        (, (wait-premises $g (proj and $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+        (O (- (wait-premises $g (proj and $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
            (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple
@@ -1088,8 +1069,8 @@
 ; (1 - s_evidence), 0, 1); (0 0) when the evidence strength is one.
 (exec-template
   (exec 4
-        (, (wait-premises $g (proj or ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
-        (O (- (wait-premises $g (proj or ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+        (, (wait-premises $g (proj or $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
+        (O (- (wait-premises $g (proj or $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
            (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple
@@ -1120,8 +1101,8 @@
 ; s_compound * count(c_compound) pushed back through count-confidence.
 (exec-template
   (exec 4
-        (, (wait-premises $g (proj marg ($sab $cab)) pnil no-stv $proof-id $evset))
-        (O (- (wait-premises $g (proj marg ($sab $cab)) pnil no-stv $proof-id $evset))
+        (, (wait-premises $g (proj marg $proj-id ($sab $cab)) pnil no-stv $proof-id $evset))
+        (O (- (wait-premises $g (proj marg $proj-id ($sab $cab)) pnil no-stv $proof-id $evset))
            (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple
@@ -1160,8 +1141,8 @@
 ; conclusions.
 (exec-template
   (exec 4
-        (, (wait-premises $g (proj ctvpair ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
-        (O (- (wait-premises $g (proj ctvpair ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
+        (, (wait-premises $g (proj ctvpair $proj-id ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
+        (O (- (wait-premises $g (proj ctvpair $proj-id ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
            (+ (fact $g (ctvpair ($ps $pc) ($ns $nc))))
            (+ (proved $g (ctvpair ($ps $pc) ($ns $nc)) $proof-id $evset)))))
 
@@ -1206,8 +1187,8 @@
 ; NotFormula: single-premise negation adapter, (s c) -> (1-s c).
 (exec-template
   (exec 4
-        (, (wait-premises $g (proj not ($s $c)) pnil no-stv $proof-id $evset))
-        (O (- (wait-premises $g (proj not ($s $c)) pnil no-stv $proof-id $evset))
+        (, (wait-premises $g (proj not $proj-id ($s $c)) pnil no-stv $proof-id $evset))
+        (O (- (wait-premises $g (proj not $proj-id ($s $c)) pnil no-stv $proof-id $evset))
            (pure (open-proof $g $proof-stv $proof-id $evset)
                  $proof-stv
                  (tuple

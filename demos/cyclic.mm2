@@ -7,7 +7,7 @@
 ; No fact for A — the only available path is the self-loop.
 
 ; Rules
-(ruleN (A $x) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A $x) pnil))
+(ruleN (A $x) a-self (ctv (1.0 1.0) (0.0 1.0)) (pcons (A $x) pnil))
 (, (Goal (A x)))
 (goal-path (A x) pnil)
 (fact (D x) (1.0 1.0))

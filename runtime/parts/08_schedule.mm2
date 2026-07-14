@@ -5,18 +5,6 @@
 ; of adding another independent proof path.
 (exec-template
   (exec 3
-        (I (head 32 (pendingN $priority $g (inv $pos $brpat) $premises)))
-        (O (- (pendingN $priority $g (inv $pos $brpat) $premises))
-           (+ (wait-premises
-                $g
-                (inv $pos $brpat)
-                $premises
-                no-stv
-                (scheduledInvN $g $pos $premises)
-                pnil)))))
-
-(exec-template
-  (exec 3
         (I (head 32 (pendingN $priority $g (inv $pos $brpat) $premises $evset)))
         (O (- (pendingN $priority $g (inv $pos $brpat) $premises $evset))
            (+ (wait-premises
@@ -26,18 +14,6 @@
                 no-stv
                 (scheduledInvN $g $pos $premises)
                 $evset)))))
-
-(exec-template
-  (exec 3
-        (I (head 32 (pendingN $priority $g $rule-stv $premises)))
-        (O (- (pendingN $priority $g $rule-stv $premises))
-           (+ (wait-premises
-                $g
-                $rule-stv
-                $premises
-                no-stv
-                (scheduledN $g $rule-stv $premises)
-                pnil)))))
 
 (exec-template
   (exec 3

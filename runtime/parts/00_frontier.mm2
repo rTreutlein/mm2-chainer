@@ -8,7 +8,9 @@
            (fact $g $stv))
         (O (- (, (Goal $g))))))
 
-; Unified rules use ruleN for both single- and multi-premise rules.
+; Unified rules use (ruleN goal rule-id kind premises) for both single- and
+; multi-premise rules.  The rule ID is required because it is part of the
+; proof evidence used to reject dependent proof paths.
 ; Premises are encoded as (pcons prem1 (pcons prem2 ... pnil)).
 ; The rule truth value is structured as ($kind ($s $c) $extra):
 ;
@@ -26,17 +28,6 @@
 ; For finite non-negative f64 values, big-endian IEEE-754 bytes sort in numeric
 ; order.  The fixed-width 16-character hex encoding therefore gives `head` a
 ; lexicographically sortable key while keeping it readable in output files.
-(exec-template
-  (exec 1
-        (, (, (Goal $g))
-           (ruleN $g ($kind ($rule-s $rule-c) $extra) $premises))
-        (O (- (, (Goal $g)))
-           (pure (pendingN $priority $g ($kind ($rule-s $rule-c) $extra) $premises)
-                 $priority
-                 (encode_hex
-                   (sub_f64 1.0
-                            $rule-c))))))
-
 ; Compiled rules preserve their source proof token as rule evidence. This keeps
 ; byte-identical rules from collapsing and lets the merge sink distinguish
 ; fact-only sharing from reusing the same uncertain rule.
@@ -65,21 +56,7 @@
 (exec-template
   (exec 1
         (, (, (Goal $g))
-           (ruleN $g (proj $op) (pcons $head $others)))
-        (O (- (, (Goal $g)))
-           (+ (wait-head
-                $g
-                (proj $op)
-                $head
-                $others
-                (scheduledN $g (proj $op) (pcons $head $others))
-                pnil))
-           (+ (, (Goal $head))))))
-
-(exec-template
-  (exec 1
-        (, (, (Goal $g))
-           (ruleN $g (proj $op $proj-id) (pcons $head $others)))
+           (ruleN $g $proj-id (proj $op) (pcons $head $others)))
         (O (- (, (Goal $g)))
            (+ (wait-head
                 $g

@@ -4,7 +4,7 @@
 ; Seed
 
 ; Rules
-(ruleN (FlyingMammal $x) (ctv (1.0 1.0) (0.0 1.0)) (pcons (Mammal $x) (pcons (CanFly $x) pnil)))
+(ruleN (FlyingMammal $x) mammal-can-fly (ctv (1.0 1.0) (0.0 1.0)) (pcons (Mammal $x) (pcons (CanFly $x) pnil)))
 (, (Goal (FlyingMammal bat)))
 (goal-path (FlyingMammal bat) pnil)
 (fact (Mammal bat) (1.0 1.0))

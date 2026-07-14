@@ -106,21 +106,21 @@ build_runtime_from_core_with_sink_head() {
 
 (exec-template
   (exec 2
-        (, (pendingN $priority $g $rule-stv $premises))
-        (O (head 32 (selectedN $priority $g $rule-stv $premises)))))
+        (, (pendingN $priority $g $rule-stv $premises $evset))
+        (O (head 32 (selectedN $priority $g $rule-stv $premises $evset)))))
 
 (exec-template
   (exec 3
-        (, (selectedN $priority $g $rule-stv $premises))
-        (O (- (pendingN $priority $g $rule-stv $premises))
-           (- (selectedN $priority $g $rule-stv $premises))
+        (, (selectedN $priority $g $rule-stv $premises $evset))
+        (O (- (pendingN $priority $g $rule-stv $premises $evset))
+           (- (selectedN $priority $g $rule-stv $premises $evset))
            (+ (wait-premises
                 $g
                 $rule-stv
                 $premises
                 no-stv
                 (scheduledN $g $rule-stv $premises)
-                pnil)))))
+                $evset)))))
 RUNTIME
     printf '\n'
     cat runtime/parts/10_premises.mm2
@@ -210,13 +210,13 @@ run_priority_test() {
   local out="outputs/test_confidence_priority.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (Animal $x) (ctv (0.9 0.9) (0.0 1.0)) (pcons (Mammal $x) pnil))
-(ruleN (Animal $x) (ctv (0.7 0.7) (0.0 1.0)) (pcons (Pet $x) pnil))
-(ruleN (Animal $x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (Creature $x) pnil))
+(ruleN (Animal $x) mammal-animal (ctv (0.9 0.9) (0.0 1.0)) (pcons (Mammal $x) pnil))
+(ruleN (Animal $x) pet-animal (ctv (0.7 0.7) (0.0 1.0)) (pcons (Pet $x) pnil))
+(ruleN (Animal $x) creature-animal (ctv (0.4 0.4) (0.0 1.0)) (pcons (Creature $x) pnil))
 EOF
 
   for n in $(seq -w 1 33); do
-    printf '(ruleN (Animal $x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (LowPrem%s $x) pnil))\n' "$n" >> "$rules"
+    printf '(ruleN (Animal $x) low-animal-%s (ctv (0.4 0.4) (0.0 1.0)) (pcons (LowPrem%s $x) pnil))\n' "$n" "$n" >> "$rules"
   done
 
   build_runtime_from_core "$runtime" \
@@ -224,9 +224,9 @@ EOF
 
   mork run "$rules" --steps "$(steps_budget 2 1)" --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (Creature x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (Creature x) pnil)) pnil)"
-  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (LowPrem33 x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (LowPrem33 x) pnil)) pnil)"
-  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (Mammal x) pnil no-stv (scheduledN (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (pcons (Mammal x) pnil)) pnil)"
+  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (Creature x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (Creature x) pnil)) (pcons (rule-ev creature-animal) pnil))"
+  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (LowPrem33 x) pnil no-stv (scheduledN (Animal x) (ctv (0.4 0.4) (0.0 1.0)) (pcons (LowPrem33 x) pnil)) (pcons (rule-ev low-animal-33) pnil))"
+  assert_contains "$out" "(wait-premise (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (Mammal x) pnil no-stv (scheduledN (Animal x) (ctv (0.9 0.9) (0.0 1.0)) (pcons (Mammal x) pnil)) (pcons (rule-ev mammal-animal) pnil))"
 }
 
 # Port of the single-premise composition behavior from
@@ -238,8 +238,8 @@ run_reference_compose_test() {
   local out_long="outputs/test_reference_compose_long.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (B) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) pnil))
-(ruleN (Goal) (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil))
+(ruleN (B) a-b (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) pnil))
+(ruleN (Goal) b-goal (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil))
 EOF
 
   build_runtime_from_core "$runtime" \
@@ -251,7 +251,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 0.999700089898053))"
-  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil)) (pcons (fact-ev (B)) pnil))"
+  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil)) (pcons (fact-ev (B)) (pcons (rule-ev b-goal) pnil)))"
 }
 
 # Port of the first open-query result case from
@@ -262,7 +262,7 @@ run_reference_open_query_test() {
   local out="outputs/test_reference_open.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (Animal $x) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog $x) pnil))
+(ruleN (Animal $x) dog-animal (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog $x) pnil))
 EOF
 
   build_runtime_from_core "$runtime" \
@@ -274,8 +274,8 @@ EOF
 
   assert_contains "$out" "(fact (Animal ann) (1.0 0.8999189847918191))"
   assert_contains "$out" "(fact (Animal max) (1.0 0.8999189847918191))"
-  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
-  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) (pcons (rule-ev dog-animal) pnil)))"
+  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max)) (pcons (rule-ev dog-animal) pnil)))"
 }
 
 # Port of the independentKb behavior from
@@ -288,8 +288,8 @@ run_reference_independent_test() {
   local out_long="outputs/test_reference_independent_long.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (A) (ctv (1.0 1.0) (0.0 1.0)) (pcons (X) pnil))
-(ruleN (C) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil)))
+(ruleN (A) x-a (ctv (1.0 1.0) (0.0 1.0)) (pcons (X) pnil))
+(ruleN (C) ab-c (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil)))
 EOF
 
   build_runtime_from_core "$runtime" \
@@ -302,7 +302,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 0.9996001597861454))"
-  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil)))"
+  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B)) (pcons (fact-ev (A)) (pcons (rule-ev ab-c) pnil))))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
@@ -315,8 +315,8 @@ run_reference_binding_test() {
   local out_long="outputs/test_reference_binding_long.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (Own (i $x)) (ctv (0.8 1.0) (0.0 1.0)) (pcons (Have (i $x)) pnil))
-(ruleN (Pet $x) (ctv (0.7 1.0) (0.0 1.0)) (pcons (Dog $x) pnil))
+(ruleN (Own (i $x)) have-own (ctv (0.8 1.0) (0.0 1.0)) (pcons (Have (i $x)) pnil))
+(ruleN (Pet $x) dog-pet (ctv (0.7 1.0) (0.0 1.0)) (pcons (Dog $x) pnil))
 (adapterN (And (Own (i $x)) (Pet $x)) (pcons (Own (i $x)) (pcons (Pet $x) pnil)))
 EOF
 
@@ -328,9 +328,9 @@ EOF
   mork run "$rules" --steps "$(steps_budget 5 0)" --aux-path "$runtime" "$out_mid" >/dev/null
   mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premise-pool (And (Own (i ann)) (Pet ann)) (Pet ann) pnil (and-pool (0.8 0.9999000095990804) (pcons (fact-ev (Have (i ann))) pnil) (pcons (indep-part (0.8 0.9999000095990804)) pnil)) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+  assert_contains "$out_mid" "(wait-premise-pool (And (Own (i ann)) (Pet ann)) (Pet ann) pnil (and-pool (0.8 0.9999000095990804) (pcons (fact-ev (Have (i ann))) (pcons (rule-ev have-own) pnil)) (pcons (indep-part (0.8 0.9999000095990804)) pnil)) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401))"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Have (i ann))) (pcons (fact-ev (Dog ann)) pnil)))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Have (i ann))) (pcons (rule-ev have-own) (pcons (fact-ev (Dog ann)) (pcons (rule-ev dog-pet) pnil)))))"
 }
 
 run_reference_three_premise_test() {
@@ -340,8 +340,8 @@ run_reference_three_premise_test() {
   local out_long="outputs/test_reference_three_long.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (A) (ctv (1.0 1.0) (0.0 1.0)) (pcons (X) pnil))
-(ruleN (Goal3) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil))))
+(ruleN (A) x-a (ctv (1.0 1.0) (0.0 1.0)) (pcons (X) pnil))
+(ruleN (Goal3) abd-goal3 (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil))))
 EOF
 
   build_runtime_from_core "$runtime" \
@@ -355,7 +355,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 0.9995002496253119))"
-  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D)) (pcons (fact-ev (B)) (pcons (fact-ev (A)) pnil))))"
+  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D)) (pcons (fact-ev (B)) (pcons (fact-ev (A)) (pcons (rule-ev abd-goal3) pnil)))))"
 }
 
 run_reference_nary_conjunction_test() {
@@ -457,8 +457,8 @@ EOF
 
   mork run "$rules" --steps "$(steps_budget 23 9)" --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) pnil))"
-  assert_contains "$out" "(proved (P alice) (0.7362270921751711 0.000363149786160053) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) pnil))"
+  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) (pcons (rule-ev r) pnil)))"
+  assert_contains "$out" "(proved (P alice) (0.7361953660871354 0.0003613453479487699) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) (pcons (rule-ev r) pnil)))"
 }
 
 run_ir_inversion_key_shape_test() {
@@ -491,8 +491,8 @@ run_same_premise_rules_test() {
   local out="outputs/test_same_premise.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (B $x) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A $x) pnil))
-(ruleN (B $x) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A $x) pnil))
+(ruleN (B $x) a-b-07 (ctv (0.7 0.9) (0.0 1.0)) (pcons (A $x) pnil))
+(ruleN (B $x) a-b-06 (ctv (0.6 0.9) (0.0 1.0)) (pcons (A $x) pnil))
 EOF
 
   build_runtime_from_core "$runtime" \
@@ -501,8 +501,8 @@ EOF
 
   mork run "$rules" --steps "$(steps_budget 7 1)" --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
-  assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) pnil))"
+  assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) (pcons (rule-ev a-b-07) pnil)))"
+  assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) (pcons (rule-ev a-b-06) pnil)))"
   assert_contains "$out" "(fact (B i) (0.6499999999812448 0.9473684207998814))"
 
   local proofs
@@ -527,8 +527,8 @@ run_open_multiple_proofs_demo_test() {
   mork run demos/open_multiple_proofs.mm2 --steps "$(steps_budget 8 14)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.9249999999499686 0.888888888335445))"
-  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) pnil))"
-  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann)) pnil))"
+  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) (pcons (rule-ev dog-animal) pnil)))"
+  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann)) (pcons (rule-ev cat-animal) pnil)))"
 
   local animal_ann_proofs
   animal_ann_proofs="$(grep -c '^(proved (Animal ann) ' "$out")"
@@ -543,10 +543,10 @@ run_head_source_sink_equivalence_test() {
   local sink_out="outputs/test_head_sink.mm2"
 
   cat > "$rules" <<'EOF'
-(ruleN (Animal $x) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog $x) pnil))
-(ruleN (Animal $x) (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat $x) pnil))
-(ruleN (Pet $x) (ctv (0.8 0.7) (0.0 1.0)) (pcons (Dog $x) pnil))
-(ruleN (Combo $x) (ctv (0.7 0.9) (0.0 1.0)) (pcons (Animal $x) (pcons (Pet $x) pnil)))
+(ruleN (Animal $x) dog-animal (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog $x) pnil))
+(ruleN (Animal $x) cat-animal (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat $x) pnil))
+(ruleN (Pet $x) dog-pet (ctv (0.8 0.7) (0.0 1.0)) (pcons (Dog $x) pnil))
+(ruleN (Combo $x) animal-pet-combo (ctv (0.7 0.9) (0.0 1.0)) (pcons (Animal $x) (pcons (Pet $x) pnil)))
 EOF
 
   build_runtime_from_core "$source_runtime" \

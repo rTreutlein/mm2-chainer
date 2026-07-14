@@ -5,9 +5,9 @@
 ; Seed
 
 ; Rules
-(ruleN (Mammal $x) (ctv (0.9 0.9) (0.0 1.0)) (pcons (Dog $x) pnil))
-(ruleN (Animal $x) (ctv (0.8 0.8) (0.0 1.0)) (pcons (Mammal $x) pnil))
-(ruleN (Creature $x) (ctv (0.7 0.7) (0.0 1.0)) (pcons (Animal $x) pnil))
+(ruleN (Mammal $x) dog-mammal (ctv (0.9 0.9) (0.0 1.0)) (pcons (Dog $x) pnil))
+(ruleN (Animal $x) mammal-animal (ctv (0.8 0.8) (0.0 1.0)) (pcons (Mammal $x) pnil))
+(ruleN (Creature $x) animal-creature (ctv (0.7 0.7) (0.0 1.0)) (pcons (Animal $x) pnil))
 (, (Goal (Creature x)))
 (goal-path (Creature x) pnil)
 (fact (Dog x) (1.0 1.0))

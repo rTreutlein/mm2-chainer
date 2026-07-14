@@ -587,7 +587,7 @@
    (empty))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (proj-kind $op))
-   (ruleN $ctype (proj $op $rid) $ptypes))
+   (ruleN $ctype $rid (proj $op) $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (ctv-kind $pos $neg))
    (superpose (
@@ -641,7 +641,7 @@
      (((pcons ($scope $prem) $rest)
        (let $not-prem ($scope (Not $prem))
          (superpose (
-           (ruleN $not-prem (proj not) (pcons ($scope $prem) pnil))
+           (ruleN $not-prem $rid (proj not) (pcons ($scope $prem) pnil))
            (ruleN $ctype $rid (ctv $pos $neg) (pcons $not-prem $rest))))))
       ($other (notsupported-ir (not-and-ctv $ctype $ptypes))))))
 

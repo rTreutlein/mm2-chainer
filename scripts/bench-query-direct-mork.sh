@@ -166,8 +166,8 @@ generate_chain_case() {
     printf '; generated query-chain-depth=%s by scripts/bench-query-direct-mork.sh\n' "$depth"
     for i in $(seq 1 "$depth"); do
       prev=$((i - 1))
-      printf '(ruleN (QueryDirectNode%s $x) (ctv (1.0 1.0) (0.0 1.0)) (pcons (QueryDirectNode%s $x) pnil))\n' \
-        "$i" "$prev"
+      printf '(ruleN (QueryDirectNode%s $x) query-direct-rule-%s (ctv (1.0 1.0) (0.0 1.0)) (pcons (QueryDirectNode%s $x) pnil))\n' \
+        "$i" "$i" "$prev"
     done
   } > "$rules"
 

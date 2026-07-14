@@ -8,8 +8,8 @@
 ;                                                 evidence-aware adapters can
 ;                                                 read source evidence
 ;   (: r (Implication (Premises p...)
-;         (Conclusions q)) (CTV (STV ..) ..))  -> (ruleN q (ctv (..) (..)) prems)
-;   (: r (Implication ...) (STV s c))          -> (ruleN q (stv (s c) (brpat a q')) prems)
+;         (Conclusions q)) (CTV (STV ..) ..))  -> (ruleN q r (ctv (..) (..)) prems)
+;   (: r (Implication ...) (STV s c))          -> (ruleN q r (stv (s c) (brpat a q')) prems)
 ;                                                 + role-keyed base-rate-def /
 ;                                                   base-rate seeds
 ;   query (: $prf T $tv)                       -> (, (Goal T)) [+ adapterN for And]
@@ -17,7 +17,7 @@
 ; Single-premise implications additionally compile an inverse rule (PeTTa's
 ; CTVInversionFormula path) unless the proof name is (no_inverse $x):
 ;
-;   (ruleN a (inv (s+ c+) (brpat a' q')) (pcons q pnil))
+;   (ruleN a r (inv (s+ c+) (brpat a' q')) (pcons q pnil))
 ;
 ; plus base-rate support for both patterns and an open materialization goal
 ; for the conclusion pattern. The goal mirrors PeTTaChainer's base-rate
@@ -67,13 +67,14 @@
 (= (mm2-compile-add (: $name (Implication (Premises $p1 $p2 $p3) (Conclusions $q)) $tv))
    (mm2-implication-forward $name $tv (pcons $p1 (pcons $p2 (pcons $p3 pnil))) (And $p1 $p2 $p3) $q))
 
-(= (mm2-implication-forward $_name (CTV (STV $pos-s $pos-c) (STV $neg-s $neg-c)) $premises $ante $concl)
-   (ruleN $concl (ctv ($pos-s $pos-c) ($neg-s $neg-c)) $premises))
+(= (mm2-implication-forward $name (CTV (STV $pos-s $pos-c) (STV $neg-s $neg-c)) $premises $ante $concl)
+   (ruleN $concl $name (ctv ($pos-s $pos-c) ($neg-s $neg-c)) $premises))
 
 (= (mm2-implication-forward $name (STV $s $c) $premises $ante $concl)
    (superpose (
      (ruleN
        $concl
+       $name
        (stv
          ($s $c)
          (brpat
@@ -92,6 +93,7 @@
    (superpose (
      (ruleN
        $ante
+       $name
        (inv
          (mm2-rule-pos $tv)
          (brpat
