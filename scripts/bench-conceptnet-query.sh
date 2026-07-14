@@ -19,6 +19,7 @@
 #   MM2_CONCEPTNET_BENCH_PET_DISTRACTORS=8
 #   MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS=8
 #   MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS=16
+#   MM2_CONCEPTNET_BENCH_KEEP_MM2_OUTPUTS=1
 #
 # Reports:
 #   outputs/conceptnet_query_bench/runs.tsv
@@ -40,6 +41,7 @@ objects="${MM2_CONCEPTNET_BENCH_OBJECTS:-8}"
 pet_distractors="${MM2_CONCEPTNET_BENCH_PET_DISTRACTORS:-8}"
 own_distractors="${MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS:-8}"
 other_distractors="${MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS:-16}"
+keep_mm2_outputs="${MM2_CONCEPTNET_BENCH_KEEP_MM2_OUTPUTS:-1}"
 out_dir="${MM2_CONCEPTNET_BENCH_OUT_DIR:-outputs/conceptnet_query_bench}"
 petta_root="${PETTACHAINER_ROOT:-$ROOT_DIR/../PeTTaChainer}"
 lock_dir="outputs/.bench-conceptnet-query.lock"
@@ -325,6 +327,9 @@ run_mm2_case() {
   printf 'mm2\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$run_id" "$steps" "$status" "$wall_ms" "$exec_ms" "$unifications" "$writes" "$transitions" \
     "$answers" "$log" "$first_answer" >> "$out_dir/runs.tsv"
+  if [ "$keep_mm2_outputs" = "0" ]; then
+    rm -f "$out"
+  fi
 }
 
 profile_mm2_timing() {
@@ -405,6 +410,13 @@ require_positive_int MM2_CONCEPTNET_BENCH_OBJECTS "$objects"
 require_nonnegative_int MM2_CONCEPTNET_BENCH_PET_DISTRACTORS "$pet_distractors"
 require_nonnegative_int MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS "$own_distractors"
 require_nonnegative_int MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS "$other_distractors"
+case "$keep_mm2_outputs" in
+  0|1) ;;
+  *)
+    echo "MM2_CONCEPTNET_BENCH_KEEP_MM2_OUTPUTS must be 0 or 1, got: $keep_mm2_outputs" >&2
+    exit 2
+    ;;
+esac
 
 mkdir -p outputs
 if ! mkdir "$lock_dir" 2>/dev/null; then

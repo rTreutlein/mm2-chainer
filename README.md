@@ -187,6 +187,24 @@ the per-case summaries in `outputs/conceptnet_query_scale/summary.tsv`. Override
 `MM2_CONCEPTNET_SCALE_PETTA_STEPS` when PeTTaChainer needs a larger search
 budget than MM2 to return the same answer count.
 
+To compare how many pending goals the scheduler admits per execution, run:
+
+```bash
+bash scripts/bench-scheduler-batch.sh
+MM2_SCHEDULER_BENCH_BATCH_SIZES="4 16 32 64" MM2_SCHEDULER_BENCH_RUNS=5 bash scripts/bench-scheduler-batch.sh
+```
+
+The benchmark directly seeds a large queue of one-premise goals, rotates case
+order between rounds, and writes internal MORK execution time, operation
+counts, completed/pending goal counts, and wall time to
+`outputs/scheduler_batch_bench/summary.tsv`. It uses the real scheduler through
+proof merge without the unrelated ConceptNet load. The step budget is fixed,
+so compare completion counts along with elapsed time. The first 256 goals are
+marked valuable by default and the rest speculative; the report separates
+useful throughput and speculative work. Override that boundary with
+`MM2_SCHEDULER_BENCH_VALUABLE_GOALS`. Runtime assembly keeps the production
+batch at 32 unless `MM2_SCHEDULER_BATCH_SIZE` is set.
+
 The STV pipeline takes more MM2 steps than the original chainer because it separates:
 
 1. rule scheduling
