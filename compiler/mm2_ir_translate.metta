@@ -17,7 +17,7 @@
 ;   [subgoal]  Compute + [subgoal] AndFormula* MP                 -> ruleN compute-plus-ctv
 ;   [subgoals] DistGreaterThan* AndFormula MP                     -> ruleN dist-gt-ctv
 ;   [subgoal]  FoldAllValue ParticleAddBernoulliFromSTV MP        -> ruleN fold-value-bernoulli-ctv
-;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> ruleN not-ctv
+;   [subgoal]  NotFormula (MP $not (CTV ..))                      -> fused TV pipeline (premise-not)
 ;   [subgoals] NotFormula AndFormula (MP $agg (CTV ..))           -> ruleN not-and-ctv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV .. (STV s c)) MP          -> ruleN stv
 ;   [subgoals] Fold(a) Fold(b) (ImplCTV ..) Inversion MP          -> ruleN inv
@@ -433,7 +433,7 @@
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (if (== $not $not2)
-         (not-ctv-kind ($ps $pc) ($ns $nc))
+         (tv-pipeline-kind premise-not ($ps $pc) ($ns $nc))
          (unsupported-tail $tail)))
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu AndFormula ($not2 $other) $agg)
@@ -450,7 +450,7 @@
        (mm2-ir-classify-or-tail $or-out $rest $tail))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
-       (ctvn-kind ($ps $pc) ($ns $nc)))
+       (tv-pipeline-kind conclusion-not ($ps $pc) ($ns $nc)))
       ((cons (cpu NotEqual ($p1 $p2) true)
          (cons $fold
            (cons (cpu TotalEvidenceCTVModusPonensFormula ($atv $evidence-tvs) $out) ())))
@@ -633,8 +633,12 @@
          (mm2-ir-superpose-list (mm2-ir-dist-atoms $init)))))
       ($other $other))))
 
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (not-ctv-kind $pos $neg))
-   (ruleN $ctype $rid (not-ctv $pos $neg) $ptypes))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (tv-pipeline-kind $transform $pos $neg))
+   (ruleN
+     $ctype
+     $rid
+     (tv-pipeline $pos ($transform $neg))
+     $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (not-and-ctv-kind $pos $neg))
    (case $ptypes
@@ -644,9 +648,6 @@
            (ruleN $not-prem $rid (proj not) (pcons ($scope $prem) pnil))
            (ruleN $ctype $rid (ctv $pos $neg) (pcons $not-prem $rest))))))
       ($other (notsupported-ir (not-and-ctv $ctype $ptypes))))))
-
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (ctvn-kind $pos $neg))
-   (ruleN $ctype $rid (ctvn $pos $neg) $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (fold-or-ctv-kind $pat $pos $neg))
    (case $ptypes
