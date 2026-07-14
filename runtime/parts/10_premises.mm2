@@ -189,9 +189,9 @@
 ; continue with the normal AndFormula premise fold over the remaining premises.
 (exec-template
   (exec 4
-        (, (wait-premise-not $g $rule-stv $prem $rest $proof-id $evset)
+        (, (wait-premise $g $rule-stv $prem $rest not-stv $proof-id $evset)
            (fact $prem ($prem-s $prem-c)))
-        (O (- (wait-premise-not $g $rule-stv $prem $rest $proof-id $evset))
+        (O (- (wait-premise $g $rule-stv $prem $rest not-stv $proof-id $evset))
            (pure (wait-premises
                    $g
                    $rule-stv

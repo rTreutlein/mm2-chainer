@@ -90,11 +90,12 @@
         (, (, (Goal $g))
            (ruleN $g $rule-id (not-first $final-kind) (pcons $prem $rest)))
         (O (- (, (Goal $g)))
-           (+ (wait-premise-not
+           (+ (wait-premise
                 $g
                 $final-kind
                 $prem
                 $rest
+                not-stv
                 (scheduledN $g (not-first $final-kind) (pcons $prem $rest))
                 (pcons (rule-ev $rule-id) pnil)))
            (+ (, (Goal $prem))))))
