@@ -198,7 +198,7 @@
                    $rest
                    ($not-s $prem-c)
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $not-s
                  (sub_f64 1.0 $prem-s)))))
 
@@ -231,7 +231,7 @@
                 $p1
                 $p2
                 $fold-scope
-                (pcons (fact-ev $prem) $evset)))
+                (pcons (fact-ev (fact-key $prem) $prem) $evset)))
            (+ (, (Goal ($fold-scope (TotalEvidence $case $p1 $p2 $x $case-tv))))))))
 
 (exec-template
@@ -296,7 +296,7 @@
                 (pcons $next (pcons $more $rest))
                 ($prem-s $prem-c)
                 $proof-id
-                (pcons (fact-ev $prem) $evset))))))
+                (pcons (fact-ev (fact-key $prem) $prem) $evset))))))
 
 (exec-template
   (exec 3
@@ -321,7 +321,7 @@
                    (pcons $next (pcons $more $rest))
                    $next-agg-stv
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $next-agg-stv
                  (tuple
                    (product_f64
@@ -356,7 +356,7 @@
                    (pcons $next pnil)
                    ($prem-s $cpu-agg-c)
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $cpu-agg-c
                  (pln_and_confidence_f64
                      $prem-s
@@ -387,7 +387,7 @@
                    (pcons $next pnil)
                    $cpu-agg-stv
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $cpu-agg-stv
                  (tuple
                    (product_f64
@@ -429,7 +429,7 @@
                    ($agg-s $agg-c)
                    ($prem-s $prem-c)
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $verdict
                  (i64_to_string
                    (signum_i64
@@ -930,6 +930,8 @@
 ; names), never its truth value: a re-derivation from the same source must
 ; overlap the fact's accumulated evidence so the merge stays idempotent
 ; instead of revising the same evidence in at a new value.
+; Runtime lookups use (fact-ev (fact-key fact) fact); compiler-known named
+; facts use (fact-ev (proof-id id) fact).
 (exec-template
   (exec 4
         (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset)
@@ -941,7 +943,7 @@
                 $rest
                 ($prem-s $prem-c)
                 $proof-id
-                (pcons (fact-ev $prem) $evset))))))
+                (pcons (fact-ev (fact-key $prem) $prem) $evset))))))
 
 (exec-template
   (exec 4
@@ -954,7 +956,7 @@
                    $rest
                    $next-agg-stv
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $next-agg-stv
                  (tuple
                    (product_f64
@@ -993,7 +995,7 @@
                 $rest
                 ($prem-s $prem-c)
                 $proof-id
-                (pcons (fact-ev $prem) $evset))))))
+                (pcons (fact-ev (fact-key $prem) $prem) $evset))))))
 
 (exec-template
   (exec 4
@@ -1006,7 +1008,7 @@
                    $rest
                    $next-agg-stv
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $next-agg-stv
                  (tuple
                    (sub_f64
@@ -1036,7 +1038,7 @@
                 $proof-id
                 (pcons
                   (projection-ev $proj-id $head ($head-s $head-c) $g)
-                  (pcons (fact-ev $head) $evset)))))))
+                  (pcons (fact-ev (fact-key $head) $head) $evset)))))))
 
 ; AndProjection: element strength = min(1, s_compound / s_evidence),
 ; confidence = min(c_compound, c_evidence); (0 0) when the evidence
@@ -1159,7 +1161,7 @@
                 $rest
                 ($ps $pc)
                 $proof-id
-                (pcons (fact-ev $prem) $evset))))))
+                (pcons (fact-ev (fact-key $prem) $prem) $evset))))))
 
 (exec-template
   (exec 4
@@ -1172,7 +1174,7 @@
                    $rest
                    $next-agg-stv
                    $proof-id
-                   (pcons (fact-ev $prem) $evset))
+                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
                  $next-agg-stv
                  (tuple
                    (product_f64

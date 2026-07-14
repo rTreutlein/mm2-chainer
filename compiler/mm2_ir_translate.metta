@@ -769,8 +769,8 @@
 (= (mm2-ir-emit-fact $g $prf ($s $c))
    (superpose (
      (fact $g ($s $c))
-     (fact-evidence $g ($s $c) (pcons (fact-ev $prf $g) pnil))
-     (proved $g ($s $c) $prf (pcons (fact-ev $prf $g) pnil))
+     (fact-evidence $g ($s $c) (pcons (fact-ev (proof-id $prf) $g) pnil))
+     (proved $g ($s $c) $prf (pcons (fact-ev (proof-id $prf) $g) pnil))
      (mm2-ir-superpose-list (mm2-ir-dist-atoms $g)))))
 
 ; The TV is is-var-checked before structural matching: a case pattern

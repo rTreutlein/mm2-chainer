@@ -162,8 +162,8 @@ emit_mm2_fact() {
   local proof_id="$2"
 
   printf '(fact %s (1.0 1.0))\n' "$term"
-  printf '(fact-evidence %s (1.0 1.0) (pcons (fact-ev %s) pnil))\n' "$term" "$term"
-  printf '(proved %s (1.0 1.0) %s (pcons (fact-ev %s) pnil))\n' "$term" "$proof_id" "$term"
+  printf '(fact-evidence %s (1.0 1.0) (pcons (fact-ev (fact-key %s) %s) pnil))\n' "$term" "$term" "$term"
+  printf '(proved %s (1.0 1.0) %s (pcons (fact-ev (fact-key %s) %s) pnil))\n' "$term" "$proof_id" "$term" "$term"
 }
 
 emit_petta_fact() {

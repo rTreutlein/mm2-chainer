@@ -188,8 +188,8 @@ run_full_test() {
 
   assert_contains "$out" "(fact (Pet x) (0.7633570570722736 0.9836728385892818))"
   assert_contains "$out" "(fact (Animal x) (0.6870213513650462 0.9639576298196996))"
-  assert_contains "$out" "(proved (Pet x) (0.7 0.9762819997775877) (scheduledN (Pet x) (ctv (0.7 0.976282) (0 1)) (pcons (Dog x) pnil)) (pcons (fact-ev (Dog x)) (pcons (rule-ev a___r_CapableOf___c_en_dog___c_en_pet_capableof) pnil)))"
-  assert_contains "$out" "(proved (Pet x) (0.9 0.9502129991872743) (scheduledN (Pet x) (ctv (0.9 0.950213) (0 1)) (pcons (Dog x) pnil)) (pcons (fact-ev (Dog x)) (pcons (rule-ev a___r_IsA___c_en_dog___c_en_pet_isa) pnil)))"
+  assert_contains "$out" "(proved (Pet x) (0.7 0.9762819997775877) (scheduledN (Pet x) (ctv (0.7 0.976282) (0 1)) (pcons (Dog x) pnil)) (pcons (fact-ev (fact-key (Dog x)) (Dog x)) (pcons (rule-ev a___r_CapableOf___c_en_dog___c_en_pet_capableof) pnil)))"
+  assert_contains "$out" "(proved (Pet x) (0.9 0.9502129991872743) (scheduledN (Pet x) (ctv (0.9 0.950213) (0 1)) (pcons (Dog x) pnil)) (pcons (fact-ev (fact-key (Dog x)) (Dog x)) (pcons (rule-ev a___r_IsA___c_en_dog___c_en_pet_isa) pnil)))"
   assert_no_line_regex "$out" '^\(pendingN \$'
 
   local runtime_templates
@@ -251,7 +251,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal\) '
   assert_contains "$out_long" "(fact (Goal) (1.0 0.999700089898053))"
-  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil)) (pcons (fact-ev (B)) (pcons (rule-ev b-goal) pnil)))"
+  assert_contains "$out_long" "(proved (Goal) (1.0 0.999700089898053) (scheduledN (Goal) (ctv (1.0 1.0) (0.0 1.0)) (pcons (B) pnil)) (pcons (fact-ev (fact-key (B)) (B)) (pcons (rule-ev b-goal) pnil)))"
 }
 
 # Port of the first open-query result case from
@@ -274,8 +274,8 @@ EOF
 
   assert_contains "$out" "(fact (Animal ann) (1.0 0.8999189847918191))"
   assert_contains "$out" "(fact (Animal max) (1.0 0.8999189847918191))"
-  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) (pcons (rule-ev dog-animal) pnil)))"
-  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog max) pnil)) (pcons (fact-ev (Dog max)) (pcons (rule-ev dog-animal) pnil)))"
+  assert_contains "$out" "(proved (Animal ann) (1.0 0.8999189847918191) (scheduledN (Animal ann) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (fact-key (Dog ann)) (Dog ann)) (pcons (rule-ev dog-animal) pnil)))"
+  assert_contains "$out" "(proved (Animal max) (1.0 0.8999189847918191) (scheduledN (Animal max) (ctv (1.0 0.9) (0.0 1.0)) (pcons (Dog max) pnil)) (pcons (fact-ev (fact-key (Dog max)) (Dog max)) (pcons (rule-ev dog-animal) pnil)))"
 }
 
 # Port of the independentKb behavior from
@@ -302,7 +302,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(C\) '
   assert_contains "$out_long" "(fact (C) (1.0 0.9996001597861454))"
-  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (B)) (pcons (fact-ev (A)) (pcons (rule-ev ab-c) pnil))))"
+  assert_contains "$out_long" "(proved (C) (1.0 0.9996001597861454) (scheduledN (C) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) pnil))) (pcons (fact-ev (fact-key (B)) (B)) (pcons (fact-ev (fact-key (A)) (A)) (pcons (rule-ev ab-c) pnil))))"
 }
 
 # Simplified dependent-binding parity case modeled on the openAndFair behavior in
@@ -328,9 +328,9 @@ EOF
   mork run "$rules" --steps "$(steps_budget 5 0)" --aux-path "$runtime" "$out_mid" >/dev/null
   mork run "$rules" --steps "$(steps_budget 17 11)" --aux-path "$runtime" "$out_long" >/dev/null
 
-  assert_contains "$out_mid" "(wait-premise-pool (And (Own (i ann)) (Pet ann)) (Pet ann) pnil (and-pool (0.8 0.9999000095990804) (pcons (fact-ev (Have (i ann))) (pcons (rule-ev have-own) pnil)) (pcons (indep-part (0.8 0.9999000095990804)) pnil)) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
+  assert_contains "$out_mid" "(wait-premise-pool (And (Own (i ann)) (Pet ann)) (Pet ann) pnil (and-pool (0.8 0.9999000095990804) (pcons (fact-ev (fact-key (Have (i ann))) (Have (i ann))) (pcons (rule-ev have-own) pnil)) (pcons (indep-part (0.8 0.9999000095990804)) pnil)) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))))"
   assert_contains "$out_long" "(fact (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401))"
-  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (Have (i ann))) (pcons (rule-ev have-own) (pcons (fact-ev (Dog ann)) (pcons (rule-ev dog-pet) pnil)))))"
+  assert_contains "$out_long" "(proved (And (Own (i ann)) (Pet ann)) (0.5599999999999999 0.9999136351865401) (adapterN (And (Own (i ann)) (Pet ann)) (pcons (Own (i ann)) (pcons (Pet ann) pnil))) (pcons (fact-ev (fact-key (Have (i ann))) (Have (i ann))) (pcons (rule-ev have-own) (pcons (fact-ev (fact-key (Dog ann)) (Dog ann)) (pcons (rule-ev dog-pet) pnil)))))"
 }
 
 run_reference_three_premise_test() {
@@ -355,7 +355,7 @@ EOF
 
   assert_no_line_regex "$out_short" '^\(fact \(Goal3\) '
   assert_contains "$out_long" "(fact (Goal3) (1.0 0.9995002496253119))"
-  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (D)) (pcons (fact-ev (B)) (pcons (fact-ev (A)) (pcons (rule-ev abd-goal3) pnil)))))"
+  assert_contains "$out_long" "(proved (Goal3) (1.0 0.9995002496253119) (scheduledN (Goal3) (ctv (1.0 1.0) (0.0 1.0)) (pcons (A) (pcons (B) (pcons (D) pnil)))) (pcons (fact-ev (fact-key (D)) (D)) (pcons (fact-ev (fact-key (B)) (B)) (pcons (fact-ev (fact-key (A)) (A)) (pcons (rule-ev abd-goal3) pnil)))))"
 }
 
 run_reference_nary_conjunction_test() {
@@ -457,8 +457,8 @@ EOF
 
   mork run "$rules" --steps "$(steps_budget 23 9)" --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (P bob)) (pcons (rule-ev r) pnil)))"
-  assert_contains "$out" "(proved (P alice) (0.7361953660871354 0.0003613453479487699) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (Q alice)) (pcons (rule-ev r) pnil)))"
+  assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (fact-key (P bob)) (P bob)) (pcons (rule-ev r) pnil)))"
+  assert_contains "$out" "(proved (P alice) (0.7361953660871354 0.0003613453479487699) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (fact-key (Q alice)) (Q alice)) (pcons (rule-ev r) pnil)))"
 }
 
 run_ir_inversion_key_shape_test() {
@@ -501,8 +501,8 @@ EOF
 
   mork run "$rules" --steps "$(steps_budget 7 1)" --aux-path "$runtime" "$out" >/dev/null
 
-  assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) (pcons (rule-ev a-b-07) pnil)))"
-  assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (A i)) (pcons (rule-ev a-b-06) pnil)))"
+  assert_contains "$out" "(proved (B i) (0.7 0.8999999998109365) (scheduledN (B i) (ctv (0.7 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (fact-key (A i)) (A i)) (pcons (rule-ev a-b-07) pnil)))"
+  assert_contains "$out" "(proved (B i) (0.6 0.8999999998784551) (scheduledN (B i) (ctv (0.6 0.9) (0.0 1.0)) (pcons (A i) pnil)) (pcons (fact-ev (fact-key (A i)) (A i)) (pcons (rule-ev a-b-06) pnil)))"
   assert_contains "$out" "(fact (B i) (0.6499999999812448 0.9473684207998814))"
 
   local proofs
@@ -527,8 +527,8 @@ run_open_multiple_proofs_demo_test() {
   mork run demos/open_multiple_proofs.mm2 --steps "$(steps_budget 8 14)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Animal ann) (0.9249999999499686 0.888888888335445))"
-  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (Dog ann)) (pcons (rule-ev dog-animal) pnil)))"
-  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat ann) pnil)) (pcons (fact-ev (Cat ann)) (pcons (rule-ev cat-animal) pnil)))"
+  assert_contains "$out" "(proved (Animal ann) (0.9 0.7999999994236207) (scheduledN (Animal ann) (ctv (0.9 0.8) (0.0 1.0)) (pcons (Dog ann) pnil)) (pcons (fact-ev (fact-key (Dog ann)) (Dog ann)) (pcons (rule-ev dog-animal) pnil)))"
+  assert_contains "$out" "(proved (Animal ann) (0.95 0.7999999987832213) (scheduledN (Animal ann) (ctv (0.95 0.8) (0.0 1.0)) (pcons (Cat ann) pnil)) (pcons (fact-ev (fact-key (Cat ann)) (Cat ann)) (pcons (rule-ev cat-animal) pnil)))"
 
   local animal_ann_proofs
   animal_ann_proofs="$(grep -c '^(proved (Animal ann) ' "$out")"

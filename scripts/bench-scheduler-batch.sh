@@ -106,7 +106,7 @@ seed="$out_dir/seed.mm2"
     fi
     printf '(pendingN %09d (%sSchedulerBenchGoal g%06d) identity (pcons (SchedulerBenchPremise p%06d) pnil) pnil)\n' "$i" "$goal_kind" "$i" "$i"
     printf '(fact (SchedulerBenchPremise p%06d) (1.0 1.0))\n' "$i"
-    printf '(fact-evidence (SchedulerBenchPremise p%06d) (1.0 1.0) (pcons (fact-ev (SchedulerBenchPremise p%06d)) pnil))\n' "$i" "$i"
+    printf '(fact-evidence (SchedulerBenchPremise p%06d) (1.0 1.0) (pcons (fact-ev (fact-key (SchedulerBenchPremise p%06d)) (SchedulerBenchPremise p%06d)) pnil))\n' "$i" "$i" "$i"
   done
 } > "$seed"
 

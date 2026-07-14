@@ -559,7 +559,7 @@
 (= (mm2-direct-fact-base-rate $pat)
    (case (collapse
            (match &mork
-             (proved $pat ($s $c) $prf (pcons (fact-ev $prf $pat) pnil))
+             (proved $pat ($s $c) $prf (pcons (fact-ev (proof-id $prf) $pat) pnil))
              (STV $s $c)))
      ((() no-cache-entry)
       ($stvs
@@ -1562,11 +1562,11 @@
      (if (== $proofs ()) () $proofs)))
 
 (= (mm2-forward-evset-proof-names pnil) ())
-(= (mm2-forward-evset-proof-names (pcons (fact-ev $g) $rest))
+(= (mm2-forward-evset-proof-names (pcons (fact-ev (fact-key $g) $_fact) $rest))
    (append
      (mm2-forward-fact-key-proof-names $g)
      (mm2-forward-evset-proof-names $rest)))
-(= (mm2-forward-evset-proof-names (pcons (fact-ev $prf $_g) $rest))
+(= (mm2-forward-evset-proof-names (pcons (fact-ev (proof-id $prf) $_g) $rest))
    (cons $prf (mm2-forward-evset-proof-names $rest)))
 (= (mm2-forward-evset-proof-names (pcons (rule-ev $_rule) $rest))
    (mm2-forward-evset-proof-names $rest))

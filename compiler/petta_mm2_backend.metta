@@ -45,8 +45,8 @@
        (empty)
        (superpose (
          (fact $type ($s $c))
-         (fact-evidence $type ($s $c) (pcons (fact-ev $type) pnil))
-         (proved $type ($s $c) $name (pcons (fact-ev $type) pnil))))))
+         (fact-evidence $type ($s $c) (pcons (fact-ev (fact-key $type) $type) pnil))
+         (proved $type ($s $c) $name (pcons (fact-ev (fact-key $type) $type) pnil))))))
 
 ; Only CTV rules compile an inverse for now. An STV rule's derived CTV and
 ; its inverse both read the conclusion's base rate, and PeTTa's base-rate

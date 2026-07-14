@@ -133,8 +133,8 @@ emit_seed_fact() {
   local proof_id="$3"
 
   printf '(fact %s %s)\n' "$term" "$stv"
-  printf '(fact-evidence %s %s (pcons (fact-ev %s) pnil))\n' "$term" "$stv" "$term"
-  printf '(proved %s %s %s (pcons (fact-ev %s) pnil))\n' "$term" "$stv" "$proof_id" "$term"
+  printf '(fact-evidence %s %s (pcons (fact-ev (fact-key %s) %s) pnil))\n' "$term" "$stv" "$term" "$term"
+  printf '(proved %s %s %s (pcons (fact-ev (fact-key %s) %s) pnil))\n' "$term" "$stv" "$proof_id" "$term" "$term"
 }
 
 generate_baseline_case() {
