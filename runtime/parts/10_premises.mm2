@@ -934,8 +934,11 @@
 ; facts use (fact-ev (proof-id id) fact).
 (exec-template
   (exec 4
-        (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset)
-           (fact $prem ($prem-s $prem-c)))
+        (I (BTM (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset))
+           (one-of
+             (positive-fact $prem ($prem-s $prem-c))
+             (fact $prem ($prem-s $prem-c))
+             (fact $prem (ctvpair ($prem-s $prem-c) $negative))))
         (O (- (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset))
            (+ (wait-premises
                 $g
@@ -947,8 +950,11 @@
 
 (exec-template
   (exec 4
-        (, (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset)
-           (fact $prem ($prem-s $prem-c)))
+        (I (BTM (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset))
+           (one-of
+             (positive-fact $prem ($prem-s $prem-c))
+             (fact $prem ($prem-s $prem-c))
+             (fact $prem (ctvpair ($prem-s $prem-c) $negative))))
         (O (- (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset))
            (pure (wait-premises
                    $g
@@ -1147,44 +1153,6 @@
         (O (- (wait-premises $g (proj ctvpair $proj-id ($ps $pc)) pnil ($ns $nc) $proof-id $evset))
            (+ (fact $g (ctvpair ($ps $pc) ($ns $nc))))
            (+ (proved $g (ctvpair ($ps $pc) ($ns $nc)) $proof-id $evset)))))
-
-; A ctvpair-valued fact used as a premise contributes its positive branch
-; (tv_formulas.metta: CTVModusPonensFormula on a CTV premise aggregate).
-(exec-template
-  (exec 4
-        (, (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset)
-           (fact $prem (ctvpair ($ps $pc) $neg)))
-        (O (- (wait-premise $g $rule-stv $prem $rest no-stv $proof-id $evset))
-           (+ (wait-premises
-                $g
-                $rule-stv
-                $rest
-                ($ps $pc)
-                $proof-id
-                (pcons (fact-ev (fact-key $prem) $prem) $evset))))))
-
-(exec-template
-  (exec 4
-        (, (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset)
-           (fact $prem (ctvpair ($ps $pc) $neg)))
-        (O (- (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset))
-           (pure (wait-premises
-                   $g
-                   $rule-stv
-                   $rest
-                   $next-agg-stv
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $next-agg-stv
-                 (tuple
-                   (product_f64
-                       $agg-s
-                       $ps)
-                   (pln_and_confidence_f64
-                       $agg-s
-                       $agg-c
-                       $ps
-                       $pc))))))
 
 ; NotFormula: single-premise negation adapter, (s c) -> (1-s c).
 (exec-template

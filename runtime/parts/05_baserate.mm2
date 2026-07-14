@@ -12,22 +12,17 @@
 ;
 ; The fold-base-rate sink recomputes the weighted base rate over all matching
 ; facts each round (strength = sum(s*c)/sum(c), confidence = count/(count+800))
-; and rewrites (base-rate $patQ $stv) only when the value changed.
+; and rewrites (base-rate $patQ $stv) only when the value changed. Contextual
+; facts contribute the positive branch of their ctvpair.
 (exec-template
   (exec 2
-        (, (base-rate-def $patQ $patM)
-           (base-rate $patQ $old)
-           (fact $patM ($fact-s $fact-c)))
+        (I (BTM (base-rate-def $patQ $patM))
+           (BTM (base-rate $patQ $old))
+           (one-of
+             (positive-fact $patM ($fact-s $fact-c))
+             (fact $patM ($fact-s $fact-c))
+             (fact $patM (ctvpair ($fact-s $fact-c) $negative))))
         (O (fold-base-rate $patQ $old ($fact-s $fact-c)))))
-
-; Contextual (ctvpair ...) facts contribute their positive branch
-; (tv_formulas.metta: BaseRateAcc on a CTV).
-(exec-template
-  (exec 2
-        (, (base-rate-def $patQ $patM)
-           (base-rate $patQ $old)
-           (fact $patM (ctvpair $pos $neg)))
-        (O (fold-base-rate $patQ $old $pos))))
 
 ; STV-derived rule CTVs need PeTTa's recursion guard: when a rule computes the
 ; base rate used to derive its own CTV, proofs carrying that rule's evidence do
@@ -35,14 +30,10 @@
 ; ordinary base-rate relation so explicit CTV rules keep their unguarded folds.
 (exec-template
   (exec 2
-        (, (base-rate-def-guarded $patQ $patM $rule-id)
-           (base-rate $patQ $old)
-           (proved $patM ($fact-s $fact-c) $proof-id $evset))
+        (I (BTM (base-rate-def-guarded $patQ $patM $rule-id))
+           (BTM (base-rate $patQ $old))
+           (one-of
+             (positive-proof $patM ($fact-s $fact-c) $proof-id $evset)
+             (proved $patM ($fact-s $fact-c) $proof-id $evset)
+             (proved $patM (ctvpair ($fact-s $fact-c) $negative) $proof-id $evset)))
         (O (fold-base-rate $patQ $old ($fact-s $fact-c) (without-rule $rule-id $evset)))))
-
-(exec-template
-  (exec 2
-        (, (base-rate-def-guarded $patQ $patM $rule-id)
-           (base-rate $patQ $old)
-           (proved $patM (ctvpair $pos $neg) $proof-id $evset))
-        (O (fold-base-rate $patQ $old $pos (without-rule $rule-id $evset)))))
