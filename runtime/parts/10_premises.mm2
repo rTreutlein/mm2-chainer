@@ -8,25 +8,17 @@
   (exec 4
         (, (wait-premises $g (ctv ($pos-s $pos-c) ($neg-s $neg-c)) pnil ($premise-s $premise-c) $proof-id $evset))
         (O (- (wait-premises $g (ctv ($pos-s $pos-c) ($neg-s $neg-c)) pnil ($premise-s $premise-c) $proof-id $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $pos-s
-                         $premise-s)
-                       (product_f64
-                         $neg-s
-                         (sub_f64
-                           1.0
-                           $premise-s)))
-                   (pln_mp_confidence_f64
-                       $premise-s
-                       $premise-c
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $pos-s $premise-s)
+                 (product_f64 $neg-s (sub_f64 1.0 $premise-s)))
+               (pln_mp_confidence_f64
+                 $premise-s $premise-c
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 ; Fused operation names keep NotFormula attached to the value it transforms,
 ; rather than making it look like a property of the CTV. Their flat shape also
@@ -51,25 +43,17 @@
                 ($premise-s $premise-c)
                 $proof-id
                 $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $pos-s
-                         (sub_f64
-                           1.0
-                           $premise-s))
-                       (product_f64
-                         $neg-s
-                         $premise-s))
-                   (pln_mp_confidence_f64
-                       (sub_f64 1.0 $premise-s)
-                       $premise-c
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $pos-s (sub_f64 1.0 $premise-s))
+                 (product_f64 $neg-s $premise-s))
+               (pln_mp_confidence_f64
+                 (sub_f64 1.0 $premise-s) $premise-c
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 ; mp-conclusion-not applies modus ponens first, then complements the conclusion
 ; strength while preserving confidence: MP -> conclusion Not.
@@ -89,27 +73,19 @@
                 ($premise-s $premise-c)
                 $proof-id
                 $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sub_f64
-                       1.0
-                       (sum_f64
-                         (product_f64
-                           $pos-s
-                           $premise-s)
-                         (product_f64
-                           $neg-s
-                           (sub_f64
-                             1.0
-                             $premise-s))))
-                   (pln_mp_confidence_f64
-                       $premise-s
-                       $premise-c
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sub_f64
+                 1.0
+                 (sum_f64
+                   (product_f64 $pos-s $premise-s)
+                   (product_f64 $neg-s (sub_f64 1.0 $premise-s))))
+               (pln_mp_confidence_f64
+                 $premise-s $premise-c
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 ; Plain STV rules first derive their negative branch from the current base
 ; rates of the rule's antecedent and consequent patterns (PeTTaChainer's
@@ -123,66 +99,34 @@
            (base-rate $ante ($ante-s $ante-c))
            (base-rate $cons ($cons-s $cons-c)))
         (O (- (wait-premises $g (stv ($rule-s $rule-c) (brpat $ante $cons)) pnil ($premise-s $premise-c) $proof-id $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $rule-s
-                         $premise-s)
-                       (product_f64
-                         (ifnz
-                           (gte_f64
-                             $ante-s
-                             1.0)
-                           then
-                           $cons-s
-                           else
-                           (clamp_f64
-                             (div_f64
-                               (sub_f64
-                                 $cons-s
-                                 (product_f64
-                                   $ante-s
-                                   $rule-s))
-                               (sub_f64
-                                 1.0
-                                 $ante-s))
-                             0.0
-                             1.0))
-                         (sub_f64
-                           1.0
-                           $premise-s)))
-                   (pln_mp_confidence_f64
-                       $premise-s
-                       $premise-c
-                       $rule-s
-                       $rule-c
-                       (ifnz
-                         (gte_f64
-                           $ante-s
-                           1.0)
-                         then
-                         $cons-s
-                         else
-                         (clamp_f64
-                           (div_f64
-                             (sub_f64
-                               $cons-s
-                               (product_f64
-                                 $ante-s
-                                 $rule-s))
-                             (sub_f64
-                               1.0
-                               $ante-s))
-                           0.0
-                           1.0))
-                       (product_f64
-                         0.25
-                         (min_f64
-                           $ante-c
-                           $cons-c
-                           $rule-c))))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $rule-s $premise-s)
+                 (product_f64
+                   (ifnz (gte_f64 $ante-s 1.0)
+                     then $cons-s
+                     else
+                     (clamp_f64
+                       (div_f64
+                         (sub_f64 $cons-s (product_f64 $ante-s $rule-s))
+                         (sub_f64 1.0 $ante-s))
+                       0.0 1.0))
+                   (sub_f64 1.0 $premise-s)))
+               (pln_mp_confidence_f64
+                 $premise-s $premise-c
+                 $rule-s $rule-c
+                 (ifnz (gte_f64 $ante-s 1.0)
+                   then $cons-s
+                   else
+                   (clamp_f64
+                     (div_f64
+                       (sub_f64 $cons-s (product_f64 $ante-s $rule-s))
+                       (sub_f64 1.0 $ante-s))
+                     0.0 1.0))
+                 (product_f64 0.25 (min_f64 $ante-c $cons-c $rule-c))))))))
 
 (exec-template
   (exec 4
@@ -221,15 +165,14 @@
         (, (wait-premise $g $rule-stv $prem $rest not-stv $proof-id $evset)
            (fact $prem ($prem-s $prem-c)))
         (O (- (wait-premise $g $rule-stv $prem $rest not-stv $proof-id $evset))
-           (pure (wait-premises
-                   $g
-                   $rule-stv
-                   $rest
-                   ($not-s $prem-c)
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $not-s
-                 (sub_f64 1.0 $prem-s)))))
+           (pure
+             (wait-premises
+               $g $rule-stv $rest
+               ($not-s $prem-c)
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $not-s
+             (sub_f64 1.0 $prem-s)))))
 
 ; Once the antecedent of a TotalEvidence aggregate is known, open the FoldAll
 ; evidence pattern and stream every matching evidence case into the aggregate
@@ -344,23 +287,18 @@
               ($agg-s $agg-c)
               $proof-id
               $evset))
-           (pure (wait-premises
-                   $g
-                   (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
-                   (pcons $next (pcons $more $rest))
-                   $next-agg-stv
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $next-agg-stv
-                 (tuple
-                   (product_f64
-                       $agg-s
-                       $prem-s)
-                   (pln_and_confidence_f64
-                       $agg-s
-                       $agg-c
-                       $prem-s
-                       $prem-c))))))
+           (pure
+             (wait-premises
+               $g
+               (compute-plus-ctv ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+               (pcons $next (pcons $more $rest))
+               $next-agg-stv
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $next-agg-stv
+             (tuple
+               (product_f64 $agg-s $prem-s)
+               (pln_and_confidence_f64 $agg-s $agg-c $prem-s $prem-c))))))
 
 (exec-template
   (exec 3
@@ -379,19 +317,16 @@
               no-stv
               $proof-id
               $evset))
-           (pure (wait-premises
-                   $g
-                   (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
-                   (pcons $next pnil)
-                   ($prem-s $cpu-agg-c)
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $cpu-agg-c
-                 (pln_and_confidence_f64
-                     $prem-s
-                     $prem-c
-                     1.0
-                     1.0)))))
+           (pure
+             (wait-premises
+               $g
+               (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+               (pcons $next pnil)
+               ($prem-s $cpu-agg-c)
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $cpu-agg-c
+             (pln_and_confidence_f64 $prem-s $prem-c 1.0 1.0)))))
 
 (exec-template
   (exec 3
@@ -410,29 +345,21 @@
               ($agg-s $agg-c)
               $proof-id
               $evset))
-           (pure (wait-premises
-                   $g
-                   (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
-                   (pcons $next pnil)
-                   $cpu-agg-stv
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $cpu-agg-stv
-                 (tuple
-                   (product_f64
-                       $agg-s
-                       $prem-s)
-                   (pln_and_confidence_f64
-                       (product_f64
-                         $agg-s
-                         $prem-s)
-                       (pln_and_confidence_f64
-                         $agg-s
-                         $agg-c
-                         $prem-s
-                         $prem-c)
-                       1.0
-                       1.0))))))
+           (pure
+             (wait-premises
+               $g
+               (compute-plus-ctv-bound ($pos-s $pos-c) ($lhs $rhs $res ($neg-s $neg-c)))
+               (pcons $next pnil)
+               $cpu-agg-stv
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $cpu-agg-stv
+             (tuple
+               (product_f64 $agg-s $prem-s)
+               (pln_and_confidence_f64
+                 (product_f64 $agg-s $prem-s)
+                 (pln_and_confidence_f64 $agg-s $agg-c $prem-s $prem-c)
+                 1.0 1.0))))))
 
 (exec-template
   (exec 3
@@ -451,23 +378,21 @@
               ($agg-s $agg-c)
               $proof-id
               $evset))
-           (pure (compute-plus-checked
-                   $verdict
-                   $g
-                   (ctv ($pos-s $pos-c) ($neg-s $neg-c))
-                   ($agg-s $agg-c)
-                   ($prem-s $prem-c)
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $verdict
-                 (i64_to_string
-                   (signum_i64
-                     (abs_i64
-                       (sub_i64
-                         (i64_from_string $res)
-                         (sum_i64
-                           (i64_from_string $lhs)
-                           (i64_from_string $rhs))))))))))
+           (pure
+             (compute-plus-checked
+               $verdict $g
+               (ctv ($pos-s $pos-c) ($neg-s $neg-c))
+               ($agg-s $agg-c)
+               ($prem-s $prem-c)
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $verdict
+             (i64_to_string
+               (signum_i64
+                 (abs_i64
+                   (sub_i64
+                     (i64_from_string $res)
+                     (sum_i64 (i64_from_string $lhs) (i64_from_string $rhs))))))))))
 
 (exec-template
   (exec 4
@@ -487,35 +412,20 @@
               ($prem-s $prem-c)
               $proof-id
               $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $pos-s
-                         (product_f64
-                           $agg-s
-                           $prem-s))
-                       (product_f64
-                         $neg-s
-                         (sub_f64
-                           1.0
-                           (product_f64
-                             $agg-s
-                             $prem-s))))
-                   (pln_mp_confidence_f64
-                       (product_f64
-                         $agg-s
-                         $prem-s)
-                       (pln_and_confidence_f64
-                         $agg-s
-                         $agg-c
-                         $prem-s
-                         $prem-c)
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $pos-s (product_f64 $agg-s $prem-s))
+                 (product_f64
+                   $neg-s
+                   (sub_f64 1.0 (product_f64 $agg-s $prem-s))))
+               (pln_mp_confidence_f64
+                 (product_f64 $agg-s $prem-s)
+                 (pln_and_confidence_f64 $agg-s $agg-c $prem-s $prem-c)
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 (exec-template
   (exec 4
@@ -549,22 +459,17 @@
         (, (dist-map2-active * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
            (dist-pair $pida $xa $wa)
            (dist-pair $pidb $xb $wb))
-        (O (pure (dist-map2-contrib
-                   (dist-map2 * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
-                   (dist-map2-source $xa $xb)
-                   $pair)
-                 $pair
-                 (tuple
-                   (product_f64
-                       $xa
-                       $xb)
-                   (product_f64
-                       (product_f64
-                         $wa
-                         $wb)
-                       (product_f64
-                         $scalea
-                         $scaleb)))))))
+        (O (pure
+             (dist-map2-contrib
+               (dist-map2 * (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
+               (dist-map2-source $xa $xb)
+               $pair)
+             $pair
+             (tuple
+               (product_f64 $xa $xb)
+               (product_f64
+                 (product_f64 $wa $wb)
+                 (product_f64 $scalea $scaleb)))))))
 
 (exec-template
   (exec 2
@@ -696,11 +601,10 @@
   (exec 2
         (, (dist-stats-active (ParticleDist $pid $scale))
            (dist-pair $pid $x $w))
-        (O (pure (dist-stat-contrib (ParticleDist $pid $scale) $x $w $w2)
-                 $w2
-                 (product_f64
-                     $w
-                     $w)))))
+        (O (pure
+             (dist-stat-contrib (ParticleDist $pid $scale) $x $w $w2)
+             $w2
+             (product_f64 $w $w)))))
 
 (exec-template
   (exec 2
@@ -720,39 +624,25 @@
   (exec 3
         (, (dist-stat-total (ParticleDist $pid $scale) $total)
            (dist-stat-sumsq (ParticleDist $pid $scale) $sumsq))
-        (O (pure (dist-confidence (ParticleDist $pid $scale) $confidence)
-                 $confidence
-                 (div_f64
-                     (div_f64
-                       (product_f64
-                         $total
-                         $total)
-                       $sumsq)
-                     (sum_f64
-                       (div_f64
-                         (product_f64
-                           $total
-                           $total)
-                         $sumsq)
-                       20.0))))))
+        (O (pure
+             (dist-confidence (ParticleDist $pid $scale) $confidence)
+             $confidence
+             (div_f64
+               (div_f64 (product_f64 $total $total) $sumsq)
+               (sum_f64
+                 (div_f64 (product_f64 $total $total) $sumsq)
+                 20.0))))))
 
 (exec-template
   (exec 2
         (, (dist-gt-active (ParticleDist $pid $scale) $threshold)
            (dist-pair $pid $x $w))
-        (O (pure (dist-gt-contrib (ParticleDist $pid $scale) $threshold $x $mass)
-                 $mass
-                 (product_f64
-                     (product_f64
-                       $scale
-                       $w)
-                     (clamp_f64
-                       (signum_f64
-                         (sub_f64
-                           $x
-                           $threshold))
-                       0.0
-                       1.0))))))
+        (O (pure
+             (dist-gt-contrib (ParticleDist $pid $scale) $threshold $x $mass)
+             $mass
+             (product_f64
+               (product_f64 $scale $w)
+               (clamp_f64 (signum_f64 (sub_f64 $x $threshold)) 0.0 1.0))))))
 
 (exec-template
   (exec 2
@@ -768,28 +658,17 @@
         (, (dist-gt2-active (ParticleDist $pida $scalea) (ParticleDist $pidb $scaleb))
            (dist-pair $pida $xa $wa)
            (dist-pair $pidb $xb $wb))
-        (O (pure (dist-gt2-contrib
-                   (ParticleDist $pida $scalea)
-                   (ParticleDist $pidb $scaleb)
-                   $xa
-                   $xb
-                   $mass)
-                 $mass
-                 (product_f64
-                     (product_f64
-                       (product_f64
-                         $scalea
-                         $scaleb)
-                       (product_f64
-                         $wa
-                         $wb))
-                     (clamp_f64
-                       (signum_f64
-                         (sub_f64
-                           $xa
-                           $xb))
-                       0.0
-                       1.0))))))
+        (O (pure
+             (dist-gt2-contrib
+               (ParticleDist $pida $scalea)
+               (ParticleDist $pidb $scaleb)
+               $xa $xb $mass)
+             $mass
+             (product_f64
+               (product_f64
+                 (product_f64 $scalea $scaleb)
+                 (product_f64 $wa $wb))
+               (clamp_f64 (signum_f64 (sub_f64 $xa $xb)) 0.0 1.0))))))
 
 (exec-template
   (exec 2
@@ -825,35 +704,20 @@
                 $threshold
                 $proof-id
                 $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $pos-s
-                         (product_f64
-                           $agg-s
-                           $gt-s))
-                       (product_f64
-                         $neg-s
-                         (sub_f64
-                           1.0
-                           (product_f64
-                             $agg-s
-                             $gt-s))))
-                   (pln_mp_confidence_f64
-                       (product_f64
-                         $agg-s
-                         $gt-s)
-                       (pln_and_confidence_f64
-                         $agg-s
-                         $agg-c
-                         $gt-s
-                         $gt-c)
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $pos-s (product_f64 $agg-s $gt-s))
+                 (product_f64
+                   $neg-s
+                   (sub_f64 1.0 (product_f64 $agg-s $gt-s))))
+               (pln_mp_confidence_f64
+                 (product_f64 $agg-s $gt-s)
+                 (pln_and_confidence_f64 $agg-s $agg-c $gt-s $gt-c)
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 (exec-template
   (exec 4
@@ -876,37 +740,22 @@
                 (ParticleDist $pidb $scaleb)
                 $proof-id
                 $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $pos-s
-                         (product_f64
-                           $agg-s
-                           $gt-s))
-                       (product_f64
-                         $neg-s
-                         (sub_f64
-                           1.0
-                           (product_f64
-                             $agg-s
-                             $gt-s))))
-                   (pln_mp_confidence_f64
-                       (product_f64
-                         $agg-s
-                         $gt-s)
-                       (pln_and_confidence_f64
-                         $agg-s
-                         $agg-c
-                         $gt-s
-                         (min_f64
-                           $ca
-                           $cb))
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $pos-s (product_f64 $agg-s $gt-s))
+                 (product_f64
+                   $neg-s
+                   (sub_f64 1.0 (product_f64 $agg-s $gt-s))))
+               (pln_mp_confidence_f64
+                 (product_f64 $agg-s $gt-s)
+                 (pln_and_confidence_f64
+                   $agg-s $agg-c
+                   $gt-s (min_f64 $ca $cb))
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 ; Evidence-aware conjunction adapter.  It carries pool state for same-source
 ; marginal projections so a query over several projections of one (And ...)
@@ -929,10 +778,11 @@
         (, (wait-premise-pool $g $prem $rest $agg-state $proof-id)
            (proved $prem ($prem-s $prem-c) $prem-proof-id $prem-evset))
         (O (- (wait-premise-pool $g $prem $rest $agg-state $proof-id))
-           (pure (pool-step $g $rest $proof-id $pool-result)
-                 $pool-result
-                 (pln_and_pool_acc
-                   (' (pool-input $agg-state ($prem-s $prem-c) $prem-evset)))))))
+           (pure
+             (pool-step $g $rest $proof-id $pool-result)
+             $pool-result
+             (pln_and_pool_acc
+               (' (pool-input $agg-state ($prem-s $prem-c) $prem-evset)))))))
 
 (exec-template
   (exec 4
@@ -985,23 +835,16 @@
              (fact $prem ($prem-s $prem-c))
              (fact $prem (ctvpair ($prem-s $prem-c) $negative))))
         (O (- (wait-premise $g $rule-stv $prem $rest ($agg-s $agg-c) $proof-id $evset))
-           (pure (wait-premises
-                   $g
-                   $rule-stv
-                   $rest
-                   $next-agg-stv
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $next-agg-stv
-                 (tuple
-                   (product_f64
-                       $agg-s
-                       $prem-s)
-                   (pln_and_confidence_f64
-                       $agg-s
-                       $agg-c
-                       $prem-s
-                       $prem-c))))))
+           (pure
+             (wait-premises
+               $g $rule-stv $rest
+               $next-agg-stv
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $next-agg-stv
+             (tuple
+               (product_f64 $agg-s $prem-s)
+               (pln_and_confidence_f64 $agg-s $agg-c $prem-s $prem-c))))))
 
 ; OrFormula premise fold.  Its confidence is the same propagated product
 ; variance as AndFormula over complemented strengths, converted back at the
@@ -1037,25 +880,22 @@
         (, (wait-premise-or $g $final-kind $prem $rest ($agg-s $agg-c) $proof-id $evset)
            (fact $prem ($prem-s $prem-c)))
         (O (- (wait-premise-or $g $final-kind $prem $rest ($agg-s $agg-c) $proof-id $evset))
-           (pure (wait-premises-or
-                   $g
-                   $final-kind
-                   $rest
-                   $next-agg-stv
-                   $proof-id
-                   (pcons (fact-ev (fact-key $prem) $prem) $evset))
-                 $next-agg-stv
-                 (tuple
-                   (sub_f64
-                       1.0
-                       (product_f64
-                         (sub_f64 1.0 $agg-s)
-                         (sub_f64 1.0 $prem-s)))
-                   (pln_and_confidence_f64
-                       (sub_f64 1.0 $agg-s)
-                       $agg-c
-                       (sub_f64 1.0 $prem-s)
-                       $prem-c))))))
+           (pure
+             (wait-premises-or
+               $g $final-kind $rest
+               $next-agg-stv
+               $proof-id
+               (pcons (fact-ev (fact-key $prem) $prem) $evset))
+             $next-agg-stv
+             (tuple
+               (sub_f64
+                 1.0
+                 (product_f64
+                   (sub_f64 1.0 $agg-s)
+                   (sub_f64 1.0 $prem-s)))
+               (pln_and_confidence_f64
+                 (sub_f64 1.0 $agg-s) $agg-c
+                 (sub_f64 1.0 $prem-s) $prem-c))))))
 
 ; Projection rules: the compound head premise's TV is captured into the
 ; rule-TV slot, then the remaining element premises run through the generic
@@ -1082,25 +922,16 @@
   (exec 4
         (, (wait-premises $g (proj and $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
         (O (- (wait-premises $g (proj and $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (ifnz
-                       (eq_f64 $ev-s 0.0)
-                       then 0.0
-                       else
-                       (min_f64
-                         (div_f64
-                           $sab
-                           $ev-s)
-                         1.0))
-                   (ifnz
-                       (eq_f64 $ev-s 0.0)
-                       then 0.0
-                       else
-                       (min_f64
-                         $cab
-                         $ev-c)))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (ifnz (eq_f64 $ev-s 0.0)
+                 then 0.0
+                 else (min_f64 (div_f64 $sab $ev-s) 1.0))
+               (ifnz (eq_f64 $ev-s 0.0)
+                 then 0.0
+                 else (min_f64 $cab $ev-c)))))))
 
 ; OrProjection: element strength = clamp((s_compound - s_evidence) /
 ; (1 - s_evidence), 0, 1); (0 0) when the evidence strength is one.
@@ -1108,30 +939,19 @@
   (exec 4
         (, (wait-premises $g (proj or $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
         (O (- (wait-premises $g (proj or $proj-id ($sab $cab)) pnil ($ev-s $ev-c) $proof-id $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (ifnz
-                       (eq_f64 $ev-s 1.0)
-                       then 0.0
-                       else
-                       (clamp_f64
-                         (div_f64
-                           (sub_f64
-                             $sab
-                             $ev-s)
-                           (sub_f64
-                             1.0
-                             $ev-s))
-                         0.0
-                         1.0))
-                   (ifnz
-                       (eq_f64 $ev-s 1.0)
-                       then 0.0
-                       else
-                       (min_f64
-                         $cab
-                         $ev-c)))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (ifnz (eq_f64 $ev-s 1.0)
+                 then 0.0
+                 else
+                 (clamp_f64
+                   (div_f64 (sub_f64 $sab $ev-s) (sub_f64 1.0 $ev-s))
+                   0.0 1.0))
+               (ifnz (eq_f64 $ev-s 1.0)
+                 then 0.0
+                 else (min_f64 $cab $ev-c)))))))
 
 ; AndMarginalProjection: single-premise projection with the marginal count
 ; heuristic: strength = s_compound, confidence from the count
@@ -1140,35 +960,23 @@
   (exec 4
         (, (wait-premises $g (proj marg $proj-id ($sab $cab)) pnil no-stv $proof-id $evset))
         (O (- (wait-premises $g (proj marg $proj-id ($sab $cab)) pnil no-stv $proof-id $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   $sab
-                   (ifnz
-                       (lte_f64 $cab 0.0)
-                       then 0.0
-                       else
-                       (div_f64
-                         (product_f64
-                           $sab
-                           (div_f64
-                             $cab
-                             (sub_f64
-                               1.0
-                               (min_f64
-                                 $cab
-                                 0.9999))))
-                         (sum_f64
-                           (product_f64
-                             $sab
-                             (div_f64
-                               $cab
-                               (sub_f64
-                                 1.0
-                                 (min_f64
-                                   $cab
-                                   0.9999))))
-                           1.0))))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               $sab
+               (ifnz (lte_f64 $cab 0.0)
+                 then 0.0
+                 else
+                 (div_f64
+                   (product_f64
+                     $sab
+                     (div_f64 $cab (sub_f64 1.0 (min_f64 $cab 0.9999))))
+                   (sum_f64
+                     (product_f64
+                       $sab
+                       (div_f64 $cab (sub_f64 1.0 (min_f64 $cab 0.9999))))
+                     1.0))))))))
 
 ; Total-implication rules (kind (proj ctvpair)) conclude a contextual TV
 ; assembled structurally from their two premises: the positive-context
@@ -1188,11 +996,10 @@
   (exec 4
         (, (wait-premises $g (proj not $proj-id ($s $c)) pnil no-stv $proof-id $evset))
         (O (- (wait-premises $g (proj not $proj-id ($s $c)) pnil no-stv $proof-id $evset))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sub_f64 1.0 $s)
-                   $c)))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple (sub_f64 1.0 $s) $c)))))
 
 ; Inverse rules (kind inv) apply PeTTa's CTVInversionFormula at fire time:
 ; the original rule's positive branch is inverted through the base rates of
@@ -1211,58 +1018,42 @@
         (, (wait-premises $g (inv ($pos-s $pos-c) (brpat $ante $cons)) pnil ($premise-s $premise-c) $proof-id $evset)
            (base-rate $ante ($ante-s $ante-c))
            (base-rate $cons ($cons-s $cons-c)))
-        (O (pure (inv-checked $verdict $g $proof-id $evset)
-                 $verdict
-                 (tuple
-                   (ifnz
-                     (pln_inversion_valid_f64
-                         $ante-s
-                         $ante-c
-                         $cons-s
-                         $cons-c
-                         $pos-s)
-                     then inv-valid
-                     else inv-invalid)
-                   (sum_f64
-                       (product_f64
-                         (pln_inv_strength_f64
-                           $ante-s
-                           $cons-s
-                           $pos-s)
-                         $premise-s)
-                       (product_f64
-                         (pln_inv_strength_f64
-                           $ante-s
-                           (sub_f64 1.0 $cons-s)
-                           (sub_f64 1.0 $pos-s))
-                         (sub_f64
-                           1.0
-                           $premise-s)))
-                   (pln_mp_confidence_f64
-                       $premise-s
-                       $premise-c
-                       (pln_inv_strength_f64
-                         $ante-s
-                         $cons-s
-                         $pos-s)
-                       (pln_inv_confidence_f64
-                         $ante-s
-                         $ante-c
-                         $cons-s
-                         $cons-c
-                         $pos-s
-                         $pos-c)
-                       (pln_inv_strength_f64
-                         $ante-s
-                         (sub_f64 1.0 $cons-s)
-                         (sub_f64 1.0 $pos-s))
-                       (pln_inv_confidence_f64
-                         $ante-s
-                         $ante-c
-                         (sub_f64 1.0 $cons-s)
-                         $cons-c
-                         (sub_f64 1.0 $pos-s)
-                         $pos-c)))))))
+        (O (pure
+             (inv-checked $verdict $g $proof-id $evset)
+             $verdict
+             (tuple
+               (ifnz
+                 (pln_inversion_valid_f64
+                   $ante-s $ante-c
+                   $cons-s $cons-c
+                   $pos-s)
+                 then inv-valid
+                 else inv-invalid)
+               (sum_f64
+                 (product_f64
+                   (pln_inv_strength_f64 $ante-s $cons-s $pos-s)
+                   $premise-s)
+                 (product_f64
+                   (pln_inv_strength_f64
+                     $ante-s
+                     (sub_f64 1.0 $cons-s)
+                     (sub_f64 1.0 $pos-s))
+                   (sub_f64 1.0 $premise-s)))
+               (pln_mp_confidence_f64
+                 $premise-s $premise-c
+                 (pln_inv_strength_f64 $ante-s $cons-s $pos-s)
+                 (pln_inv_confidence_f64
+                   $ante-s $ante-c
+                   $cons-s $cons-c
+                   $pos-s $pos-c)
+                 (pln_inv_strength_f64
+                   $ante-s
+                   (sub_f64 1.0 $cons-s)
+                   (sub_f64 1.0 $pos-s))
+                 (pln_inv_confidence_f64
+                   $ante-s $ante-c
+                   (sub_f64 1.0 $cons-s) $cons-c
+                   (sub_f64 1.0 $pos-s) $pos-c)))))))
 
 (exec-template
   (exec 5

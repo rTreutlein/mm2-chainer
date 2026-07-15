@@ -9,171 +9,120 @@
   (exec 4
         (, (formula-eval $key (NormalizeSTV (STV $s $c))))
         (O (- (formula-eval $key (NormalizeSTV (STV $s $c))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string $s)
-                   (f64_to_string $c))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple (f64_to_string $s) (f64_to_string $c))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (CTVModusPonensFormula (STV $as $ac) (CTV (STV $ps $pc) (STV $ns $nc)))))
         (O (- (formula-eval $key (CTVModusPonensFormula (STV $as $ac) (CTV (STV $ps $pc) (STV $ns $nc)))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string
-                     (sum_f64
-                       (product_f64
-                         $ps
-                         $as)
-                       (product_f64
-                         $ns
-                         (sub_f64
-                           1.0
-                           $as))))
-                   (f64_to_string
-                     (pln_mp_confidence_f64
-                       $as
-                       $ac
-                       $ps
-                       $pc
-                       $ns
-                       $nc)))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple
+               (f64_to_string
+                 (sum_f64
+                   (product_f64 $ps $as)
+                   (product_f64 $ns (sub_f64 1.0 $as))))
+               (f64_to_string
+                 (pln_mp_confidence_f64
+                   $as $ac
+                   $ps $pc
+                   $ns $nc)))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (AndFormula (STV $s1 $c1) (STV $s2 $c2))))
         (O (- (formula-eval $key (AndFormula (STV $s1 $c1) (STV $s2 $c2))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string
-                     (product_f64
-                       $s1
-                       $s2))
-                   (f64_to_string
-                     (pln_and_confidence_f64
-                       $s1
-                       $c1
-                       $s2
-                       $c2)))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple
+               (f64_to_string (product_f64 $s1 $s2))
+               (f64_to_string
+                 (pln_and_confidence_f64 $s1 $c1 $s2 $c2)))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (OrFormula (STV $s1 $c1) (STV $s2 $c2))))
         (O (- (formula-eval $key (OrFormula (STV $s1 $c1) (STV $s2 $c2))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string
-                     (sub_f64
-                       1.0
-                       (product_f64
-                         (sub_f64 1.0 $s1)
-                         (sub_f64 1.0 $s2))))
-                   (f64_to_string
-                     (pln_or_confidence_f64
-                       $s1
-                       $c1
-                       $s2
-                       $c2)))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple
+               (f64_to_string
+                 (sub_f64
+                   1.0
+                   (product_f64 (sub_f64 1.0 $s1) (sub_f64 1.0 $s2))))
+               (f64_to_string
+                 (pln_or_confidence_f64 $s1 $c1 $s2 $c2)))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (NotFormula (STV $s $c))))
         (O (- (formula-eval $key (NotFormula (STV $s $c))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string
-                     (sub_f64 1.0 $s))
-                   (f64_to_string $c))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple (f64_to_string (sub_f64 1.0 $s)) (f64_to_string $c))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (LikelierThanFormula (STV $sa $ca) (STV $sb $cb))))
         (O (- (formula-eval $key (LikelierThanFormula (STV $sa $ca) (STV $sb $cb))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string
-                     (product_f64
-                       $sa
-                       (sub_f64 1.0 $sb)))
-                   (f64_to_string
-                     (min_f64
-                       $ca
-                       $cb)))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple
+               (f64_to_string (product_f64 $sa (sub_f64 1.0 $sb)))
+               (f64_to_string (min_f64 $ca $cb)))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (OrProjection (STV $sab $cab) (STV $sa $ca))))
         (O (- (formula-eval $key (OrProjection (STV $sab $cab) (STV $sa $ca))))
-           (pure (formula-result-stv $key $stv)
-                 $stv
-                 (tuple
-                   (f64_to_string
-                     (ifnz
-                       (eq_f64 $sa 1.0)
-                       then 0.0
-                       else
-                       (clamp_f64
-                         (div_f64
-                           (sub_f64
-                             $sab
-                             $sa)
-                           (sub_f64
-                             1.0
-                             $sa))
-                         0.0
-                         1.0)))
-                   (f64_to_string
-                     (ifnz
-                       (eq_f64 $sa 1.0)
-                       then 0.0
-                       else
-                       (min_f64
-                         $cab
-                         $ca))))))))
+           (pure
+             (formula-result-stv $key $stv)
+             $stv
+             (tuple
+               (f64_to_string
+                 (ifnz (eq_f64 $sa 1.0)
+                   then 0.0
+                   else
+                   (clamp_f64
+                     (div_f64 (sub_f64 $sab $sa) (sub_f64 1.0 $sa))
+                     0.0 1.0)))
+               (f64_to_string
+                 (ifnz (eq_f64 $sa 1.0)
+                   then 0.0
+                   else (min_f64 $cab $ca))))))))
 
 (exec-template
   (exec 4
         (, (formula-eval $key (CTVInversionFormula (STV $sa $ca) (STV $sb $cb) (CTV (STV $sb-a $cb-a) (STV $sb-na $cb-na)))))
         (O (- (formula-eval $key (CTVInversionFormula (STV $sa $ca) (STV $sb $cb) (CTV (STV $sb-a $cb-a) (STV $sb-na $cb-na)))))
-           (pure (formula-result-inversion $key $packed)
-                 $packed
-                 (tuple
-                   (f64_to_string
-                     (pln_inversion_valid_f64
-                       $sa
-                       $ca
-                       $sb
-                       $cb
-                       $sb-a))
-                   (f64_to_string
-                     (pln_inv_strength_f64
-                       $sa
-                       $sb
-                       $sb-a))
-                   (f64_to_string
-                     (pln_inv_confidence_f64
-                       $sa
-                       $ca
-                       $sb
-                       $cb
-                       $sb-a
-                       $cb-a))
-                   (f64_to_string
-                     (pln_inv_strength_f64
-                       $sa
-                       (sub_f64 1.0 $sb)
-                       (sub_f64 1.0 $sb-a)))
-                   (f64_to_string
-                     (pln_inv_confidence_f64
-                       $sa
-                       $ca
-                       (sub_f64 1.0 $sb)
-                       $cb
-                       (sub_f64 1.0 $sb-a)
-                       $cb-a)))))))
+           (pure
+             (formula-result-inversion $key $packed)
+             $packed
+             (tuple
+               (f64_to_string
+                 (pln_inversion_valid_f64 $sa $ca $sb $cb $sb-a))
+               (f64_to_string
+                 (pln_inv_strength_f64 $sa $sb $sb-a))
+               (f64_to_string
+                 (pln_inv_confidence_f64
+                   $sa $ca
+                   $sb $cb
+                   $sb-a $cb-a))
+               (f64_to_string
+                 (pln_inv_strength_f64
+                   $sa
+                   (sub_f64 1.0 $sb)
+                   (sub_f64 1.0 $sb-a)))
+               (f64_to_string
+                 (pln_inv_confidence_f64
+                   $sa $ca
+                   (sub_f64 1.0 $sb) $cb
+                   (sub_f64 1.0 $sb-a) $cb-a)))))))

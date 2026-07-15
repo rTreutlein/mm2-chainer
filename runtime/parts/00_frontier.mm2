@@ -36,16 +36,15 @@
         (, (, (Goal $g))
            (ruleN $g $rule-id ($kind ($rule-s $rule-c) $extra) $premises))
         (O (- (, (Goal $g)))
-           (pure (pendingN
-                   $priority
-                   $g
-                   ($kind ($rule-s $rule-c) $extra)
-                   $premises
-                   (pcons (rule-ev $rule-id) pnil))
-                 $priority
-                 (encode_hex
-                   (sub_f64 1.0
-                            $rule-c))))))
+           (pure
+             (pendingN
+               $priority
+               $g
+               ($kind ($rule-s $rule-c) $extra)
+               $premises
+               (pcons (rule-ev $rule-id) pnil))
+             $priority
+             (encode_hex (sub_f64 1.0 $rule-c))))))
 
 ; Projection rules (kind (proj and|or|marg)) extract one element of a compound
 ; (And ...) / (Or ...) fact.  The first premise is the compound itself; its TV

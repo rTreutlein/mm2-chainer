@@ -86,25 +86,17 @@
                 $proof-id
                 $evset))
            (+ (fold-value-bernoulli-active $result-pid $pat $source (ParticleDist $init-pid $init-scale)))
-           (pure (open-proof $g $proof-stv $proof-id $evset)
-                 $proof-stv
-                 (tuple
-                   (sum_f64
-                       (product_f64
-                         $pos-s
-                         $premise-s)
-                       (product_f64
-                         $neg-s
-                         (sub_f64
-                           1.0
-                           $premise-s)))
-                   (pln_mp_confidence_f64
-                       $premise-s
-                       $premise-c
-                       $pos-s
-                       $pos-c
-                       $neg-s
-                       $neg-c))))))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $pos-s $premise-s)
+                 (product_f64 $neg-s (sub_f64 1.0 $premise-s)))
+               (pln_mp_confidence_f64
+                 $premise-s $premise-c
+                 $pos-s $pos-c
+                 $neg-s $neg-c))))))
 
 (exec-template
   (exec 2
@@ -116,14 +108,16 @@
   (exec 2
         (, (fold-value-bernoulli-active $result-pid ($scope ($rel $arg $source)) $source $_init)
            (fact ($scope ($rel $arg $source)) ($s $c)))
-        (O (pure (fold-value-bernoulli-contrib $result-pid (fold-fact $rel $arg $source) 0.0 $zero-mass)
-                 $zero-mass
-                 (sub_f64
-                     1.0
-                     (product_f64 $s $c)))
-           (pure (fold-value-bernoulli-contrib $result-pid (fold-fact $rel $arg $source) 1.0 $one-mass)
-                 $one-mass
-                 (product_f64 $s $c)))))
+        (O (pure
+             (fold-value-bernoulli-contrib
+               $result-pid (fold-fact $rel $arg $source) 0.0 $zero-mass)
+             $zero-mass
+             (sub_f64 1.0 (product_f64 $s $c)))
+           (pure
+             (fold-value-bernoulli-contrib
+               $result-pid (fold-fact $rel $arg $source) 1.0 $one-mass)
+             $one-mass
+             (product_f64 $s $c)))))
 
 (exec-template
   (exec 2
