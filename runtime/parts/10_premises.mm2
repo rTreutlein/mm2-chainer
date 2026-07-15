@@ -28,25 +28,25 @@
                        $neg-s
                        $neg-c))))))
 
-; Fused TV pipelines keep NotFormula attached to the value it transforms,
-; rather than making it look like a property of the CTV.  The positive CTV
-; branch remains the first field so the generic rule scheduler can read its
-; confidence without a pipeline-specific scheduling template.
+; Fused operation names keep NotFormula attached to the value it transforms,
+; rather than making it look like a property of the CTV. Their flat shape also
+; lets the generic rule scheduler read the positive-branch confidence without
+; another matching layer.
 ;
-; premise-not complements the premise aggregate before pushing it through
-; CTVModusPonensFormula.
+; premise-not-mp complements the premise aggregate before pushing it through
+; CTVModusPonensFormula: premise Not -> MP.
 (exec-template
   (exec 4
         (, (wait-premises
              $g
-             (tv-pipeline ($pos-s $pos-c) (premise-not ($neg-s $neg-c)))
+             (premise-not-mp ($pos-s $pos-c) ($neg-s $neg-c))
              pnil
              ($premise-s $premise-c)
              $proof-id
              $evset))
         (O (- (wait-premises
                 $g
-                (tv-pipeline ($pos-s $pos-c) (premise-not ($neg-s $neg-c)))
+                (premise-not-mp ($pos-s $pos-c) ($neg-s $neg-c))
                 pnil
                 ($premise-s $premise-c)
                 $proof-id
@@ -71,20 +71,20 @@
                        $neg-s
                        $neg-c))))))
 
-; A fused TV pipeline with a post-transform of NotFormula applies modus ponens
-; first, then complements the conclusion strength while preserving confidence.
+; mp-conclusion-not applies modus ponens first, then complements the conclusion
+; strength while preserving confidence: MP -> conclusion Not.
 (exec-template
   (exec 4
         (, (wait-premises
              $g
-             (tv-pipeline ($pos-s $pos-c) (conclusion-not ($neg-s $neg-c)))
+             (mp-conclusion-not ($pos-s $pos-c) ($neg-s $neg-c))
              pnil
              ($premise-s $premise-c)
              $proof-id
              $evset))
         (O (- (wait-premises
                 $g
-                (tv-pipeline ($pos-s $pos-c) (conclusion-not ($neg-s $neg-c)))
+                (mp-conclusion-not ($pos-s $pos-c) ($neg-s $neg-c))
                 pnil
                 ($premise-s $premise-c)
                 $proof-id

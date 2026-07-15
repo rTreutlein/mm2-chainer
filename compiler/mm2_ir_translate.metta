@@ -433,7 +433,7 @@
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu CTVModusPonensFormula ($not2 (CTV (STV $ps $pc) (STV $ns $nc))) $out) ()))
        (if (== $not $not2)
-         (tv-pipeline-kind premise-not ($ps $pc) ($ns $nc))
+         (premise-not-mp-kind ($ps $pc) ($ns $nc))
          (unsupported-tail $tail)))
       ((cons (cpu NotFormula ($tvin) $not)
          (cons (cpu AndFormula ($not2 $other) $agg)
@@ -450,7 +450,7 @@
        (mm2-ir-classify-or-tail $or-out $rest $tail))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out)
          (cons (cpu NotFormula ($out2) $final) ()))
-       (tv-pipeline-kind conclusion-not ($ps $pc) ($ns $nc)))
+       (mp-conclusion-not-kind ($ps $pc) ($ns $nc)))
       ((cons (cpu NotEqual ($p1 $p2) true)
          (cons $fold
            (cons (cpu TotalEvidenceCTVModusPonensFormula ($atv $evidence-tvs) $out) ())))
@@ -633,12 +633,11 @@
          (mm2-ir-superpose-list (mm2-ir-dist-atoms $init)))))
       ($other $other))))
 
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (tv-pipeline-kind $transform $pos $neg))
-   (ruleN
-     $ctype
-     $rid
-     (tv-pipeline $pos ($transform $neg))
-     $ptypes))
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (premise-not-mp-kind $pos $neg))
+   (ruleN $ctype $rid (premise-not-mp $pos $neg) $ptypes))
+
+(= (mm2-ir-emit-rule $rid $ctype $ptypes (mp-conclusion-not-kind $pos $neg))
+   (ruleN $ctype $rid (mp-conclusion-not $pos $neg) $ptypes))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (not-and-ctv-kind $pos $neg))
    (case $ptypes
