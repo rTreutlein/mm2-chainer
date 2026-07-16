@@ -242,8 +242,15 @@
    (: smokesEdward
       (Inheritance Edward (IntSet smokes))
       (STV 1.0 0.9)))
-!(mm2-test-query 120 smokesKb
-   (: $prf (Inheritance Edward (IntSet cancerous)) $tv)
+!(mm2-test
+   (mm2-query 120 smokesKb
+      (: $prf (Inheritance Edward (IntSet cancerous)) $tv))
+   ((: (smokingCancerRule smokesEdward)
+       (Inheritance Edward (IntSet cancerous))
+       (STV 0.6 0.8999998649685302))))
+!(mm2-test
+   (mm2-query-first 120 smokesKb
+      (: $prf (Inheritance Edward (IntSet cancerous)) $tv))
    ((: (smokingCancerRule smokesEdward)
        (Inheritance Edward (IntSet cancerous))
        (STV 0.6 0.8999998649685302))))

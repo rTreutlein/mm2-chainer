@@ -516,7 +516,7 @@ EOF
 run_ffi_harness_test() {
   local summary
   summary="$(bash scripts/run-harness-tests.sh | tail -1)"
-  assert_eq "$summary" "HARNESS: 18 pass, 0 close, 0 fail" "ffi harness verdict counts"
+  assert_eq "$summary" "HARNESS: 19 pass, 0 close, 0 fail" "ffi harness verdict counts"
 }
 
 run_open_multiple_proofs_demo_test() {
