@@ -846,4 +846,6 @@
      (((compiled-query $goal-item $adds)
        (let (subgoal $g $tv $_prf) (mm2-ir-item $goal-item)
          (cons (, (Goal $g)) (mm2-translate-all $adds))))
+      ((compiled-inheritance-query $_kb $_subj $_concept $direct-query $_implication-query)
+       (mm2-translate-query $direct-query))
       ($other (cons (notsupported-ir (query $other)) ())))))
