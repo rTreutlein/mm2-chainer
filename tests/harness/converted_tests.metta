@@ -248,9 +248,22 @@
    ((: (smokingCancerRule smokesEdward)
        (Inheritance Edward (IntSet cancerous))
        (STV 0.6 0.8999998649685302))))
+
+; Keep query-first isolated: reusing smokesKb would let its initial readback
+; see the cancer fact derived by the full query above and skip execution.
+!(mm2-compileadd smokesFirstKb
+   (: smokingCancerRuleFirst
+      (Implication
+         (Premises (Inheritance $x (IntSet smokes)))
+         (Conclusions (Inheritance $x (IntSet cancerous))))
+      (STV 0.6 0.9)))
+!(mm2-compileadd smokesFirstKb
+   (: smokesEdwardFirst
+      (Inheritance Edward (IntSet smokes))
+      (STV 1.0 0.9)))
 !(mm2-test
-   (mm2-query-first 120 smokesKb
+   (mm2-query-first 120 smokesFirstKb
       (: $prf (Inheritance Edward (IntSet cancerous)) $tv))
-   ((: (smokingCancerRule smokesEdward)
+   ((: (smokingCancerRuleFirst smokesEdwardFirst)
        (Inheritance Edward (IntSet cancerous))
        (STV 0.6 0.8999998649685302))))
