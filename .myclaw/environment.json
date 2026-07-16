@@ -1,0 +1,14 @@
+{
+  "image": "mm2-chainer-dev:latest",
+  "build": {
+    "context": ".",
+    "dockerfile": ".myclaw/Dockerfile"
+  },
+  "test": ["bash", "scripts/test-integration.sh"],
+  "caches": [
+    {"name": "cargo-home", "target": "/cache/cargo"},
+    {"name": "cargo-target", "target": "/cache/target"},
+    {"name": "petta-ffi", "target": "/cache/petta-ffi"}
+  ]
+}
+
