@@ -228,3 +228,22 @@
 
 ; kb isolation: stvRuleKb facts must not leak into nAryKb
 !(mm2-test-query 5 nAryKb (: $prf (B x) $tv) ())
+
+; A directly reachable Inheritance goal must use the scoped MM2 rule graph,
+; rather than PeTTa's concept-induction query scaffold.  The latter includes
+; residual distribution CPU clauses which are not valid MORK exec sources.
+!(mm2-compileadd smokesKb
+   (: smokingCancerRule
+      (Implication
+         (Premises (Inheritance $x (IntSet smokes)))
+         (Conclusions (Inheritance $x (IntSet cancerous))))
+      (STV 0.6 0.9)))
+!(mm2-compileadd smokesKb
+   (: smokesEdward
+      (Inheritance Edward (IntSet smokes))
+      (STV 1.0 0.9)))
+!(mm2-test-query 120 smokesKb
+   (: $prf (Inheritance Edward (IntSet cancerous)) $tv)
+   ((: (smokingCancerRule smokesEdward)
+       (Inheritance Edward (IntSet cancerous))
+       (STV 0.6 0.8999998649685302))))

@@ -1252,9 +1252,28 @@
        (forward-chain-goal $scope $g)
        (, (Goal $g)))))
 
+(= (mm2-direct-query-reachable? $kb $type)
+   (let $scope (mm2-ir-scope-kb $kb)
+     (or (not (== (collapse (match &mork (fact ($scope $type) $stored-tv) found)) ()))
+         (or (not (== (collapse (match &mork (ruleN ($scope $type) $rule-id $kind $prems) found)) ()))
+             (not (== (collapse (match &mork (adapterN ($scope $type) $prems) found)) ()))))))
+
+; PeTTa's Inheritance query compiler expands every query through contextual
+; total-implication and base-rate scaffolding.  That expansion is needed for
+; concept-to-concept induction, but is both redundant and unsafe when an MM2
+; fact/rule already proves the requested goal: the residual distribution CPU
+; clauses can reach MORK as an unsupported exec source.  Prefer the ordinary
+; scoped MM2 goal in that case and retain the full compiler path as fallback.
+(= (mm2-compile-query-for-runtime $kb (: $prf $type $tv))
+   (if (and (is-expr $type)
+            (and (== (car-atom $type) Inheritance)
+                 (mm2-direct-query-reachable? $kb $type)))
+     (cons (compiled-query ($type (mm2-ir-scope-kb $kb) $prf $tv) ()) ())
+     (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
+
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
-          ($cqs (collapse (mm2compileQuery $kb (: $prf $type $tv))))
+          ($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
           ($notsup (mm2-run-compiled-queries $kb $cqs)))
      (prepared-query $cqs $notsup)))
 
