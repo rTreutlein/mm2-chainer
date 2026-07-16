@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MORK_ROOT="/nexus/Dev/OpenCog/MORK"
 PATHMAP_ROOT="/nexus/Dev/OpenCog/PathMap"
 PETTA_ROOT="/nexus/Dev/OpenCog/PeTTa"
+PETTA_FFI_ROOT="$PETTA_ROOT/mork_ffi"
 
 CARGO_HOME="${CARGO_HOME:-/cache/cargo}"
 CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/cache/target}"
@@ -45,35 +46,49 @@ cd "$ROOT_DIR"
 bash scripts/run-reduced.sh
 
 if [[ "$PETTA_FFI_MODE" != "1" ]]; then
-  echo "SKIP/PENDING: PeTTa mork_ffi is not tracked; set MM2_INTEGRATION_PETTA_FFI=1 after PeTTa owns that source"
+  echo "SKIP/PENDING: PeTTa mork_ffi needs standalone project registration and a canonical mount (proposal_c13330a0b57f4c3a)"
   echo "PASS: focused tracked-source MORK integration"
   exit 0
 fi
 
 require_dir "$PETTA_ROOT"
+require_dir "$PETTA_FFI_ROOT"
 require_file "$PETTA_ROOT/src/main.pl"
 petta_ffi_files=(
-  mork_ffi/Cargo.toml
-  mork_ffi/mork.c
-  mork_ffi/morkspaces.pl
+  Cargo.toml
+  mork.c
+  morkspaces.pl
 )
+
+petta_ffi_git=(git -c safe.directory="$PETTA_FFI_ROOT" -C "$PETTA_FFI_ROOT")
+petta_ffi_toplevel="$("${petta_ffi_git[@]}" rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ "$petta_ffi_toplevel" != "$PETTA_FFI_ROOT" ]]; then
+  echo "PENDING: PeTTa FFI validation requires its standalone repository mounted at $PETTA_FFI_ROOT" >&2
+  echo "PENDING: standalone registration proposal_c13330a0b57f4c3a" >&2
+  exit 2
+fi
+if [[ -n "$("${petta_ffi_git[@]}" status --porcelain --untracked-files=normal)" ]]; then
+  echo "PENDING: PeTTa FFI repository must be clean: $PETTA_FFI_ROOT" >&2
+  exit 2
+fi
 for relative_path in "${petta_ffi_files[@]}"; do
-  require_file "$PETTA_ROOT/$relative_path"
-  if ! git -c safe.directory="$PETTA_ROOT" -C "$PETTA_ROOT" \
-      ls-files --error-unmatch "$relative_path" >/dev/null 2>&1; then
-    echo "PENDING: PeTTa FFI validation requires tracked source: $PETTA_ROOT/$relative_path" >&2
+  require_file "$PETTA_FFI_ROOT/$relative_path"
+  if ! "${petta_ffi_git[@]}" ls-files --error-unmatch "$relative_path" >/dev/null 2>&1; then
+    echo "PENDING: PeTTa FFI repository must track: $PETTA_FFI_ROOT/$relative_path" >&2
     exit 2
   fi
 done
+petta_ffi_commit="$("${petta_ffi_git[@]}" rev-parse HEAD)"
+echo "PeTTa mork_ffi commit: $petta_ffi_commit"
 
 echo "== build PeTTa MORK FFI from canonical mounts =="
 cargo build \
   --release \
-  --manifest-path "$PETTA_ROOT/mork_ffi/Cargo.toml"
+  --manifest-path "$PETTA_FFI_ROOT/Cargo.toml"
 read -r -a swipl_flags <<<"$(pkg-config --cflags --libs swipl)"
 gcc -shared -fPIC \
   -o "$PETTA_FFI_BUILD/morklib.so" \
-  "$PETTA_ROOT/mork_ffi/mork.c" \
+  "$PETTA_FFI_ROOT/mork.c" \
   "${swipl_flags[@]}"
 
 echo "== PeTTa no-file MORK FFI smoke =="

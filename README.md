@@ -58,6 +58,19 @@ bash scripts/run-independent.sh
 bash scripts/test.sh
 ```
 
+The declared MyClaw environment defaults to `bash scripts/test-integration.sh`.
+That focused test builds MORK from its canonical registered mount and runs the
+reduced mm2 pipeline using only tracked dependency source. The broader
+`bash scripts/test.sh` command remains available explicitly.
+
+PeTTa's MORK FFI smoke is opt-in with
+`MM2_INTEGRATION_PETTA_FFI=1 bash scripts/test-integration.sh`. It requires
+`/nexus/Dev/OpenCog/PeTTa/mork_ffi` to be mounted as its own registered Git
+project with a clean worktree and tracked build inputs; the runner reports the
+exact FFI commit before building. Standalone registration and dependency edges
+are pending under `proposal_c13330a0b57f4c3a`, so opt-in results are not final
+validation until that proposal is integrated.
+
 Regenerate the ConceptNet rule export after rebuilding the sibling `cnet`
 dump:
 
