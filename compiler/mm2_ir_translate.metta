@@ -254,17 +254,32 @@
           ($seed (copy_term $key)))
      (superpose (
        (base-rate-def-guarded $key $match $guard)
-       (base-rate $seed (0.0 0.0))
-       (mm2-base-rate-materialization-goal $pat)))))
+       (base-rate $seed (0.0 0.0))))))
+
+(= (mm2-guarded-prior-base-rate-key $rule-id $role $pat)
+   (guarded-prior-base-rate (copy_term $rule-id) $role (copy_term $pat)))
+
+(= (mm2-guarded-prior-base-rate-support $pat $rule-id $role $kb $concept)
+   (let* (($key (mm2-guarded-prior-base-rate-key $rule-id $role $pat))
+          ($match (copy_term $pat))
+          ($guard (copy_term $rule-id))
+          ($seed (copy_term $key)))
+     (superpose (
+       (base-rate-prior-def-guarded $key $match $guard $kb $concept)
+       (base-rate $seed (0.0 0.0))))))
 
 (= (mm2-ir-guarded-fold-key $rule-id $role $fold)
    (case $fold
      (((brfold $pat) (mm2-guarded-base-rate-key $rule-id $role $pat))
+      ((prior-weighted-brfold $pat $_kb $_concept)
+       (mm2-guarded-prior-base-rate-key $rule-id $role $pat))
       ($other (mm2-ir-fold-key $other)))))
 
 (= (mm2-ir-guarded-fold-support $rule-id $role $fold)
    (case $fold
      (((brfold $pat) (mm2-guarded-base-rate-support $pat $rule-id $role))
+      ((prior-weighted-brfold $pat $kb $concept)
+       (mm2-guarded-prior-base-rate-support $pat $rule-id $role $kb $concept))
       ($other (mm2-ir-fold-support $other)))))
 
 (= (mm2-ir-keyed-fold-key $rule-id $role $fold)
@@ -580,6 +595,14 @@
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes identity)
    (adapterN $ctype $ptypes))
 
+(= (mm2-ir-emit-rule $rid $ctype $ptypes inheritance-query-result)
+   (case $ptypes
+     (((pcons $pos (pcons $neg pnil))
+       (ruleN $ctype $rid inheritance-query-result $ptypes))
+      ($other
+       (notsupported-ir
+         (inheritance-query-result-premises $ctype $other))))))
+
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes adapter-or-kind)
    (adapterOrN $ctype $ptypes))
 
@@ -695,18 +718,30 @@
       ($other (notsupported-ir (foldall-with-premises $ctype $ptypes))))))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (stv-kind $pos $fa $fb))
-   (superpose (
-     (ruleN
-       $ctype
-       $rid
-       (stv
-         $pos
-         (brpat
-           (mm2-ir-guarded-fold-key $rid antecedent $fa)
-           (mm2-ir-guarded-fold-key $rid consequent $fb)))
-       $ptypes)
-     (mm2-ir-guarded-fold-support $rid antecedent $fa)
-     (mm2-ir-guarded-fold-support $rid consequent $fb))))
+   (case ($fa $fb)
+     ((((prior-weighted-brfold $_apat $kb $ante-concept)
+        (prior-weighted-brfold $_cpat $kb $cons-concept))
+       (superpose (
+         (ruleN
+           $ctype
+           $rid
+           (stv-prior $pos (prior-brpat $kb $ante-concept $cons-concept))
+           $ptypes)
+         (mm2-ir-guarded-fold-support $rid antecedent $fa)
+         (mm2-ir-guarded-fold-support $rid consequent $fb))))
+      ($other
+       (superpose (
+         (ruleN
+           $ctype
+           $rid
+           (stv
+             $pos
+             (brpat
+               (mm2-ir-guarded-fold-key $rid antecedent $fa)
+               (mm2-ir-guarded-fold-key $rid consequent $fb)))
+           $ptypes)
+         (mm2-ir-guarded-fold-support $rid antecedent $fa)
+         (mm2-ir-guarded-fold-support $rid consequent $fb)))))))
 
 (= (mm2-ir-inv-evidence-id $rid)
    (case $rid
@@ -816,19 +851,117 @@
 ; Facts arrive in compileadd form (: shape prf type tv) or query form
 ; (type shape prf tv) — the latter are the assumption facts total-implication
 ; queries add into their fresh contexts.
+(= (mm2-ir-query-goal $g $proof)
+   (if (and (is-expr $proof)
+            (== (car-atom $proof) inheritance-query-result))
+     (mm2-query-result $g)
+     $g))
+
+(= (mm2-ir-list-to-pcons ()) pnil)
+(= (mm2-ir-list-to-pcons (cons $item $rest))
+   (pcons $item (mm2-ir-list-to-pcons $rest)))
+
+; Publishing a contextual inheritance proof only needs to wake consequences
+; for the same subject.  The complete forward-trigger relation also contains
+; generated views for unrelated subjects; embedding those in a producer causes
+; an unnecessary proof storm.  Keep ordinary concept chains (Raven -> Bird ->
+; flies) as well as IntSet-valued rules (smokes -> cancerous), but not the
+; producer's own goal.
+(= (mm2-ir-query-downstream? $goal $downstream)
+   (case ($goal $downstream)
+     (((($goal-scope (Inheritance $goal-subject $_goal-concept))
+        ($downstream-scope (Inheritance $downstream-subject $_downstream-concept)))
+       (and (=alpha $goal-scope $downstream-scope)
+            (and (=alpha $goal-subject $downstream-subject)
+                 (not (=alpha $goal $downstream)))))
+      ($_other false))))
+
+(= (mm2-ir-filter-query-downstreams $_goal ()) ())
+(= (mm2-ir-filter-query-downstreams $goal (cons $downstream $rest))
+   (if (mm2-ir-query-downstream? $goal $downstream)
+     (cons $downstream (mm2-ir-filter-query-downstreams $goal $rest))
+     (mm2-ir-filter-query-downstreams $goal $rest)))
+
+(= (mm2-ir-query-downstreams $goal)
+   (mm2-ir-list-to-pcons
+     (mm2-ir-filter-query-downstreams
+       $goal
+       (collapse
+         (match &mork
+           (forward-trigger $goal $downstream)
+           $downstream)))))
+
+(= (mm2-translate-rule-stmt $prems $ccl)
+   (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
+          ((subgoal $ctype $ctv $cprf) (mm2-ir-item $ccl))
+          ($kind (mm2-ir-refine-kind
+                   (mm2-ir-classify (mm2-ir-drop-and $cpus))
+                   $ctype
+                   $ctv)))
+     (superpose ((mm2-ir-emit-rule $cprf $ctype $ptypes $kind)
+                 (mm2-ir-implication-queries $ptypes)))))
+
+(= (mm2-ir-emit-query-rule $cprf $goal $ptypes $kind)
+   (if (is-var $cprf)
+     (mm2-ir-emit-rule $cprf $goal $ptypes $kind)
+     (case $cprf
+       ((((inheritance-rule-lift $_rule) $_source $_context)
+          ; The proof shape alone is alpha-equivalent across all grounded
+          ; applications of the same source rule. Include the premise
+          ; signature so each lift owns a distinct private frontier goal,
+          ; and capture its dependents so proof publication is a one-atom
+          ; event rather than an order-sensitive relational join.
+          (let $producer
+            (mm2-query-producer
+              $cprf $goal $ptypes (mm2-ir-query-downstreams $goal))
+            (superpose (
+              (mm2-ir-emit-rule $cprf $producer $ptypes $kind)
+              (, (Goal $producer))))))
+        ($_other (mm2-ir-emit-rule $cprf $goal $ptypes $kind))))))
+
+(= (mm2-ir-inheritance-lift-proof? $proof)
+   (and (is-expr $proof)
+        (let $head (car-atom $proof)
+          (and (is-expr $head)
+               (== (car-atom $head) inheritance-rule-lift)))))
+
+(= (mm2-ir-query-add-has-inheritance-lift? ()) false)
+(= (mm2-ir-query-add-has-inheritance-lift? (cons $stmt $rest))
+   (case $stmt
+     (((rules ($_prems |- $ccl))
+       (case (mm2-ir-item $ccl)
+         (((subgoal $_goal $_tv $proof)
+           (if (mm2-ir-inheritance-lift-proof? $proof)
+             true
+             (mm2-ir-query-add-has-inheritance-lift? $rest)))
+          ($_other (mm2-ir-query-add-has-inheritance-lift? $rest)))))
+      ($_other (mm2-ir-query-add-has-inheritance-lift? $rest)))))
+
+(= (mm2-translate-query-rule-stmt $prems $ccl)
+   (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
+          ((subgoal $ctype $ctv $cprf) (mm2-ir-item $ccl))
+          ($goal (mm2-ir-query-goal $ctype $cprf))
+          ($normal-kind (mm2-ir-refine-kind
+                          (mm2-ir-classify (mm2-ir-drop-and $cpus))
+                          $ctype
+                          $ctv))
+          ($kind
+            (if (is-var $cprf)
+              $normal-kind
+              (case $cprf
+                (((inheritance-query-result
+                     (total-implication-frontier $_inner))
+                  inheritance-query-result)
+                 ($_other $normal-kind))))))
+     (superpose ((mm2-ir-emit-query-rule $cprf $goal $ptypes $kind)
+                 (mm2-ir-implication-queries $ptypes)))))
+
 (= (mm2-translate-stmt $stmt)
    (case $stmt
-     (((: $shape $prf $type $tv)
+      (((: $shape $prf $type $tv)
        (mm2-ir-fact-stmt ($shape $type) $prf $tv))
       ((rules ($prems |- $ccl))
-       (let* (((collected $ptypes $cpus) (mm2-ir-collect $prems))
-              ((subgoal $ctype $ctv $cprf) (mm2-ir-item $ccl))
-              ($kind (mm2-ir-refine-kind
-                       (mm2-ir-classify (mm2-ir-drop-and $cpus))
-                       $ctype
-                       $ctv)))
-         (superpose ((mm2-ir-emit-rule $cprf $ctype $ptypes $kind)
-                     (mm2-ir-implication-queries $ptypes)))))
+       (mm2-translate-rule-stmt $prems $ccl))
       (($type $shape $prf $tv)
        (mm2-ir-fact-stmt ($shape $type) $prf $tv))
       ($other (notsupported-ir (stmt $other))))))
@@ -841,9 +974,27 @@
 ; --- query translation --------------------------------------------------------
 ; (compiled-query ($type $shape $prf $tv) $adds) -> goal atom + translated adds.
 
+(= (mm2-translate-query-stmt $stmt)
+   (case $stmt
+      (((: $shape $prf $type $tv)
+       (mm2-ir-fact-stmt
+         (mm2-ir-query-goal ($shape $type) $prf) $prf $tv))
+      ((rules ($prems |- $ccl))
+       (mm2-translate-query-rule-stmt $prems $ccl))
+      (($type $shape $prf $tv)
+       (mm2-ir-fact-stmt
+         (mm2-ir-query-goal ($shape $type) $prf) $prf $tv))
+      ($other (notsupported-ir (query-stmt $other))))))
+
+(= (mm2-translate-query-all ()) ())
+(= (mm2-translate-query-all (cons $stmt $rest))
+   (mm2-ir-append (collapse (mm2-translate-query-stmt $stmt))
+                  (mm2-translate-query-all $rest)))
+
 (= (mm2-translate-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
-       (let (subgoal $g $tv $_prf) (mm2-ir-item $goal-item)
-         (cons (, (Goal $g)) (mm2-translate-all $adds))))
+       (let (subgoal $g $tv $prf) (mm2-ir-item $goal-item)
+         (let $query-goal (mm2-ir-query-goal $g $prf)
+           (cons (, (Goal $query-goal)) (mm2-translate-query-all $adds)))))
       ($other (cons (notsupported-ir (query $other)) ())))))

@@ -4,7 +4,7 @@
 ; pattern snapshot: refreshed base rates update the same logical proof instead
 ; of adding another independent proof path.
 (exec-template
-  (exec 3
+  (exec 2
         (I (head 32 (pendingN $priority $g (inv $pos $brpat) $premises $evset)))
         (O (- (pendingN $priority $g (inv $pos $brpat) $premises $evset))
            (+ (wait-premises

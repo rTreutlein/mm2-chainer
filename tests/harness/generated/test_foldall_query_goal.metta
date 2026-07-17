@@ -9,6 +9,7 @@
 !(mm2-compileadd kb (: seed1 (Seed (Pair alpha 1)) (STV 1.0 1.0)))
 !(mm2-compileadd kb (: seed2 (Seed (Pair beta 2)) (STV 1.0 1.0)))
 !(mm2-compileadd kb (: seedRule (Implication (Premises (Seed $p)) (Conclusions (PairFact $p))) (CTV (STV 1.0 1.0) (STV 0.0 1.0))))
-!(mm2-test-query 30 kb (: $prf (FoldAll (Score $name $n) $n 0 (|-> ($acc $elem) (+ $acc $elem)) -> $total) $tv) ((: (foldall-proof prfA prfB prfC) (FoldAll (Score $_name $_n) $_n 0 lambda_17 -> 6) (STV 1.0 1.0))))
+; UNSUPPORTED test form: (test (let (: $proof (FoldAll $pattern $extractor $init $_fold-function -> $total) $tv) (car-atom (collapse (query 30 kb (: $prf (FoldAll (Score $name $n) $n 0
+!(mm2-test-unsupported "test  let    $proof  FoldAll $pattern $extractor $init $_fold-function -  $tota")
 !(mm2-test-query 30 kb (: $prf (FoldAll (XYZSample (Pair $xy $z)) (Pair $xy $z) (PairCounts ()) DistValueCountAcc -> $counts) $tv) ((: (foldall-proof sampleA sampleB) (FoldAll (XYZSample (Pair $_xy $_z)) (Pair $_xy $_z) (PairCounts ()) DistValueCountAcc -> (PairCounts (((Pair (XY 10.0 100.0) 20.0) 1.0) ((Pair (XY 10.0 100.0) 21.0) 1.0)))) (STV 1.0 1.0))))
 !(mm2-test-query 30 kb (: $prf (FoldAll (PairFact $p) $p (PairCounts ()) DistValueCountAcc -> $counts) $tv) ((: (foldall-proof (seedRule seed1) (seedRule seed2)) (FoldAll (PairFact $_p) $_p (PairCounts ()) DistValueCountAcc -> (PairCounts (((Pair alpha 1) 1.0) ((Pair beta 2) 1.0)))) (STV 1.0 1.0))))

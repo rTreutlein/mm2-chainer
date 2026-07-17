@@ -36,4 +36,8 @@
              (positive-proof $patM ($fact-s $fact-c) $proof-id $evset)
              (proved $patM ($fact-s $fact-c) $proof-id $evset)
              (proved $patM (ctvpair ($fact-s $fact-c) $negative) $proof-id $evset)))
-        (O (fold-base-rate $patQ $old ($fact-s $fact-c) (without-rule $rule-id $evset)))))
+        (O (fold-base-rate
+             $patQ
+             $old
+             ($fact-s $fact-c)
+             (without-rule $rule-id $proof-id $evset)))))

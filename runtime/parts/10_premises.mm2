@@ -126,7 +126,87 @@
                        (sub_f64 $cons-s (product_f64 $ante-s $rule-s))
                        (sub_f64 1.0 $ante-s))
                      0.0 1.0))
-                 (product_f64 0.25 (min_f64 $ante-c $cons-c $rule-c))))))))
+               (product_f64 0.25 (min_f64 $ante-c $cons-c $rule-c))))))))
+
+; Prior-aware inheritance STV rules cannot share one global marginal snapshot:
+; the FoldAll view excludes the current grounded subject and proofs carrying
+; the rule being evaluated.  Defer that final TV calculation to the
+; prior-rule-stv sink, which sees the complete proof batch for both patterns.
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (stv-prior ($rule-s $rule-c)
+               (prior-brpat $kb $ante-concept $cons-concept))
+             pnil
+             ($premise-s $premise-c)
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (stv-prior ($rule-s $rule-c)
+                  (prior-brpat $kb $ante-concept $cons-concept))
+                pnil
+                ($premise-s $premise-c)
+                $proof-id
+                $evset))
+           (+ (prior-stv-active
+                $g
+                ($premise-s $premise-c)
+                ($rule-s $rule-c)
+                $kb
+                $ante-concept
+                $cons-concept
+                $proof-id
+                $evset)))))
+
+(exec-template
+  (exec 5
+        (I (BTM (prior-stv-active
+                  $g $premise-stv $rule-stv $kb
+                  $ante-concept $cons-concept $proof-id $evset))
+           (BTM (prior-base-rate-config
+                  $kb $ante-concept $mass $ante-prior $divisor))
+           (BTM (prior-base-rate-config
+                  $kb $cons-concept $mass $cons-prior $divisor))
+           (one-of
+             (prior-base-rate-candidate
+               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept))
+               $ante-stv $ante-proof $ante-evset)
+             (proved
+               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept))
+               $ante-stv $ante-proof $ante-evset)
+             (proved
+               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept))
+               (ctvpair $ante-stv $ante-negative) $ante-proof $ante-evset)
+             (prior-base-rate-seed
+               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept))
+               $ante-stv $ante-proof $ante-evset))
+           (one-of
+             (prior-base-rate-candidate
+               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept))
+               $cons-stv $cons-proof $cons-evset)
+             (proved
+               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept))
+               $cons-stv $cons-proof $cons-evset)
+             (proved
+               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept))
+               (ctvpair $cons-stv $cons-negative) $cons-proof $cons-evset)
+             (prior-base-rate-seed
+               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept))
+               $cons-stv $cons-proof $cons-evset)))
+        (O (prior-rule-stv
+             $g $premise-stv $rule-stv $kb
+             $ante-concept $cons-concept $proof-id $evset
+             $mass $ante-prior $cons-prior $divisor
+             (prior-candidate
+               $ante-subj
+               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept)))
+             $ante-stv $ante-proof $ante-evset
+             (prior-candidate
+               $cons-subj
+               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept)))
+             $cons-stv $cons-proof $cons-evset))))
 
 (exec-template
   (exec 4

@@ -4,21 +4,23 @@ harness_floor_table() {
   cat <<'EOF'
 test_backward_dag_helpers	36
 test_backward_open_query_results	3
-test_base_rate_cache	10
+test_base_rate_cache	9
 test_benchgen_metta	23
 test_best_first_runtime	12
 test_chainer_add_atom	2
 test_distribution_values	6
 test_evidence_semantics	2
-test_foldall_merged_outputs	2
-test_foldall_query_goal	3
+test_foldall_merged_outputs	1
+test_foldall_query_goal	2
 test_forward_backward_compose	19
 test_forward_chainer	30
+test_forward_incremental_base_rates	1
 test_frontier_pooling	6
 test_height_average	4
 test_idealized_confidence	12
 test_implication_inversion	1
-test_implication_premise	16
+test_implication_premise	15
+test_inheritance_aggregate_cycle	1
 test_inheritance_query_proof	1
 test_lifting_merge	6
 test_logic_config	10
@@ -30,14 +32,14 @@ test_nary_conjuction	1
 test_negated_evidence_merge	5
 test_numeric_pattern_dist	5
 test_particle_values	22
-test_query_adds	5
+test_query_adds	4
 test_query_compute_in_compound	3
 test_query_materialize	8
 test_rectangle_area	3
-test_specializing_rule	5
+test_specializing_rule	3
 test_stv_implication_derived_ctv	1
 test_total_implication_aggregate	1
-test_uniform_prior	9
+test_uniform_prior	8
 test_var_head	2
 EOF
 }

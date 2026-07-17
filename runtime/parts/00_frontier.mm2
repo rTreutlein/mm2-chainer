@@ -141,3 +141,18 @@
                 no-stv
                 (adapterOrN $g $premises)
                 pnil)))))
+
+; An inheritance query evaluates one implication in supporting and refuting
+; contexts. The completed positive context is read back after the fixed-point
+; run; publishing the first pair of branch facts here is scheduler-dependent.
+(exec-template
+  (exec 1
+        (, (, (Goal $g))
+           (ruleN
+             $g
+             $rule-id
+             inheritance-query-result
+             (pcons $pos (pcons $neg pnil))))
+        (O (- (, (Goal $g)))
+           (+ (, (Goal $pos)))
+           (+ (, (Goal $neg))))))

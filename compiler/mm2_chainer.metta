@@ -567,10 +567,10 @@
          (mm2-base-rate-acc-from-stvs (BaseRateEvidence 0.0 0.0) $stvs))))))
 
 (= (mm2-computed-cached-base-rate $pat (STV $s $c))
-   (let $direct (mm2-direct-fact-base-rate $pat)
-     (case $direct
+   (let $live (mm2-live-cached-base-rate $pat)
+     (case $live
        ((no-cache-entry (STV $s $c))
-        ((STV $_ds $dc) (if (> $dc $c) $direct (STV $s $c)))
+        ((STV $_ls $lc) (if (> $lc $c) $live (STV $s $c)))
         ($other (STV $s $c))))))
 
 (= (mm2-set-base-rate $kb $pattern (STV $s $c))
@@ -610,10 +610,7 @@
 (= (mm2-unmarked-cached-base-rate $pat)
    (case (mm2-live-cached-base-rate $pat)
      ((no-cache-entry no-cache-entry)
-      ($live
-       (case (mm2-direct-fact-base-rate $pat)
-         ((no-cache-entry $live)
-          ($direct $direct)))))))
+      ($live $live))))
 
 (= (mm2-cached-base-rate $kb $pattern)
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
@@ -705,12 +702,85 @@
    (let $_refresh (mm2-refresh-prior-base-rate! $def)
      (mm2-refresh-prior-base-rate-list! $rest)))
 
+(= (mm2-prior-config-stv no-evidence) (STV 0.0 0.0))
+(= (mm2-prior-config-stv (STV $s $c)) (STV $s $c))
+
+(= (mm2-inheritance-subject-mass-tv $kb)
+   (let $universe-size (kb-universe-size $kb)
+     (if (== $universe-size no-universe-size)
+       (let $n (list-len (inheritance-subjects $kb))
+         (if (<= $n 0) (STV 0.0 0.0) (STV (/ 1.0 $n) 1.0)))
+       (if (<= $universe-size 0.0)
+         (STV 0.0 0.0)
+         (STV (/ 1.0 $universe-size) 1.0)))))
+
+(= (mm2-prior-evidence-divisor $kb)
+   (let $universe-size (kb-universe-size $kb)
+     (if (== $universe-size no-universe-size) 1.0 $universe-size)))
+
+(= (mm2-store-prior-base-rate-config! $kb $concept)
+   (let* (($_old (mm2-remove-matches
+                    (prior-base-rate-config $kb $concept $old-mass $old-prior $old-divisor)))
+          ($_old-seed (mm2-remove-matches
+                        (prior-base-rate-seed
+                          (($kb MAIN Nil) (Inheritance no-prior-candidate $concept))
+                          $old-stv no-prior-proof $old-ev)))
+          ((STV $ms $mc) (mm2-inheritance-subject-mass-tv $kb))
+          ((STV $ps $pc) (mm2-prior-config-stv (concept-node-prior-tv $kb $concept)))
+          ($divisor (mm2-prior-evidence-divisor $kb)))
+     (let* (($_config
+              (add-atom &mork
+                (prior-base-rate-config $kb $concept ($ms $mc) ($ps $pc) $divisor)))
+            ($_seed
+              (add-atom &mork
+                (prior-base-rate-seed
+                  (($kb MAIN Nil) (Inheritance no-prior-candidate $concept))
+                  (0.0 0.0) no-prior-proof pnil))))
+       ())))
+
+(= (mm2-refresh-prior-base-rate-config!
+      (base-rate-prior-def-guarded $_key $pat $_guard $kb $concept))
+   (mm2-store-prior-base-rate-config! $kb $concept))
+
+(= (mm2-refresh-guarded-prior-base-rate!
+      (base-rate-prior-def-guarded $key $pat $_guard $kb $concept))
+   (case $pat
+     ((($scope (Inheritance $_subj $_concept))
+       (mm2-store-prior-base-rate!
+         $key
+         (mm2-prior-weighted-base-rate-tv $kb $scope $concept)))
+      ($other ()))))
+
+(= (mm2-refresh-prior-base-rate-config-list! ()) ())
+(= (mm2-refresh-prior-base-rate-config-list! (cons $def $rest))
+   (let $_refresh (mm2-refresh-prior-base-rate-config! $def)
+     (mm2-refresh-prior-base-rate-config-list! $rest)))
+
+(= (mm2-refresh-guarded-prior-base-rate-list! ()) ())
+(= (mm2-refresh-guarded-prior-base-rate-list! (cons $def $rest))
+   (let $_refresh (mm2-refresh-guarded-prior-base-rate! $def)
+     (mm2-refresh-guarded-prior-base-rate-list! $rest)))
+
 (= (mm2-refresh-prior-base-rates!)
-   (mm2-refresh-prior-base-rate-list!
-     (collapse
-       (match &mork
-         (base-rate-prior-def $pat $kb $concept)
-         (base-rate-prior-def $pat $kb $concept)))))
+   (let* (($_plain
+            (mm2-refresh-prior-base-rate-list!
+              (collapse
+                (match &mork
+                  (base-rate-prior-def $pat $kb $concept)
+                  (base-rate-prior-def $pat $kb $concept)))))
+          ($_guarded
+            (mm2-refresh-prior-base-rate-config-list!
+              (collapse
+                (match &mork
+                  (base-rate-prior-def-guarded $key $gpat $guard $gkb $gconcept)
+                  (base-rate-prior-def-guarded $key $gpat $guard $gkb $gconcept)))))
+          ($_guarded-values
+            (mm2-refresh-guarded-prior-base-rate-list!
+              (collapse
+                (match &mork
+                  (base-rate-prior-def-guarded $vkey $vpat $vguard $vkb $vconcept)
+                  (base-rate-prior-def-guarded $vkey $vpat $vguard $vkb $vconcept))))))
+     ()))
 
 ; Query answers are the facts matching each compiled query's own scoped goal
 ; term — usually the kb's MAIN context, or the fresh query context some
@@ -855,26 +925,10 @@
        (fact ($pos-shape $pos-type) ($s $c))
        (: mm2-proved $goal-type (STV $s $c)))))
 
-(= (mm2-readback-inheritance-query-merged-proofs $goal-type $pos-shape $pos-type)
-   (collapse
-     (match &mork
-       (fact ($pos-shape $pos-type) ($fs $fc))
-       (match &mork
-         (proved ($pos-shape $pos-type) ($ps $pc) (scheduledN $pg $rule $premises) $evset)
-         (case (mm2-formula-normalize-stv (STV $fs $fc))
-           (((STV $nfs $nfc)
-             (case (mm2-formula-normalize-stv (STV $ps $pc))
-               (((STV $nps $npc)
-                 (case (mergetvs (STV $nfs $nfc) (STV $nps $npc))
-                   (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
-                    ($other empty))))
-                ($other empty))))
-            ($other empty)))))))
-
 (= (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)
-   (mm2-ir-append
-     (mm2-readback-inheritance-query-direct-proofs $goal-type $pos-shape $pos-type)
-     (mm2-readback-inheritance-query-merged-proofs $goal-type $pos-shape $pos-type)))
+   ; ReviseProofsSink owns evidence-aware merge and snapshot supersession.
+   ; Reading its canonical fact avoids reimplementing revision policy here.
+   (mm2-readback-inheritance-query-direct-proofs $goal-type $pos-shape $pos-type))
 
 (= (mm2-readback-inheritance-query-premises $goal-type $goal-shape $prems $ccl)
    (case (mm2-ir-collect $prems)
@@ -893,12 +947,22 @@
 (= (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds)
    (case $adds
      (((cons (rules ($prems |- $ccl)) $rest)
-       (mm2-readback-inheritance-query-premises $goal-type $goal-shape $prems $ccl))
+       (mm2-ir-append
+         (mm2-readback-inheritance-query-premises
+           $goal-type $goal-shape $prems $ccl)
+         (mm2-readback-inheritance-query-adds
+           $goal-type $goal-shape $rest)))
+      ((cons $_other $rest)
+       (mm2-readback-inheritance-query-adds
+         $goal-type $goal-shape $rest))
       ($other ()))))
 
 (= (mm2-readback-inheritance-query $goal-item $adds)
    (case (mm2-ir-item $goal-item)
      (((subgoal ($goal-shape $goal-type) $goal-tv (inheritance-query (total-implication $pos-prf $neg-prf)))
+       (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds))
+      ((subgoal ($goal-shape $goal-type) $goal-tv
+          (inheritance-query-result $_proof))
        (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds))
       ($other ()))))
 
@@ -1104,11 +1168,22 @@
        (mm2-readback-factored-and $goal-type $shape))
      ()))
 
+(= (mm2-inheritance-query-proof? $proof)
+   (if (is-expr $proof)
+     (let $head (car-atom $proof)
+       (or (== $head inheritance-query)
+           (== $head inheritance-query-result)))
+     false))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
        (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
-         (let $readback-type (mm2-readback-type $shape $type $prf $tv)
+         (let* (($readback-type (mm2-readback-type $shape $type $prf $tv))
+                ($query-goal
+                  (if (mm2-ir-query-add-has-inheritance-lift? $adds)
+                    ($shape $type)
+                    (mm2-ir-query-goal ($shape $type) $prf))))
            (mm2-ir-append
              (mm2-readback-total-implication $goal-item $adds)
              (mm2-ir-append
@@ -1121,13 +1196,15 @@
                      (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
                    (mm2-ir-append
                      (mm2-readback-inheritance-induction $readback-type $shape)
-                     (mm2-ir-append
-                       (collapse
-                         (match &mork (fact ($shape $type) ($s $c))
-                           (: mm2-merged $readback-type (STV $s $c))))
-                       (collapse
-                         (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-                           (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))))))))))
+                     (if (not (mm2-inheritance-query-proof? $prf))
+                       (mm2-ir-append
+                         (collapse
+                           (match &mork (fact $query-goal ($s $c))
+                             (: mm2-merged $readback-type (STV $s $c))))
+                         (collapse
+                           (match &mork (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
+                             (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))
+                       ())))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -1168,6 +1245,7 @@
           ($_total-active (mm2-remove-matches (total-evidence-active $g $total-active-proof $total-ante-stv $total-active-p1 $total-active-p2 $total-active-pat $total-active-evset)))
           ($_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2)))
           ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
+          ($_inheritance-query (mm2-remove-matches (wait-inheritance-query-result $g $iq-pos $iq-neg $iq-proof-id $iq-evset)))
           ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
           ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
           ($_dist-stats-active (mm2-remove-matches (dist-stats-active $dist-stats-dist)))
@@ -1190,9 +1268,9 @@
 (= (mm2-cleanup-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
-       (let (subgoal $g $tv $_prf) (mm2-ir-item $goal-item)
+       (let (subgoal $g $tv $prf) (mm2-ir-item $goal-item)
          (let $_adds (mm2-remove-atoms (mm2-translate-query $cq))
-           (mm2-cleanup-goal $g))))
+           (mm2-cleanup-goal (mm2-ir-query-goal $g $prf)))))
       ($other cleaned))))
 
 (= (mm2-cleanup-queries ()) ())
@@ -1212,6 +1290,7 @@
           ($_total-active (mm2-remove-matches (total-evidence-active $g $total-active-proof $total-ante-stv $total-active-p1 $total-active-p2 $total-active-pat $total-active-evset)))
           ($_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2)))
           ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
+          ($_inheritance-query (mm2-remove-matches (wait-inheritance-query-result $g $iq-pos $iq-neg $iq-proof-id $iq-evset)))
           ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
           ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
           ($_dist-stats-active (mm2-remove-matches (dist-stats-active $dist-stats-dist)))
@@ -1252,29 +1331,14 @@
        (forward-chain-goal $scope $g)
        (, (Goal $g)))))
 
-(= (mm2-direct-query-reachable? $kb $type)
-   (let $scope (mm2-ir-scope-kb $kb)
-     (or (not (== (collapse (match &mork (fact ($scope $type) $stored-tv) found)) ()))
-         (or (not (== (collapse (match &mork (ruleN ($scope $type) $rule-id $kind $prems) found)) ()))
-             (not (== (collapse (match &mork (adapterN ($scope $type) $prems) found)) ()))))))
-
-; PeTTa's Inheritance query compiler expands every query through contextual
-; total-implication and base-rate scaffolding.  That expansion is needed for
-; concept-to-concept induction, but is both redundant and unsafe when an MM2
-; fact/rule already proves the requested goal: the residual distribution CPU
-; clauses can reach MORK as an unsupported exec source.  Prefer the ordinary
-; scoped MM2 goal in that case and retain the full compiler path as fallback.
 (= (mm2-compile-query-for-runtime $kb (: $prf $type $tv))
-   (if (and (is-expr $type)
-            (and (== (car-atom $type) Inheritance)
-                 (mm2-direct-query-reachable? $kb $type)))
-     (cons (compiled-query ($type (mm2-ir-scope-kb $kb) $prf $tv) ()) ())
-     (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
+   (collapse (mm2compileQuery $kb (: $prf $type $tv))))
 
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
           ($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
-          ($notsup (mm2-run-compiled-queries $kb $cqs)))
+          ($notsup (mm2-run-compiled-queries $kb $cqs))
+          ($_query-refresh (mm2-refresh-prior-base-rates!)))
      (prepared-query $cqs $notsup)))
 
 (= (mm2-result-row-equivalent? $row $other)
@@ -2015,6 +2079,12 @@
                 (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        (mm2-test $results $expected))))
+
+(= (mm2-test-query-count $steps $kb (: $prf $type $tv) $expected-count)
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       (mm2-test-equal (length $results) $expected-count))))
 
 (= (mm2-test-forward-chain-query $rounds $steps $kb (: $prf $type $tv) $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)

@@ -186,6 +186,12 @@ def convert_test(expr):
     if head(expr) != "test" or len(expr) != 3:
         return None
     queryish, expected = expr[1], expr[2]
+    query_count = query_count_test(queryish, expected)
+    if query_count is not None:
+        return query_count
+    query_tvs = query_tvs_test(queryish, expected)
+    if query_tvs is not None:
+        return query_tvs
     materialized = materialized_match(queryish)
     if materialized is not None:
         kb, typ = materialized
@@ -362,6 +368,48 @@ def convert_test(expr):
         rename_calls(queryish[2]),
         rename_calls(queryish[3]),
         normalize_expected(rename_calls(expected)),
+    ]
+
+
+def collapsed_query(expr):
+    if head(expr) != "collapse" or len(expr) != 2:
+        return None
+    query = expr[1]
+    if head(query) != "query" or len(query) != 4:
+        return None
+    return query
+
+
+def query_count_test(queryish, expected):
+    if head(queryish) != "length" or len(queryish) != 2:
+        return None
+    query = collapsed_query(queryish[1])
+    if query is None:
+        return None
+    return [
+        "mm2-test-query-count",
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        rename_calls(expected),
+    ]
+
+
+def query_tvs_test(queryish, expected):
+    if head(queryish) != "map-flat" or len(queryish) != 3:
+        return None
+    if queryish[1] != "inheritance-query-result-tv":
+        return None
+    query = collapsed_query(queryish[2])
+    if query is None or not isinstance(expected, list):
+        return None
+    expected_rows = [[":", "$_proof", query[3][2], tv] for tv in expected]
+    return [
+        "mm2-test-query",
+        rename_calls(query[1]),
+        rename_calls(query[2]),
+        rename_calls(query[3]),
+        rename_calls(expected_rows),
     ]
 
 
@@ -1141,7 +1189,7 @@ def convert_file(path):
                 out.append("!" + show(converted))
                 continue
             unsupported += 1
-            out.append("; UNSUPPORTED test form: " + show(expr)[:160])
+            out.append("; UNSUPPORTED test form: " + short_snippet(expr, 160))
             snippet = re.sub(r"[^A-Za-z0-9_ /.$-]", " ", show(expr))[:80].strip()
             out.append(f'!(mm2-test-unsupported "{snippet}")')
             continue
