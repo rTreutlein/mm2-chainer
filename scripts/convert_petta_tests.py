@@ -201,13 +201,7 @@ def convert_test(expr):
     cached_base_rate = cached_base_rate_test(queryish)
     if cached_base_rate is not None:
         kb, pat = cached_base_rate
-        cached_expected = expected
-        if head(queryish) == "cached-base-rate":
-            if expected == []:
-                cached_expected = "no-cache-entry"
-            elif isinstance(expected, list) and len(expected) == 1:
-                cached_expected = expected[0]
-        return ["mm2-test-cached-base-rate", kb, pat, rename_calls(cached_expected)]
+        return ["mm2-test-cached-base-rate", kb, pat, rename_calls(expected)]
     query_tv_component = query_tv_component_test(queryish, expected)
     if query_tv_component is not None:
         return query_tv_component
@@ -945,8 +939,6 @@ def short_snippet(expr, limit=160):
 
 
 def cached_base_rate_test(queryish):
-    if head(queryish) == "cached-base-rate" and len(queryish) == 3:
-        return rename_calls(queryish[1]), rename_calls(queryish[2])
     if head(queryish) != "let" or len(queryish) != 4:
         return None
     var, cached, body = queryish[1], queryish[2], queryish[3]
@@ -966,16 +958,6 @@ def cached_base_rate_test(queryish):
 
 
 def apply_file_adaptations(path_name, out):
-    if path_name == "test_inheritance_query_proof.metta":
-        # The upstream test separately checks count, public proof shape, and TV.
-        # mm2-test-query compares the canonical public type/TV and rejects extra
-        # result rows, so one assertion covers the same runtime boundary here.
-        return out[:7] + [
-            "; One exact public result: this simultaneously checks canonicalization and TV.",
-            "!(mm2-test-query 80 inheritanceQueryKb (: $prf (Inheritance Bird Flier) $tv) "
-            "((: inheritance-query-proof (Inheritance Bird Flier) "
-            "(STV 0.9999999166665949 0.0012502032753877429))))",
-        ]
     if path_name == "test_query_materialize.metta":
         out.insert(1, "; mm2's low-level firings need a wider budget than PeTTa's agenda count for")
         out.insert(2, "; this two-hop materialization chain; budget 10 is the smallest passing fresh")

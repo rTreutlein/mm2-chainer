@@ -573,7 +573,7 @@
         ((STV $_ds $dc) (if (> $dc $c) $direct (STV $s $c)))
         ($other (STV $s $c))))))
 
-(= (mm2-set-base-rate-one $kb $pattern (STV $s $c))
+(= (mm2-set-base-rate $kb $pattern (STV $s $c))
    (let $_clear (mm2-remove-base-rate-state $kb $pattern)
      (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
        (let* (($stored (copy_term $pat))
@@ -583,25 +583,11 @@
               ($_keyed (mm2-apply-base-rate-value-to-defs! $pat ($s $c))))
          ()))))
 
-(= (mm2-set-base-rate $kb $pattern (STV $s $c))
-   (let* (($_public (mm2-set-base-rate-one $kb $pattern (STV $s $c)))
-          ($evidence-pattern (inheritance-evidence-term $pattern)))
-     (if (=alpha $pattern $evidence-pattern)
-       ()
-       (mm2-set-base-rate-one $kb $evidence-pattern (STV $s $c)))))
-
-(= (mm2-clear-base-rate-one $kb $pattern)
+(= (mm2-clear-base-rate $kb $pattern)
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
      (let* (($_clear (mm2-remove-base-rate-state $kb $pattern))
             ($_keyed (mm2-reset-base-rate-value-in-defs! $pat)))
        (mm2-add-base-rate-support $kb $pattern))))
-
-(= (mm2-clear-base-rate $kb $pattern)
-   (let* (($_public (mm2-clear-base-rate-one $kb $pattern))
-          ($evidence-pattern (inheritance-evidence-term $pattern)))
-     (if (=alpha $pattern $evidence-pattern)
-       ()
-       (mm2-clear-base-rate-one $kb $evidence-pattern))))
 
 (= (mm2-store-computed-base-rate! $kb $pattern (STV $s $c) $mode)
    (let $_clear (mm2-remove-base-rate-state $kb $pattern)
@@ -825,22 +811,19 @@
        (WeightedCountBaseRateTv $evidence)
        (WeightedUniverseBaseRateTv $universe-size $evidence))))
 
-(= (mm2-member-inheritance-result-tv $kb $scope $subj $concept)
+(= (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
    (let $ants
      (collapse
        (match &mork
-         (fact ($scope (Member $obj $subj)) ($as $ac))
+         (fact ($goal-shape (Member $obj $subj)) ($as $ac))
          (member-ant $obj (STV $as $ac))))
      (if (== $ants ())
-       no-evidence
-       (mm2-member-inheritance-tv
-         $kb
-         (mm2-member-inheritance-acc $scope $concept (BaseRateEvidence 0.0 0.0) $ants)))))
-
-(= (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
-   (case (mm2-member-inheritance-result-tv $kb $goal-shape $subj $concept)
-     ((no-evidence ())
-      ($tv (cons (: mm2-proved $goal-type $tv) ())))))
+       ()
+       (let $tv
+         (mm2-member-inheritance-tv
+           $kb
+           (mm2-member-inheritance-acc $goal-shape $concept (BaseRateEvidence 0.0 0.0) $ants))
+         (cons (: mm2-proved $goal-type $tv) ())))))
 
 (= (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl)
    (case (mm2-ir-collect $prems)
@@ -919,22 +902,6 @@
        (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds))
       ($other ()))))
 
-; The unified compiler gives the implication fallback a private evidence head.
-; Reuse the same contextual total-implication readback that the former public
-; query plan used; MM2's aggregate runtime represents those merged branches
-; more faithfully here than the generic raw fact readback.
-(= (mm2-readback-inheritance-evidence-query $goal-item $adds)
-   (case (mm2-ir-item $goal-item)
-     (((subgoal ($goal-shape (inheritance-evidence $subj $concept)) $goal-tv
-          (total-implication $pos-prf $neg-prf))
-       (mm2-readback-inheritance-query-adds
-         (inheritance-evidence $subj $concept) $goal-shape $adds))
-      ((subgoal ($goal-shape $goal-type) $goal-tv
-          (inheritance-implication-evidence
-            (total-implication $pos-prf $neg-prf)))
-       (mm2-readback-inheritance-query-adds $goal-type $goal-shape $adds))
-      ($other ()))))
-
 (= (mm2-base-rate-acc-from-stvs $acc ()) $acc)
 (= (mm2-base-rate-acc-from-stvs $acc (cons $tv $rest))
    (mm2-base-rate-acc-from-stvs (BaseRateAcc $acc $tv) $rest))
@@ -977,11 +944,8 @@
       ((cons $tv ()) $tv)
       ((cons $tv $rest) (mergetvs $tv (mm2-revise-tv-list $rest))))))
 
-(= (mm2-inheritance-induction-result-tv $scope $a $b)
-   (mm2-revise-tv-list (mm2-inheritance-induction-tvs $scope $a $b)))
-
 (= (mm2-readback-inheritance-induction-result $goal-type $scope $a $b)
-   (case (mm2-inheritance-induction-result-tv $scope $a $b)
+   (case (mm2-revise-tv-list (mm2-inheritance-induction-tvs $scope $a $b))
      (((STV $s $c) (cons (: mm2-proved $goal-type (STV $s $c)) ()))
       ($other ()))))
 
@@ -1140,91 +1104,9 @@
        (mm2-readback-factored-and $goal-type $shape))
      ()))
 
-(= (mm2-public-inheritance-tv (STV $s $c)) (STV $s $c))
-(= (mm2-public-inheritance-tv (CTV $pos $neg))
-   (CTVModusPonensFormula (STV 1.0 1.0) (CTV $pos $neg)))
-
-(= (mm2-public-inheritance-rows $_subj $_concept ()) ())
-(= (mm2-public-inheritance-rows $subj $concept (cons $row $rest))
-   (case $row
-     (((: $_prf $_private-type $tv)
-       (case (mm2-public-inheritance-tv $tv)
-         (((STV $s $c)
-           (cons (: mm2-merged (Inheritance $subj $concept) (STV $s $c))
-                 (mm2-public-inheritance-rows $subj $concept $rest)))
-          ($other (mm2-public-inheritance-rows $subj $concept $rest)))))
-      ($other (mm2-public-inheritance-rows $subj $concept $rest)))))
-
-(= (mm2-higher-confidence-inheritance-row $best $candidate)
-   (case ($best $candidate)
-     ((((: $_bp $_bt (STV $_bs $bc)) (: $_cp $_ct (STV $_cs $cc)))
-       (if (> $cc $bc) $candidate $best))
-      ($other $best))))
-
-(= (mm2-best-inheritance-row-acc $best ()) $best)
-(= (mm2-best-inheritance-row-acc $best (cons $row $rest))
-   (mm2-best-inheritance-row-acc
-     (mm2-higher-confidence-inheritance-row $best $row) $rest))
-(= (mm2-best-inheritance-rows ()) ())
-(= (mm2-best-inheritance-rows (cons $row $rest))
-   (cons (mm2-best-inheritance-row-acc $row $rest) ()))
-
-(= (mm2-canonical-inheritance-rows ()) ())
-(= (mm2-canonical-inheritance-rows (cons $row ())) (cons $row ()))
-(= (mm2-canonical-inheritance-rows (cons $row (cons $_merged ())))
-   (cons $row ()))
-(= (mm2-canonical-inheritance-rows
-      (cons $row (cons $merged (cons $third $rest))))
-   (mm2-best-inheritance-rows
-     (cons $row (cons $merged (cons $third $rest)))))
-
-(= (mm2-readback-inheritance-wrapper-query $query)
-   (case $query
-     (((compiled-query $goal-item $adds)
-       (let $special
-         (mm2-readback-inheritance-evidence-query $goal-item $adds)
-         (if (== $special ())
-           (mm2-readback-query $query)
-           (mm2-canonical-inheritance-rows $special))))
-      ($other (mm2-readback-query $query)))))
-
-(= (mm2-readback-public-inheritance-fact $kb $subj $concept)
-   (let $scope (mm2-ir-scope-kb $kb)
-     (mm2-ir-append
-       (collapse
-         (match &mork
-           (fact ($scope (Inheritance $subj $concept)) ($s $c))
-           (: mm2-merged (Inheritance $subj $concept) (STV $s $c))))
-       (collapse
-         (match &mork
-           (fact ($scope (Inheritance $subj $concept))
-             (ctvpair ($ps $pc) ($ns $nc)))
-           (: mm2-merged
-              (Inheritance $subj $concept)
-              (CTV (STV $ps $pc) (STV $ns $nc))))))))
-
-(= (mm2-active-inheritance-query $kb $subj $concept $direct-query $implication-query)
-   (let $fallback
-     (collapse
-       (match &mork
-         (inheritance-query-fallback-active $kb $subj $concept)
-         active))
-     (if (== $fallback ()) $direct-query $implication-query)))
-
 (= (mm2-readback-query $cq)
    (case $cq
-     (((compiled-inheritance-query $kb $subj $concept $direct-query $implication-query)
-       (let $public-fact
-         (mm2-readback-public-inheritance-fact $kb $subj $concept)
-         (if (== $public-fact ())
-           (mm2-public-inheritance-rows
-             $subj
-             $concept
-             (mm2-readback-inheritance-wrapper-query
-               (mm2-active-inheritance-query
-                 $kb $subj $concept $direct-query $implication-query)))
-           $public-fact)))
-      ((compiled-query $goal-item $adds)
+     (((compiled-query $goal-item $adds)
        (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
          (let $readback-type (mm2-readback-type $shape $type $prf $tv)
            (mm2-ir-append
@@ -1232,22 +1114,20 @@
              (mm2-ir-append
                (mm2-readback-inheritance-query $goal-item $adds)
                (mm2-ir-append
-                 (mm2-readback-inheritance-evidence-query $goal-item $adds)
+                 (mm2-readback-member-inheritance $goal-item $adds)
                  (mm2-ir-append
-                   (mm2-readback-member-inheritance $goal-item $adds)
                    (mm2-ir-append
+                     (mm2-readback-factored-and $readback-type $shape)
+                     (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
+                   (mm2-ir-append
+                     (mm2-readback-inheritance-induction $readback-type $shape)
                      (mm2-ir-append
-                       (mm2-readback-factored-and $readback-type $shape)
-                       (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
-                     (mm2-ir-append
-                       (mm2-readback-inheritance-induction $readback-type $shape)
-                       (mm2-ir-append
-                         (collapse
-                           (match &mork (fact ($shape $type) ($s $c))
-                             (: mm2-merged $readback-type (STV $s $c))))
-                         (collapse
-                           (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
-                             (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc)))))))))))))))
+                       (collapse
+                         (match &mork (fact ($shape $type) ($s $c))
+                           (: mm2-merged $readback-type (STV $s $c))))
+                       (collapse
+                         (match &mork (fact ($shape $type) (ctvpair ($ps $pc) ($ns $nc)))
+                           (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -1273,49 +1153,8 @@
 
 (= (mm2-run-compiled-queries $kb ()) ())
 (= (mm2-run-compiled-queries $kb (cons $cq $rest))
-   (mm2-ir-append (mm2-run-compiled-query $kb $cq)
+   (mm2-ir-append (mm2-add-compiled $kb (mm2-translate-query $cq))
                   (mm2-run-compiled-queries $kb $rest)))
-
-(= (mm2-add-inheritance-evidence $kb $subj $concept $_proof no-evidence) ())
-(= (mm2-add-inheritance-evidence $kb $subj $concept $proof (STV $s $c))
-   (mm2-add-compiled
-     $kb
-     (collapse
-       (mm2-translate-stmt
-         (: (mm2-ir-scope-kb $kb)
-            $proof
-            (inheritance-evidence $subj $concept)
-            (STV $s $c))))))
-
-(= (mm2-inject-member-inheritance-evidence $kb $subj $concept)
-   (let $scope (mm2-ir-scope-kb $kb)
-     (mm2-add-inheritance-evidence
-       $kb
-       $subj
-       $concept
-       (member-inheritance-fold cpu)
-       (mm2-member-inheritance-result-tv $kb $scope $subj $concept))))
-
-(= (mm2-inject-induction-inheritance-evidence $kb $subj $concept)
-   (let $enabled
-     (collapse (match &mork (inheritance-induction-enabled $kb) found))
-     (if (== $enabled ())
-       ()
-       (mm2-add-inheritance-evidence
-         $kb
-         $subj
-         $concept
-         (inheritance-induction cpu)
-         (mm2-inheritance-induction-result-tv
-           (mm2-ir-scope-kb $kb) $subj $concept)))))
-
-(= (mm2-run-compiled-query $kb $cq)
-   (case $cq
-     (((compiled-inheritance-query $qkb $subj $concept $direct-query $_implication-query)
-       (let* (($_member (mm2-inject-member-inheritance-evidence $qkb $subj $concept))
-              ($_induction (mm2-inject-induction-inheritance-evidence $qkb $subj $concept)))
-         (mm2-add-compiled $kb (mm2-translate-query $direct-query))))
-      ($other (mm2-add-compiled $kb (mm2-translate-query $cq))))))
 
 (= (mm2-cleanup-goal $g)
    (let* (($_goal (mm2-remove-matches (, (Goal $g))))
@@ -1350,39 +1189,11 @@
 
 (= (mm2-cleanup-query $cq)
    (case $cq
-     (((compiled-inheritance-query $kb $subj $concept $direct-query $implication-query)
-       (let* (($fallback-active
-                (collapse
-                  (match &mork
-                    (inheritance-query-fallback-active $kb $subj $concept)
-                    active)))
-              ($_direct (mm2-cleanup-query $direct-query))
-              ($_fallback (mm2-cleanup-query $implication-query))
-              ($_derived
-                (if (== $fallback-active ())
-                  ()
-                  (mm2-cleanup-inheritance-fallback-result
-                    $kb $subj $concept)))
-              ($_marker
-                (mm2-remove-matches
-                  (inheritance-query-fallback-active $kb $subj $concept))))
-         cleaned))
-      ((compiled-query $goal-item $adds)
+     (((compiled-query $goal-item $adds)
        (let (subgoal $g $tv $_prf) (mm2-ir-item $goal-item)
          (let $_adds (mm2-remove-atoms (mm2-translate-query $cq))
            (mm2-cleanup-goal $g))))
       ($other cleaned))))
-
-(= (mm2-cleanup-inheritance-fallback-result $kb $subj $concept)
-   (let $g ((mm2-ir-scope-kb $kb) (inheritance-evidence $subj $concept))
-     (let* (($_fact (mm2-remove-matches (fact $g $stored-tv)))
-            ($_fact-evidence
-              (mm2-remove-matches
-                (fact-evidence $g $fact-tv $fact-evset)))
-            ($_proved
-              (mm2-remove-matches
-                (proved $g $proved-tv $proved-proof $proved-evset))))
-       ())))
 
 (= (mm2-cleanup-queries ()) ())
 (= (mm2-cleanup-queries (cons $cq $rest))
@@ -1441,8 +1252,24 @@
        (forward-chain-goal $scope $g)
        (, (Goal $g)))))
 
+(= (mm2-direct-query-reachable? $kb $type)
+   (let $scope (mm2-ir-scope-kb $kb)
+     (or (not (== (collapse (match &mork (fact ($scope $type) $stored-tv) found)) ()))
+         (or (not (== (collapse (match &mork (ruleN ($scope $type) $rule-id $kind $prems) found)) ()))
+             (not (== (collapse (match &mork (adapterN ($scope $type) $prems) found)) ()))))))
+
+; PeTTa's Inheritance query compiler expands every query through contextual
+; total-implication and base-rate scaffolding.  That expansion is needed for
+; concept-to-concept induction, but is both redundant and unsafe when an MM2
+; fact/rule already proves the requested goal: the residual distribution CPU
+; clauses can reach MORK as an unsupported exec source.  Prefer the ordinary
+; scoped MM2 goal in that case and retain the full compiler path as fallback.
 (= (mm2-compile-query-for-runtime $kb (: $prf $type $tv))
-   (collapse (mm2compileQuery $kb (: $prf $type $tv))))
+   (if (and (is-expr $type)
+            (and (== (car-atom $type) Inheritance)
+                 (mm2-direct-query-reachable? $kb $type)))
+     (cons (compiled-query ($type (mm2-ir-scope-kb $kb) $prf $tv) ()) ())
+     (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
 
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
@@ -1482,50 +1309,11 @@
 (= (mm2-min $a $b)
    (if (< $a $b) $a $b))
 
-(= (mm2-activate-inheritance-fallback $kb $subj $concept $direct-query $implication-query)
-   (let $active
-     (collapse
-       (match &mork
-         (inheritance-query-fallback-active $kb $subj $concept)
-         found))
-     (if (or (not (== $active ()))
-             (not (== (mm2-readback-query $direct-query) ())))
-       (fallback-state false ())
-       (let* (($_cleanup (mm2-cleanup-query $direct-query))
-              ($_mark
-                (add-atom &mork
-                  (inheritance-query-fallback-active $kb $subj $concept)))
-              ($notsup (mm2-add-compiled $kb (mm2-translate-query $implication-query))))
-         (fallback-state true $notsup)))))
-
-(= (mm2-activate-inheritance-fallbacks ()) (fallback-state false ()))
-(= (mm2-activate-inheritance-fallbacks (cons $cq $rest))
-   (let (fallback-state $here-active $here-notsup)
-     (case $cq
-       (((compiled-inheritance-query $kb $subj $concept $direct-query $implication-query)
-         (mm2-activate-inheritance-fallback
-           $kb $subj $concept $direct-query $implication-query))
-        ($other (fallback-state false ()))))
-     (let (fallback-state $rest-active $rest-notsup)
-       (mm2-activate-inheritance-fallbacks $rest)
-       (fallback-state
-         (or $here-active $rest-active)
-         (mm2-ir-append $here-notsup $rest-notsup)))))
-
-(= (mm2-run-query-budget $budget $notsup $cqs)
-   (let* (($_direct-run (mm2-exec &mork $budget))
-          ((fallback-state $activated $fallback-notsup)
-            (mm2-activate-inheritance-fallbacks $cqs)))
-     (if $activated
-       (let $_fallback-run (mm2-exec &mork $budget)
-         (mm2-query-results
-           (mm2-ir-append $notsup $fallback-notsup) $cqs))
-       (mm2-query-results $notsup $cqs))))
-
 (= (mm2-run-query-full $steps $notsup $cqs)
-   (mm2-run-query-budget (mm2-total-steps $steps) $notsup $cqs))
+   (let $_run (mm2-exec &mork (mm2-total-steps $steps))
+     (mm2-query-results $notsup $cqs)))
 
-(= (mm2-run-query-stage-until $remaining $notsup $cqs $expected)
+(= (mm2-run-query-until $remaining $notsup $cqs $expected)
    (let* (($results (mm2-query-results $notsup $cqs))
           ($verdict (mm2-test-verdict $results $expected)))
      (if (mm2-verdict-ok? $verdict)
@@ -1533,71 +1321,56 @@
        (if (< 0 $remaining)
          (let* (($chunk (mm2-min $remaining (mm2-query-chunk-size)))
                 ($_run (mm2-exec &mork $chunk)))
-           (mm2-run-query-stage-until (- $remaining $chunk) $notsup $cqs $expected))
+           (mm2-run-query-until (- $remaining $chunk) $notsup $cqs $expected))
          $results))))
-
-(= (mm2-run-query-until $remaining $notsup $cqs $expected)
-   (let $direct-results
-     (mm2-run-query-stage-until $remaining $notsup $cqs $expected)
-     (if (mm2-verdict-ok? (mm2-test-verdict $direct-results $expected))
-       $direct-results
-       (let (fallback-state $activated $fallback-notsup)
-         (mm2-activate-inheritance-fallbacks $cqs)
-         (if $activated
-           (mm2-run-query-stage-until
-             $remaining
-             (mm2-ir-append $notsup $fallback-notsup)
-             $cqs
-             $expected)
-           $direct-results)))))
 
 (= (mm2-query $steps $kb (: $prf $type $tv))
-   (once
-     (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
-       (let* (($results (mm2-run-query-full $steps $notsup $cqs))
-              ($_cleanup (mm2-cleanup-queries $cqs)))
-         $results))))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
 
 (= (mm2-query-wide $steps $kb (: $prf $type $tv))
-   (once
-     (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
-       (let* (($results (mm2-run-query-budget (mm2-test-total-steps $steps) $notsup $cqs))
-              ($_cleanup (mm2-cleanup-queries $cqs)))
-         $results))))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($_run (mm2-exec &mork (mm2-test-total-steps $steps)))
+            ($results (mm2-query-results $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
 
 (= (mm2-run-query-wide-first $steps $notsup $cqs)
    (let $existing (mm2-query-results $notsup $cqs)
      (if (== $existing ())
-       (mm2-run-query-budget (mm2-test-total-steps $steps) $notsup $cqs)
+       (let* (($_run (mm2-exec &mork (mm2-test-total-steps $steps)))
+              ($results (mm2-query-results $notsup $cqs)))
+         $results)
        $existing)))
 
 (= (mm2-query-wide-first $steps $kb (: $prf $type $tv))
-   (once
-     (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
-       (let* (($results (mm2-run-query-wide-first $steps $notsup $cqs))
-              ($_cleanup (mm2-cleanup-queries $cqs)))
-         $results))))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-wide-first $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
 
 (= (mm2-run-query-first $steps $notsup $cqs)
    (let $existing (mm2-query-results $notsup $cqs)
      (if (== $existing ())
-       (mm2-run-query-budget (mm2-total-steps $steps) $notsup $cqs)
+       (let* (($_run (mm2-exec &mork (mm2-total-steps $steps)))
+              ($results (mm2-query-results $notsup $cqs)))
+         $results)
        $existing)))
 
 (= (mm2-query-first $steps $kb (: $prf $type $tv))
-   (once
-     (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
-       (let* (($results (mm2-run-query-first $steps $notsup $cqs))
-              ($_cleanup (mm2-cleanup-queries $cqs)))
-         $results))))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-first $steps $notsup $cqs))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
 
 (= (mm2-query-materialize $steps $kb (: $prf $type $tv))
-   (once
-     (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
-       (let* (($results (mm2-run-query-full $steps $notsup $cqs))
-              ($_materialized (mm2-materialize-scope (mm2-ir-scope-kb $kb)))
-              ($_cleanup (mm2-cleanup-queries $cqs)))
-         $results))))
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results (mm2-run-query-full $steps $notsup $cqs))
+            ($_materialized (mm2-materialize-scope (mm2-ir-scope-kb $kb)))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       $results)))
 
 ; Harness approximation for PeTTa forward-chain tests: compileadd already
 ; emits open materialization goals for the relevant rule conclusions, so a
