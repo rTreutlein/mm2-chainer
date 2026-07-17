@@ -87,12 +87,7 @@
                  $pos-s $pos-c
                  $neg-s $neg-c))))))
 
-; Plain STV rules first derive their negative branch from the current base
-; rates of the rule's antecedent and consequent patterns (PeTTaChainer's
-; ImplicationCTVFormula):
-;
-;   neg strength   = NegativeBranchStrength(ante-s, cons-s, rule-s)
-;   neg confidence = 0.25 * min(ante-c, cons-c, rule-c)
+; Ordinary plain STV rules read both maintained, rule-guarded populations.
 (exec-template
   (exec 4
         (, (wait-premises $g (stv ($rule-s $rule-c) (brpat $ante $cons)) pnil ($premise-s $premise-c) $proof-id $evset)
@@ -126,7 +121,69 @@
                        (sub_f64 $cons-s (product_f64 $ante-s $rule-s))
                        (sub_f64 1.0 $ante-s))
                      0.0 1.0))
-               (product_f64 0.25 (min_f64 $ante-c $cons-c $rule-c))))))))
+                 (product_f64 0.25 (min_f64 $ante-c $cons-c $rule-c))))))))
+
+; Structural compound-antecedent STV rules derive the antecedent marginal
+; from this application's aggregated premise TV. Compound antecedents
+; (notably specialized rules)
+; are local CPU results and need not be materialized in the global proof store.
+; The consequent marginal still comes from the guarded cache, whose recursion
+; filter rejects grounded instances of this rule's schematic ID.
+;
+;   neg strength   = NegativeBranchStrength(ante-s, cons-s, rule-s)
+;   neg confidence = 0.25 * min(ante-c, cons-c, rule-c)
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (stv-local ($rule-s $rule-c)
+               (rule-brpat $rule-id $ante-key $cons-key))
+             pnil
+             ($premise-s $premise-c)
+             $proof-id
+             $evset)
+           (base-rate $cons-key ($cons-s $cons-c)))
+        (O (- (wait-premises
+                $g
+                (stv-local ($rule-s $rule-c)
+                  (rule-brpat $rule-id $ante-key $cons-key))
+                pnil
+                ($premise-s $premise-c)
+                $proof-id
+                $evset))
+           (pure
+             (open-proof $g $proof-stv $proof-id $evset)
+             $proof-stv
+             (tuple
+               (sum_f64
+                 (product_f64 $rule-s $premise-s)
+                 (product_f64
+                   (ifnz (gte_f64 $premise-s 1.0)
+                     then $cons-s
+                     else
+                     (clamp_f64
+                       (div_f64
+                         (sub_f64 $cons-s (product_f64 $premise-s $rule-s))
+                         (sub_f64 1.0 $premise-s))
+                       0.0 1.0))
+                   (sub_f64 1.0 $premise-s)))
+               (pln_mp_confidence_f64
+                 $premise-s $premise-c
+                 $rule-s $rule-c
+                 (ifnz (gte_f64 $premise-s 1.0)
+                   then $cons-s
+                   else
+                   (clamp_f64
+                     (div_f64
+                       (sub_f64 $cons-s (product_f64 $premise-s $rule-s))
+                       (sub_f64 1.0 $premise-s))
+                     0.0 1.0))
+                 (product_f64
+                   0.25
+                   (min_f64
+                     (div_f64 $premise-c (sum_f64 $premise-c 800.0))
+                     $cons-c
+                     $rule-c))))))))
 
 ; Prior-aware inheritance STV rules cannot share one global marginal snapshot:
 ; the FoldAll view excludes the current grounded subject and proofs carrying
@@ -201,11 +258,13 @@
              $mass $ante-prior $cons-prior $divisor
              (prior-candidate
                $ante-subj
-               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept)))
+               (($kb MAIN Nil) (Inheritance $ante-subj $ante-concept))
+               normal)
              $ante-stv $ante-proof $ante-evset
              (prior-candidate
                $cons-subj
-               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept)))
+               (($kb MAIN Nil) (Inheritance $cons-subj $cons-concept))
+               normal)
              $cons-stv $cons-proof $cons-evset))))
 
 (exec-template

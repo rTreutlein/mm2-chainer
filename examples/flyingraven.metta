@@ -15,20 +15,23 @@
 !(mm2-compileadd flyingRavenKb (: penguinBird (Inheritance Penguin Bird) (STV 0.99 0.9)))
 !(mm2-compileadd flyingRavenKb (: birdFlies (Inheritance Bird (IntSet flies)) (STV 0.99 0.9)))
 
+; MM2 admits each application-local inheritance proof row once while excluding
+; self-dependent evidence. Its stable estimates therefore differ slightly from
+; PeTTaChainer's current population snapshot.
 !(mm2-test-query 40 flyingRavenKb
    (: $prf (Inheritance Sam (IntSet flies)) $tv)
    ((: $_proof
        (Inheritance Sam (IntSet flies))
-       (STV 0.9636833710184354 0.902011854694304))))
+       (STV 0.9733353514140296 0.9015950434779885))))
 
 !(mm2-test-query 40 flyingRavenKb
    (: $prf (Inheritance Pingu (IntSet flies)) $tv)
    ((: $_proof
        (Inheritance Pingu (IntSet flies))
-       (STV 0.49640488254968673 0.9475028689003524))))
+       (STV 0.50019449149775 0.9473834682549807))))
 
 !(mm2-test-query 40 flyingRavenKb
    (: $prf (Inheritance Pingu (IntSet flies)) $tv)
    ((: $_proof
        (Inheritance Pingu (IntSet flies))
-       (STV 0.49640488254968673 0.9475028689003524))))
+       (STV 0.50019449149775 0.9473834682549807))))

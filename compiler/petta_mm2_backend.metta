@@ -9,7 +9,10 @@
 ;                                                 read source evidence
 ;   (: r (Implication (Premises p...)
 ;         (Conclusions q)) (CTV (STV ..) ..))  -> (ruleN q r (ctv (..) (..)) prems)
-;   (: r (Implication ...) (STV s c))          -> (ruleN q r (stv (s c) (brpat a q')) prems)
+;   (: r (Implication ...) (STV s c))          -> (ruleN q r (stv (s c)
+;                                                    (brpat a q')) prems)
+;                                                 or application-local stv-local
+;                                                 for structural-And premises
 ;                                                 + role-keyed base-rate-def /
 ;                                                   base-rate seeds
 ;   query (: $prf T $tv)                       -> (, (Goal T)) [+ adapterN for And]

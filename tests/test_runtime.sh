@@ -458,7 +458,7 @@ EOF
   mork run "$rules" --steps "$(steps_budget 23 9)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(proved (Q bob) (0.59 0.8725449130531222) (scheduledN (Q bob) (ctv (0.8 0.9) (0.1 0.9)) (pcons (P bob) pnil)) (pcons (fact-ev (fact-key (P bob)) (P bob)) (pcons (rule-ev r) pnil)))"
-  assert_contains "$out" "(proved (P alice) (0.7361953660871354 0.0003613453479487699) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (fact-key (Q alice)) (Q alice)) (pcons (rule-ev r) pnil)))"
+  assert_contains "$out" "(proved (P alice) (0.7361954166014429 0.0003613453832073859) (scheduledInvN (P alice) (0.8 0.9) (pcons (Q alice) pnil)) (pcons (fact-ev (fact-key (Q alice)) (Q alice)) (pcons (rule-ev r) pnil)))"
 }
 
 run_ir_inversion_key_shape_test() {

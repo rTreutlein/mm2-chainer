@@ -253,7 +253,16 @@
           ($guard (copy_term $rule-id))
           ($seed (copy_term $key)))
      (superpose (
-       (base-rate-def-guarded $key $match $guard)
+       (base-rate-def-guarded $key $match $guard without-rule)
+       (base-rate $seed (0.0 0.0))))))
+
+(= (mm2-local-guarded-base-rate-support $pat $rule-id $role)
+   (let* (($key (mm2-guarded-base-rate-key $rule-id $role $pat))
+          ($match (copy_term $pat))
+          ($guard (copy_term $rule-id))
+          ($seed (copy_term $key)))
+     (superpose (
+       (base-rate-def-guarded $key $match $guard without-rule-instance)
        (base-rate $seed (0.0 0.0))))))
 
 (= (mm2-guarded-prior-base-rate-key $rule-id $role $pat)
@@ -281,6 +290,35 @@
       ((prior-weighted-brfold $pat $kb $concept)
        (mm2-guarded-prior-base-rate-support $pat $rule-id $role $kb $concept))
       ($other (mm2-ir-fold-support $other)))))
+
+(= (mm2-ir-and-fold? $fold)
+   (case $fold
+     (((brfold ($_scope (And $_a $_b))) true)
+      ((brfold ($_scope (And $_a $_b $_c))) true)
+      ((brfold ($_scope (And $_a $_b $_c $_d))) true)
+      ((brfold ($_scope (And $_a $_b $_c $_d $_e))) true)
+      ($_other false))))
+
+(= (mm2-ir-stv-runtime-kind $rid $pos $fa $fb)
+   (if (mm2-ir-and-fold? $fa)
+     (stv-local
+       $pos
+       (rule-brpat
+         $rid
+         (mm2-ir-guarded-fold-key $rid antecedent $fa)
+         (mm2-ir-guarded-fold-key $rid consequent $fb)))
+     (stv
+       $pos
+       (brpat
+         (mm2-ir-guarded-fold-key $rid antecedent $fa)
+         (mm2-ir-guarded-fold-key $rid consequent $fb)))))
+
+(= (mm2-ir-stv-fold-support $rid $role $antecedent-fold $fold)
+   (if (mm2-ir-and-fold? $antecedent-fold)
+     (case $fold
+       (((brfold $pat) (mm2-local-guarded-base-rate-support $pat $rid $role))
+        ($other (mm2-ir-guarded-fold-support $rid $role $other))))
+     (mm2-ir-guarded-fold-support $rid $role $fold)))
 
 (= (mm2-ir-keyed-fold-key $rule-id $role $fold)
    (case $fold
@@ -734,14 +772,10 @@
          (ruleN
            $ctype
            $rid
-           (stv
-             $pos
-             (brpat
-               (mm2-ir-guarded-fold-key $rid antecedent $fa)
-               (mm2-ir-guarded-fold-key $rid consequent $fb)))
+           (mm2-ir-stv-runtime-kind $rid $pos $fa $fb)
            $ptypes)
-         (mm2-ir-guarded-fold-support $rid antecedent $fa)
-         (mm2-ir-guarded-fold-support $rid consequent $fb)))))))
+         (mm2-ir-stv-fold-support $rid antecedent $fa $fa)
+         (mm2-ir-stv-fold-support $rid consequent $fa $fb)))))))
 
 (= (mm2-ir-inv-evidence-id $rid)
    (case $rid
@@ -779,8 +813,12 @@
 
 (= (mm2-ir-inv-materialization-goal unguarded $_rid $fb)
    (mm2-ir-open-forward-chain-goal $fb))
-(= (mm2-ir-inv-materialization-goal guarded $_rid $fb)
-   (mm2-ir-open-forward-chain-goal $fb))
+; Guarded STV inverses are backward-query rules. Eagerly opening their
+; consequent population during forward chaining manufactures inverse facts
+; that PeTTa's forward frontier never observed and feeds them back into later
+; base-rate folds. The forward observation cache is the only approximation;
+; a backward query can still refine through the inverse rule below.
+(= (mm2-ir-inv-materialization-goal guarded $_rid $_fb) (empty))
 
 (= (mm2-ir-emit-rule $rid $ctype $ptypes (inv-kind $pos $fa $fb $mode))
    (if (mm2-ir-bidirectional-inverse? $rid)

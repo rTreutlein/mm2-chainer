@@ -133,7 +133,8 @@
 
 (= (mm2-add-forward-triggers-for-atom $atom)
    (case $atom
-     (((ruleN $g $_rule-id $_kind $premises)
+     (((ruleN $_g $_rule-id (inv $_pos $_brpat) $_premises) ())
+      ((ruleN $g $_rule-id $_kind $premises)
        (mm2-add-forward-triggers-for-premises $g $premises))
       ($_ ()))))
 
@@ -1535,6 +1536,18 @@
 (= (mm2-forward-fact-keys (cons $fact $rest))
    (cons (mm2-forward-fact-key $fact) (mm2-forward-fact-keys $rest)))
 
+(= (mm2-record-forward-prior-observation $fact)
+   (collapse
+     (match &mork
+       (proved $fact $stv $proof-id $evset)
+       (add-atom &mork
+         (forward-prior-observation $fact $proof-id forward-observed)))))
+
+(= (mm2-record-forward-prior-observations ()) ())
+(= (mm2-record-forward-prior-observations (cons $fact $rest))
+   (let $_record (mm2-record-forward-prior-observation $fact)
+     (mm2-record-forward-prior-observations $rest)))
+
 (= (mm2-forward-goals-from-fact $fact)
    (collapse
      (match &mork
@@ -1553,6 +1566,7 @@
 (= (mm2-forward-chain-from-facts-steps-raw $steps $kb $facts)
    (let* (($scope (mm2-ir-scope-kb $kb))
           ($fact-keys (mm2-forward-fact-keys $facts))
+          ($_observations (mm2-record-forward-prior-observations $fact-keys))
           ($_clear (mm2-clear-runtime-queue))
           ($_goals (mm2-add-compiled $kb (mm2-forward-goals-from-facts $fact-keys)))
           ($_run (mm2-exec &mork $steps))
@@ -1563,6 +1577,7 @@
 ; Public entry points still sync once before returning to preserve &kb readback.
 (= (mm2-forward-chain-from-facts-steps-raw-no-sync $steps $kb $facts)
    (let* (($fact-keys (mm2-forward-fact-keys $facts))
+          ($_observations (mm2-record-forward-prior-observations $fact-keys))
           ($_clear (mm2-clear-runtime-queue))
           ($_goals (mm2-add-compiled $kb (mm2-forward-goals-from-facts $fact-keys)))
           ($_run (mm2-exec &mork $steps)))

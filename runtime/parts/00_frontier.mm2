@@ -15,13 +15,13 @@
 ; The rule truth value is structured as ($kind ($s $c) $extra):
 ;
 ;   (ctv ($s+ $c+) ($s- $c-))         explicit contextual TV
-;   (stv ($s $c) (brpat $ante $cons)) plain STV; the negative branch is
-;                                     derived at fire time from the base
-;                                     rates keyed by the brpat patterns
+;   (stv ($s $c) (brpat $ante $cons)) ordinary plain STV with guarded caches
+;   (stv-local ($s $c)
+;     (rule-brpat $rid $ante $cons))   structural-And STV with local antecedent
 ;
 ; The scheduler key is derived from the positive-branch confidence rather
 ; than stored as a separate authored rule field:
-;
+
 ;   uncertainty = 1.0 - confidence
 ;   key = hex(big_endian_f64(uncertainty))
 ;

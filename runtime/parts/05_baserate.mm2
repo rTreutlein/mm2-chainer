@@ -30,7 +30,7 @@
 ; ordinary base-rate relation so explicit CTV rules keep their unguarded folds.
 (exec-template
   (exec 2
-        (I (BTM (base-rate-def-guarded $patQ $patM $rule-id))
+        (I (BTM (base-rate-def-guarded $patQ $patM $rule-id $guard-kind))
            (BTM (base-rate $patQ $old))
            (one-of
              (positive-proof $patM ($fact-s $fact-c) $proof-id $evset)
@@ -40,4 +40,5 @@
              $patQ
              $old
              ($fact-s $fact-c)
-             (without-rule $rule-id $proof-id $evset)))))
+             (base-rate-guard
+               $guard-kind $rule-id $proof-id $evset)))))
