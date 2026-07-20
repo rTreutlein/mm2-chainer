@@ -66,7 +66,7 @@
          (if (and (not (is-var $head)) (== $head ParticleDist))
            (case $term
              (((ParticleDist $pid $_scale)
-               (let $pairs (ParticlePairs $term)
+               (let $pairs (mm2-particle-pairs $term)
                  (mm2-ir-append
                    (mm2-ir-dist-particle-atom $term $pid)
                    (mm2-ir-append

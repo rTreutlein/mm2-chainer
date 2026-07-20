@@ -14,6 +14,12 @@ Repository layout:
 - `rules/`
   - `full_rules.mm2`: full paired one-premise rule export with rule STVs
   - `reduced_rules.mm2`: reduced example rule set with two distinct proofs for one atom
+- `compiler/`
+  - `mm2_chainer.metta`: production PeTTa-to-MM2 harness; imports only the
+    PeTTaChainer compiler, while facts, metadata, caches, and proofs remain in
+    MORK
+  - `mm2_adapter_support.metta`: MM2-owned compiler metadata and adapter-side
+    TV helpers
 - `demos/`
   - `priority_scheduler_demo.mm2`: minimal priority queue demo
   - `multipremise.mm2`: two-premise `ruleN` reasoning
@@ -57,6 +63,13 @@ bash scripts/run-cyclic.sh
 bash scripts/run-independent.sh
 bash scripts/test.sh
 ```
+
+Runnable PeTTa examples import the production harness. The upstream compiler
+still has two specialization reads hard-coded to `&kb`, so the harness stores
+their compiler IR in MORK and materializes a temporary `&kb` view only for the
+duration of `mm2compile` or `mm2compileQuery`. The converted corpus uses
+MM2-owned adapters for shared behavior and omits tests of PeTTa-only runtime
+spaces such as its agenda and backward proof store.
 
 The declared MyClaw environment defaults to `bash scripts/test-integration.sh`.
 That focused test builds MORK from its canonical registered mount and runs the

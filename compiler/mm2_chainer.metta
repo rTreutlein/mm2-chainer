@@ -1,4 +1,4 @@
-; PeTTaChainer-compatible harness over the mm2-chainer runtime.
+; MM2 chainer harness using PeTTaChainer's compiler as its source frontend.
 ;
 ; Runs inside petta (PeTTa's MeTTa) and drives MORK's MM2 calculus through
 ; the mork_ffi &mork space, so PeTTaChainer test files can run near-verbatim:
@@ -24,62 +24,103 @@
 ; - PeTTa's query step budget counts chainer expansions; mm2 steps count exec
 ;   firings. mm2-query scales the budget by mm2-steps-per-round.
 
-; Import PeTTaChainer modules directly instead of through the petta_chainer
-; entry wrapper. The converted helper tests still need the legacy heap,
-; forward, and backward helper modules; avoiding the wrapper keeps the import
-; graph explicit and skips reparsing that entry file on every generated test.
+; The compiler is the complete upstream boundary. Runtime facts, metadata,
+; caches, proof rows, and forward state belong to &mork.
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/compile)
-
-!(use-module! heaps)
-
-!(import_prolog_function (superpose (empty_heap add_to_heap get_from_heap heap_size)))
-!(assertzPredicate (Predicate (arity empty_heap 1)))
-!(assertzPredicate (Predicate (arity add_to_heap 4)))
-!(assertzPredicate (Predicate (arity get_from_heap 4)))
-!(assertzPredicate (Predicate (arity heap_size 2)))
-
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/chainer_utils)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/dist_formulas)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/tv_formulas)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/compiled_query_runtime)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/forward_chainer)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/backward_proof_store)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/backward_chainer)
-!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/inheritance_induction)
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_adapter_support)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/petta_mm2_backend)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_ir_translate)
 
-; Minimal PeTTaChainer entry-point helpers used by mm2-compileadd.
-(= (add-to-kb $expr) (kb-add-expr live $expr))
+; The upstream compiler has two stateful specialization reads hard-coded to
+; &kb. Keep its exact fact IR in &mork and materialize that view only while a
+; compiler call is active; &kb is never production storage.
+(= (mm2-store-compiler-fact-ir! $expr)
+   (case $expr
+     ((($_type ($_kb $_ctx $_vars) $_proof $_tv)
+       (let $stored (copy_term $expr)
+         (let $seen
+           (collapse
+             (match &mork
+               (mm2-compiler-fact-ir $candidate)
+               (if (=alpha $candidate $stored) true (empty))))
+           (if (== $seen ())
+             (add-atom &mork (mm2-compiler-fact-ir $stored))
+             ()))))
+      ($_other ()))))
 
-(= (record-compiled-inheritance-subject! (: ($kbid $_ctx $_vars) $_prf (Inheritance $subj $_concept) $_tv))
-   (if (is-var $subj) ()
-      (add-atom &inheritance_subject ($kbid $subj))))
-(= (record-compiled-inheritance-subject! $_expr) ())
+(= (mm2-compiler-view-add ()) ())
+(= (mm2-compiler-view-add (cons $atom $rest))
+   (let $seen (collapse (match &kb $atom true))
+     (let $_add (if (== $seen ()) (add-atom &kb $atom) ())
+       (mm2-compiler-view-add $rest))))
 
-(= (record-compiled-inheritance-concepts! (: ($kbid $_ctx $_vars) $_prf (Inheritance $subj $concept) $_tv))
-   (record-inheritance-nodes! $kbid $subj $concept))
-(= (record-compiled-inheritance-concepts! (: ($kbid $_ctx $_vars) $_prf (Member $_obj $class) $_tv))
-   (record-concept-node! $kbid $class))
-(= (record-compiled-inheritance-concepts! $_expr) ())
+(= (mm2-compiler-view-remove ()) ())
+(= (mm2-compiler-view-remove (cons $atom $rest))
+   (let $_remove (remove-atom &kb $atom)
+     (mm2-compiler-view-remove $rest)))
+
+(= (mm2-compiler-fact-ir-atoms)
+   (collapse (match &mork (mm2-compiler-fact-ir $atom) $atom)))
+
+(= (mm2-compiler-view-open)
+   (mm2-compiler-view-add (mm2-compiler-fact-ir-atoms)))
+
+(= (mm2-compiler-view-close)
+   (mm2-compiler-view-remove (mm2-compiler-fact-ir-atoms)))
+
+(= (mm2-compile-query-ir $kb $query)
+   (let* (($_open (mm2-compiler-view-open))
+          ($compiled (collapse (mm2compileQuery $kb $query)))
+          ($_close (mm2-compiler-view-close)))
+     $compiled))
+
+; compileadd consumes the compiler's external IR without mirroring it into
+; PeTTa's rule/index/runtime spaces.
+(= (add-to-kb $expr)
+   (let $_store (mm2-store-compiler-fact-ir! $expr)
+     ()))
+
+(= (mm2-record-compiled-inheritance-subject! $expr)
+   (case $expr
+     (((: ($kbid $_ctx $_vars) $_prf (Inheritance $subj $_concept) $_tv)
+       (if (is-var $subj) ()
+         (mm2-record-inheritance-subject! $kbid $subj)))
+      ($_other ()))))
+
+(= (mm2-record-compiled-inheritance-concepts! $expr)
+   (case $expr
+     (((: ($kbid $_ctx $_vars) $_prf (Inheritance $subj $concept) $_tv)
+       (mm2-record-inheritance-nodes! $kbid $subj $concept))
+      ((: ($kbid $_ctx $_vars) $_prf (Member $_obj $class) $_tv)
+       (mm2-record-concept-node! $kbid $class))
+      ($_other ()))))
+
+(= (mm2-distribution-constructor? $head)
+   (or (== $head mm2-particle-from-pairs)
+     (or (== $head mm2-particle-from-normal)
+       (== $head mm2-point-mass))))
 
 (= (materialize-stmt-lambdas $term)
    (if (is-var $term) $term
       (if (is-expr $term)
-         (if (== (car-atom $term) |->) (eval $term)
-            (cons (materialize-stmt-lambdas (car-atom $term))
-               (map-flat materialize-stmt-lambdas (cdr-atom $term))))
+         (if (or (== (car-atom $term) |->)
+                 (mm2-distribution-constructor? (car-atom $term)))
+           (eval $term)
+           (cons (materialize-stmt-lambdas (car-atom $term))
+             (map-flat materialize-stmt-lambdas (cdr-atom $term))))
          $term)))
 
 (= (compileadd $kb $stmt)
    (let*
       (($stmt1 (materialize-stmt-lambdas $stmt))
+        ($_open (mm2-compiler-view-open))
         ($atoms (collapse (mm2compile $kb $stmt1)))
+        ($_close (mm2-compiler-view-close))
         ($iatoms (list_to_set (map-flat internalize-proof-structure $atoms)))
         ($eatoms (map-flat externalize-proof-structure $iatoms))
-        ($_subjects (collapse (foreach-flat record-compiled-inheritance-subject! $eatoms)))
-        ($_concepts (collapse (foreach-flat record-compiled-inheritance-concepts! $eatoms)))
-        ($_ (collapse (foreach-flat add-to-kb $iatoms))))
+        ($_subjects (collapse (mm2-foreach-flat mm2-record-compiled-inheritance-subject! $eatoms)))
+        ($_concepts (collapse (mm2-foreach-flat mm2-record-compiled-inheritance-concepts! $eatoms)))
+        ($_ (collapse (mm2-foreach-flat add-to-kb $iatoms))))
       (superpose
          $eatoms)))
 
@@ -220,7 +261,7 @@
      (if (== $seen ())
        (let $_guard (add-atom &mork (ti-compiled $kb $type))
          (mm2-run-compiled-queries $kb
-           (collapse (mm2compileQuery $kb (: $prf $type $tv)))))
+           (mm2-compile-query-ir $kb (: $prf $type $tv))))
        ())))
 
 ; petta collects all bang results and prints them only at exit, so a timeout
@@ -279,10 +320,6 @@
 (= (register-inheritance-induction! $kb)
    (let $_mark (add-atom &mork (inheritance-induction-enabled $kb))
      ()))
-
-(= (mm2-known-concept-node? $kb $node)
-   (let $scope (mm2-ir-scope-kb $kb)
-     (not (== (collapse (match &mork (fact ($scope (Member $obj $node)) $stv) true)) ()))))
 
 (= (mm2-test-known-concept-node $kb $node $expected)
    (mm2-test-equal (mm2-known-concept-node? $kb $node) $expected))
@@ -346,11 +383,6 @@
 
 (= (mm2-remove-matches $pattern)
    (mm2-remove-atoms (collapse (match &mork $pattern $pattern))))
-
-(= (mm2-remove-kb-atoms ()) ())
-(= (mm2-remove-kb-atoms (cons $atom $rest))
-   (let $_remove (remove-atom &kb $atom)
-     (mm2-remove-kb-atoms $rest)))
 
 (= (mm2-formula-runtime-path)
    "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/runtime/formula_eval.mm2")
@@ -564,7 +596,7 @@
              (STV $s $c)))
      ((() no-cache-entry)
       ($stvs
-       (BaseRateTv
+       (mm2-base-rate-tv
          (mm2-base-rate-acc-from-stvs (BaseRateEvidence 0.0 0.0) $stvs))))))
 
 (= (mm2-computed-cached-base-rate $pat (STV $s $c))
@@ -601,6 +633,27 @@
                   ($_entry (add-atom &mork (base-rate-cache-entry $cache-pat computed (STV $s $c) $mode)))
                   ($_keyed (mm2-apply-computed-base-rate-entry! $pat (STV $s $c))))
              ()))))))
+
+(= (mm2-store-forward-base-rate! $kb $pattern no-evidence $_mode) ())
+(= (mm2-store-forward-base-rate! $kb $pattern (STV $s $c) $mode)
+   (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
+     (case
+       (collapse
+         (match &mork
+           (base-rate-cache-entry $pat user $user-tv $user-mode)
+           true))
+       ((() (let $_clear (mm2-remove-base-rate-state $kb $pattern)
+              (let $_support (mm2-add-base-rate-support $kb $pattern)
+                (let $_old (mm2-remove-matches (base-rate $pat $old-tv))
+                  (let* (($stored (copy_term $pat))
+                         ($cache-pat (copy_term $pat))
+                         ($_set (add-atom &mork (base-rate $stored ($s $c))))
+                         ($_entry
+                           (add-atom &mork
+                             (base-rate-cache-entry
+                               $cache-pat forward-approx (STV $s $c) $mode))))
+                    ())))))
+        ($other ())))))
 
 (= (mm2-live-cached-base-rate $pat)
    (case (collapse (match &mork (base-rate $pat ($s $c)) (STV $s $c)))
@@ -666,20 +719,22 @@
 (= (mm2-prior-weighted-base-rate-acc $kb $acc (cons (prior-inheritance-ev $subj $tv) $rest))
    (mm2-prior-weighted-base-rate-acc
      $kb
-     (WeightedBaseRateAcc $acc (WeightedTv (inheritance-subject-prior-tv $kb $subj) $tv))
+     (mm2-weighted-base-rate-acc
+       $acc
+       (WeightedTv (mm2-inheritance-subject-prior-tv $kb $subj) $tv))
      $rest))
 
 (= (mm2-prior-weighted-base-rate-evidence-tv $kb $ev)
-   (let $universe-size (kb-universe-size $kb)
+   (let $universe-size (mm2-kb-universe-size $kb)
      (if (== $universe-size no-universe-size)
-       (WeightedBaseRateTv $ev)
-       (WeightedUniverseBaseRateTv $universe-size $ev))))
+       (mm2-weighted-base-rate-tv $ev)
+       (mm2-weighted-universe-base-rate-tv $universe-size $ev))))
 
 (= (mm2-prior-weighted-base-rate-tv $kb $scope $concept)
    (let* (($evs (mm2-prior-inheritance-evidence-stvs $scope $concept))
           ($ev (mm2-prior-weighted-base-rate-acc $kb (BaseRateEvidence 0.0 0.0) $evs)))
-     (BaseRateWithPriorFormula
-       (concept-node-prior-tv $kb $concept)
+     (mm2-base-rate-with-prior
+       (mm2-concept-node-prior-tv $kb $concept)
        (mm2-prior-weighted-base-rate-evidence-tv $kb $ev))))
 
 (= (mm2-store-prior-base-rate! $pat $newtv)
@@ -707,16 +762,16 @@
 (= (mm2-prior-config-stv (STV $s $c)) (STV $s $c))
 
 (= (mm2-inheritance-subject-mass-tv $kb)
-   (let $universe-size (kb-universe-size $kb)
+   (let $universe-size (mm2-kb-universe-size $kb)
      (if (== $universe-size no-universe-size)
-       (let $n (list-len (inheritance-subjects $kb))
+       (let $n (mm2-list-len (mm2-inheritance-subjects $kb))
          (if (<= $n 0) (STV 0.0 0.0) (STV (/ 1.0 $n) 1.0)))
        (if (<= $universe-size 0.0)
          (STV 0.0 0.0)
          (STV (/ 1.0 $universe-size) 1.0)))))
 
 (= (mm2-prior-evidence-divisor $kb)
-   (let $universe-size (kb-universe-size $kb)
+   (let $universe-size (mm2-kb-universe-size $kb)
      (if (== $universe-size no-universe-size) 1.0 $universe-size)))
 
 (= (mm2-store-prior-base-rate-config! $kb $concept)
@@ -727,7 +782,7 @@
                           (($kb MAIN Nil) (Inheritance no-prior-candidate $concept))
                           $old-stv no-prior-proof $old-ev)))
           ((STV $ms $mc) (mm2-inheritance-subject-mass-tv $kb))
-          ((STV $ps $pc) (mm2-prior-config-stv (concept-node-prior-tv $kb $concept)))
+          ((STV $ps $pc) (mm2-prior-config-stv (mm2-concept-node-prior-tv $kb $concept)))
           ($divisor (mm2-prior-evidence-divisor $kb)))
      (let* (($_config
               (add-atom &mork
@@ -873,14 +928,14 @@
      (mm2-member-inheritance-acc
        $scope
        $concept
-       (WeightedBaseRateAcc $acc (WeightedTv $atv $btv))
+       (mm2-weighted-base-rate-acc $acc (WeightedTv $atv $btv))
        $rest)))
 
 (= (mm2-member-inheritance-tv $kb $evidence)
-   (let $universe-size (kb-universe-size $kb)
+   (let $universe-size (mm2-kb-universe-size $kb)
      (if (== $universe-size no-universe-size)
-       (WeightedCountBaseRateTv $evidence)
-       (WeightedUniverseBaseRateTv $universe-size $evidence))))
+       (mm2-weighted-count-base-rate-tv $evidence)
+       (mm2-weighted-universe-base-rate-tv $universe-size $evidence))))
 
 (= (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
    (let $ants
@@ -992,10 +1047,10 @@
 
 (= (mm2-base-rate-acc-from-stvs $acc ()) $acc)
 (= (mm2-base-rate-acc-from-stvs $acc (cons $tv $rest))
-   (mm2-base-rate-acc-from-stvs (BaseRateAcc $acc $tv) $rest))
+   (mm2-base-rate-acc-from-stvs (mm2-base-rate-acc $acc $tv) $rest))
 
 (= (mm2-inheritance-base-rate-tv $scope $concept)
-   (BaseRateTv
+   (mm2-base-rate-tv
      (mm2-base-rate-acc-from-stvs
        (BaseRateEvidence 0.0 0.0)
        (collapse
@@ -1004,7 +1059,7 @@
            (STV $s $c))))))
 
 (= (mm2-inheritance-uniform-prior-tv $scope $concept)
-   (UniformPriorTv
+   (mm2-uniform-prior-tv
      (collapse
        (match &mork
          (fact ($scope (Inheritance $subj $concept)) ($s $c))
@@ -1030,7 +1085,7 @@
    (case $tvs
      ((() no-evidence)
       ((cons $tv ()) $tv)
-      ((cons $tv $rest) (mergetvs $tv (mm2-revise-tv-list $rest))))))
+      ((cons $tv $rest) (mm2-merge-tvs $tv (mm2-revise-tv-list $rest))))))
 
 (= (mm2-readback-inheritance-induction-result $goal-type $scope $a $b)
    (case (mm2-revise-tv-list (mm2-inheritance-induction-tvs $scope $a $b))
@@ -1062,14 +1117,14 @@
 
 (= (mm2-and-residual-tvs $_shared ()) ())
 (= (mm2-and-residual-tvs $shared (cons $tv $rest))
-   (case (AndProjection $tv $shared)
+   (case (mm2-and-projection $tv $shared)
      (((STV $s $c) (cons (STV $s $c) (mm2-and-residual-tvs $shared $rest)))
       ($other (mm2-and-residual-tvs $shared $rest)))))
 
 (= (mm2-readback-factored-and-result-from-tvs $goal-type $shared $residuals)
    (case (mm2-revise-tv-list $residuals)
      (((STV $rs $rc)
-       (case (AndFormula $shared (STV $rs $rc))
+       (case (mm2-and-formula $shared (STV $rs $rc))
          (((STV $s $c) (: mm2-proved $goal-type (STV $s $c)))
           ($other empty))))
       ($other empty))))
@@ -1356,7 +1411,7 @@
        (, (Goal $g)))))
 
 (= (mm2-compile-query-for-runtime $kb (: $prf $type $tv))
-   (collapse (mm2compileQuery $kb (: $prf $type $tv))))
+   (mm2-compile-query-ir $kb (: $prf $type $tv)))
 
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
@@ -1597,7 +1652,6 @@
      ()))
 
 ; Internal forward-loop steps only need MORK facts for later agenda selection.
-; Public entry points still sync once before returning to preserve &kb readback.
 (= (mm2-forward-chain-from-facts-steps-raw-no-sync $steps $kb $facts)
    (let* (($fact-keys (mm2-forward-fact-keys $facts))
           ($_observations (mm2-record-forward-prior-observations $fact-keys))
@@ -1637,26 +1691,15 @@
    (let $g ((mm2-ir-scope-kb $kb) $type)
      (not (== (collapse (match &mork (fact $g ($s $c)) true)) ()))))
 
-(= (mm2-forward-sync-kb-fact $scope $type ($s $c))
-   (let* (($old (collapse (match &kb ($type $scope $prf $tv) ($type $scope $prf $tv))))
-          ($_remove (mm2-remove-kb-atoms $old))
-          ($_add (add-atom &kb ($type $scope mm2-forward (STV $s $c)))))
-     ()))
-
-(= (mm2-forward-sync-kb $scope)
-   (let $_sync
-     (collapse
-       (match &mork
-         (fact ($scope $type) ($s $c))
-         (mm2-forward-sync-kb-fact $scope $type ($s $c))))
-     ()))
+; Forward results already live in MORK; no secondary PeTTa-space sync exists.
+(= (mm2-forward-sync-kb $_scope) ())
 
 (= (mm2-list-count ()) 0)
 (= (mm2-list-count (cons $_x $tail)) (+ 1 (mm2-list-count $tail)))
 
 (= (mm2-forward-fact-count $kb $type)
    (let $g ((mm2-ir-scope-kb $kb) $type)
-     (mm2-list-count (collapse (match &mork (fact $g ($s $c)) true)))))
+     (if (== (collapse (match &mork (fact $g ($s $c)) true)) ()) 0 1)))
 
 (= (mm2-result-proofs ()) ())
 (= (mm2-result-proofs (cons (: $prf $_type $_tv) $rest))
@@ -1677,7 +1720,12 @@
        (forward-proof-row $best-c $best-evset))))
 
 (= (mm2-forward-fact-key-proof-names ($scope $type))
-   (let $proofs (collapse (once (match &kb ($type $scope $prf $_tv) $prf)))
+   (let $proofs
+     (collapse
+       (once
+         (match &mork
+           (proved ($scope $type) ($_s $_c) $prf $_evset)
+           $prf)))
      (if (== $proofs ()) () $proofs)))
 
 (= (mm2-forward-evset-proof-names pnil) ())
@@ -1696,12 +1744,20 @@
    (let (forward-proof-row $_c $evset)
         (mm2-forward-best-proof-row (mm2-forward-proof-rows $_scope $_type))
      (list_to_set (mm2-forward-evset-proof-names $evset))))
-(= (mm2-proof-atom-evidence-set $atom)
-   (proof-atom-evidence-set $atom))
+(= (mm2-proof-atom-evidence-set $_atom) ())
 
 (= (mm2-test-forward-has-derived $rounds $kb $type $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
      (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
+
+(= (mm2-test-forward-from-has-derived $rounds $kb $seed-type $type $expected)
+   (let $_forward (mm2-forward-chain-from $rounds $kb $seed-type)
+     (mm2-test-equal (mm2-forward-derived? $kb $type) $expected)))
+
+(= (mm2-test-forward-from-fact-count
+      $rounds $kb $seed-type $type $expected)
+   (let $_forward (mm2-forward-chain-from $rounds $kb $seed-type)
+     (mm2-test-equal (mm2-forward-fact-count $kb $type) $expected)))
 
 (= (mm2-test-forward-has-derived-steps $steps $kb $type $expected)
    (let $_forward (mm2-forward-chain-steps $steps $kb)
@@ -1717,6 +1773,32 @@
 
 (= (mm2-test-forward-has-goals $kb $expected)
    (mm2-test-equal (mm2-forward-has-goals? $kb) $expected))
+
+(= (mm2-test-record-inheritance-subject
+      (: ($kb $ctx $vars) $proof (Inheritance $subject $concept) $tv)
+      $expected)
+   (let $_record
+     (collapse
+       (mm2-record-compiled-inheritance-subject!
+         (: ($kb $ctx $vars) $proof (Inheritance $subject $concept) $tv)))
+     (mm2-test-equal
+       (length
+         (collapse
+           (match &mork (mm2-inheritance-subject $kb $subject) true)))
+       $expected)))
+
+(= (mm2-test-record-inheritance-concept
+      (: ($kb $ctx $vars) $proof (Inheritance $subject $concept) $tv)
+      $expected)
+   (let $_record
+     (collapse
+       (mm2-record-compiled-inheritance-concepts!
+         (: ($kb $ctx $vars) $proof (Inheritance $subject $concept) $tv)))
+     (mm2-test-equal
+       (length
+         (collapse
+           (match &mork (mm2-concept-node $kb $concept) true)))
+       $expected)))
 
 ; --- test comparison --------------------------------------------------------
 ; Compare (type, tv) sets; proof tokens intentionally differ from PeTTa.
@@ -1889,14 +1971,15 @@
    (collapse (match &mork (dist-pair $pid $x $w) ($x $w))))
 
 (= (mm2-particle-store-count)
-   (list-count (collapse (match &mork (dist-pair $pid $x $w) ($pid $x $w)))))
+   (mm2-list-len (collapse (match &mork (dist-pair $pid $x $w) ($pid $x $w)))))
 
 (= (mm2-particle-store-clear)
    (let* (($_pairs (mm2-remove-matches (dist-pair $pid $x $w)))
           ($_exported (mm2-remove-matches (dist-exported $pid)))
           ($_dist (mm2-remove-matches (dist-particle-dist $term $pid)))
           ($_point-pair (mm2-remove-matches (dist-point-pair $pid $x $w)))
-          ($_point-dist (mm2-remove-matches (dist-point-dist $term $x $w))))
+          ($_point-dist (mm2-remove-matches (dist-point-dist $term $x $w)))
+          ($_counter (change-state! mm2_particle_id 0)))
      ()))
 
 (= (mm2-particle-set-budget $n) (change-state! mm2_particle_budget $n))
@@ -1909,26 +1992,138 @@
    (let $_clear (mm2-particle-store-clear)
      (mm2-particle-store-count)))
 
-(= (mm2-store-ParticleFromPairs $pairs)
-   (let $dist (ParticleFromPairs $pairs)
-     (let $_export (mm2-export-dist $dist)
-       $dist)))
-
 (= (mm2-export-dist-pairs $_pid ()) ())
 (= (mm2-export-dist-pairs $pid (cons ($x $w) $rest))
    (let $_add (add-atom &mork (dist-pair $pid $x $w))
      (mm2-export-dist-pairs $pid $rest)))
 
-(= (mm2-export-dist $dist)
-   (case $dist
-     (((ParticleDist $pid $_scale)
-       (let $seen (collapse (match &mork (dist-exported $pid) true))
-         (if (== $seen ())
-           (let* (($_mark (add-atom &mork (dist-exported $pid)))
-                  ($_pairs (mm2-export-dist-pairs $pid (ParticlePairs $dist))))
-             ())
-           ())))
-      ($_other ()))))
+(= (mm2-next-particle-id)
+   (let $maybe-id (catch (get-state mm2_particle_id))
+     (let $id (if-error $maybe-id 0 $maybe-id)
+       (progn (change-state! mm2_particle_id (+ $id 1)) $id))))
+
+(= (mm2-particle-build-dist $scale $pairs)
+   (let* (($pid (mm2-next-particle-id))
+          ($normalized (mm2-normalize-dist-pairs $pairs))
+          ($_pairs (mm2-export-dist-pairs $pid $normalized))
+          ($_mark (add-atom &mork (dist-exported $pid))))
+     (ParticleDist $pid $scale)))
+
+(= (mm2-particle-from-pairs $pairs)
+   (mm2-particle-build-dist 1.0 $pairs))
+
+(= (mm2-store-ParticleFromPairs $pairs)
+   (mm2-particle-from-pairs $pairs))
+
+(= (mm2-point-mass $x)
+   (mm2-particle-from-pairs (($x 1.0))))
+
+(= (mm2-normal-kernel-9)
+   ((-2.0 0.027630550638898826) (-1.5 0.0662822452863612)
+    (-1.0 0.1238315368057753) (-0.5 0.18017382291138087)
+    (0.0 0.20416368871516764) (0.5 0.18017382291138087)
+    (1.0 0.1238315368057753) (1.5 0.0662822452863612)
+    (2.0 0.027630550638898826)))
+
+(= (mm2-affine-pairs () $_mu $_sigma) ())
+(= (mm2-affine-pairs (cons ($x $w) $tail) $mu $sigma)
+   (cons ((+ $mu (* $sigma $x)) $w)
+     (mm2-affine-pairs $tail $mu $sigma)))
+
+(= (mm2-particle-from-normal $mu $sigma)
+   (mm2-particle-from-pairs
+     (mm2-affine-pairs (mm2-normal-kernel-9) $mu $sigma)))
+
+(= (mm2-particle-pairs (ParticleDist $pid $scale))
+   (mm2-scale-dist-pairs (mm2-dist-pairs (ParticleDist $pid 1.0)) $scale))
+
+(= (mm2-dist-add-mass () $x $mass) (cons ($x $mass) ()))
+(= (mm2-dist-add-mass (cons ($key $weight) $tail) $x $mass)
+   (if (== $key $x)
+     (cons ($key (+ $weight $mass)) $tail)
+     (cons ($key $weight) (mm2-dist-add-mass $tail $x $mass))))
+
+(= (mm2-tv-probability $tv)
+   (case $tv
+     (((STV $s $c) (max 0.0 (min 1.0 (* $s $c))))
+      ($_other 1.0))))
+
+(= (mm2-dist-add-bernoulli-step $prob $acc ($value $mass))
+   (let $zero (mm2-dist-add-mass $acc $value (* $mass (- 1.0 $prob)))
+     (mm2-dist-add-mass $zero (+ $value 1) (* $mass $prob))))
+
+(= (mm2-dist-add-bernoulli-pairs () $_prob $acc) $acc)
+(= (mm2-dist-add-bernoulli-pairs (cons $pair $tail) $prob $acc)
+   (mm2-dist-add-bernoulli-pairs $tail $prob
+     (mm2-dist-add-bernoulli-step $prob $acc $pair)))
+
+(= (mm2-particle-add-bernoulli-from-stv $dist $tv)
+   (let* (($pairs (mm2-particle-pairs $dist))
+          ($updated (mm2-dist-add-bernoulli-pairs
+                      $pairs (mm2-tv-probability $tv) ())))
+     (mm2-particle-from-pairs $updated)))
+
+(= (mm2-particle-map-pairs $_fun () $acc) $acc)
+(= (mm2-particle-map-pairs $fun (cons ($x $w) $tail) $acc)
+   (let* (($call (cons $fun (cons $x ())))
+          ($y (reduce (reduce $call))))
+     (mm2-particle-map-pairs $fun $tail
+       (mm2-dist-add-mass $acc $y $w))))
+
+(= (mm2-particle-map $fun $dist)
+   (mm2-particle-from-pairs
+     (mm2-particle-map-pairs $fun (mm2-particle-pairs $dist) ())))
+
+(= (mm2-particle-map2-inner $_fun $_xa $_wa () $acc) $acc)
+(= (mm2-particle-map2-inner $fun $xa $wa (cons ($xb $wb) $tail) $acc)
+   (let* (($call (cons $fun (cons $xa (cons $xb ()))))
+          ($y (reduce (reduce $call))))
+     (mm2-particle-map2-inner $fun $xa $wa $tail
+       (mm2-dist-add-mass $acc $y (* $wa $wb)))))
+
+(= (mm2-particle-map2-pairs $_fun () $_right $acc) $acc)
+(= (mm2-particle-map2-pairs $fun (cons ($xa $wa) $tail) $right $acc)
+   (mm2-particle-map2-pairs $fun $tail $right
+     (mm2-particle-map2-inner $fun $xa $wa $right $acc)))
+
+(= (mm2-particle-map2 $fun $left $right)
+   (mm2-particle-from-pairs
+     (mm2-particle-map2-pairs
+       $fun (mm2-particle-pairs $left) (mm2-particle-pairs $right) ())))
+
+(= (mm2-numeric-distance2 $a $b)
+   (let $delta-result (catch (- $a $b))
+     (if-error $delta-result 1000000.0 (* $delta-result $delta-result))))
+
+(= (mm2-struct-distance2-list () ()) 0.0)
+(= (mm2-struct-distance2-list () $_rest) 1000000.0)
+(= (mm2-struct-distance2-list $_rest ()) 1000000.0)
+(= (mm2-struct-distance2-list (cons $a $as) (cons $b $bs))
+   (+ (mm2-struct-distance2 $a $b) (mm2-struct-distance2-list $as $bs)))
+
+(= (mm2-struct-distance2 $a $b)
+   (if (== $a $b) 0.0
+     (if (and (is-expr $a) (is-expr $b))
+       (if (== (car-atom $a) (car-atom $b))
+         (mm2-struct-distance2-list (cdr-atom $a) (cdr-atom $b))
+         1000000.0)
+       (mm2-numeric-distance2 $a $b))))
+
+(= (mm2-kernel-mass $distance2 $bandwidth)
+   (if (<= $bandwidth 0.0)
+     (if (== $distance2 0.0) 1.0 0.0)
+     (/ 1.0 (+ 1.0 (/ $distance2 (* $bandwidth $bandwidth))))))
+
+(= (mm2-joint-cond-add-sample
+      $input $input-weight (Pair $sample $output) $sample-weight $bandwidth $acc)
+   (let* (($similarity
+            (mm2-kernel-mass (mm2-struct-distance2 $sample $input) $bandwidth))
+          ($mass (* $input-weight (* $sample-weight $similarity))))
+     (if (> $mass 0.0)
+       (mm2-dist-add-mass $acc $output $mass)
+       $acc)))
+
+(= (mm2-export-dist $_dist) ())
 
 (= (mm2-test-ParticlePairs $dist $expected)
    (let* (($_export (mm2-export-dist $dist))
@@ -2126,6 +2321,11 @@
 
 (= (mm2-test-forward-chain-query $rounds $steps $kb (: $prf $type $tv) $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
+     (mm2-test-query $steps $kb (: $prf $type $tv) $expected)))
+
+(= (mm2-test-forward-from-query
+      $rounds $steps $kb $seed-type (: $prf $type $tv) $expected)
+   (let $_forward (mm2-forward-chain-from $rounds $kb $seed-type)
      (mm2-test-query $steps $kb (: $prf $type $tv) $expected)))
 
 (= (mm2-test-query-materialize $steps $kb (: $prf $type $tv) $expected)

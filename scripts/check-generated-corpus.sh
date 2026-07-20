@@ -9,7 +9,10 @@ cd "$ROOT_DIR"
 validate_harness_floor_table || exit 2
 
 src_dir="../PeTTaChainer/pettachainer/metta/tests"
-skip_files=()
+skip_files=(
+  test_benchgen_metta.metta
+  test_chainer_add_atom.metta
+)
 
 python3 scripts/convert_petta_tests.py >/dev/null
 

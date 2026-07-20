@@ -33,6 +33,8 @@ HARNESS = "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_chainer"
 
 SKIP_FILES = {
     "test.metta",                     # top-level umbrella, not a query test file
+    "test_benchgen_metta.metta",      # PeTTa benchmark-generator state, not chainer semantics
+    "test_chainer_add_atom.metta",    # PeTTa space-cycle helper, not an MM2 runtime API
 }
 
 PARTIAL_PARTICLE_STORE_FILES = {
@@ -128,6 +130,10 @@ def rename_calls(e):
     elif head(e) == "query":
         e[0] = "mm2-query"
     elif head(e) == "forward-chain":
+        if len(e) == 4 and head(e[3]) == "test-selected-facts" and len(e[3]) == 3:
+            return ["mm2-forward-chain-from", e[1], e[2], e[3][2]]
+        if len(e) == 4 and head(e[3]) == "test-main-facts":
+            return ["mm2-forward-chain", e[1], e[2]]
         e[0] = "mm2-forward-chain"
     elif head(e) == "forward-chain-from":
         e[0] = "mm2-forward-chain-from"
@@ -145,6 +151,56 @@ def rename_calls(e):
         e[0] = "mm2-clear-base-rate"
     elif head(e) == "store-computed-base-rate!":
         e[0] = "mm2-store-computed-base-rate!"
+    elif head(e) == "store-forward-base-rate!":
+        e[0] = "mm2-store-forward-base-rate!"
+    elif head(e) == "set-universe-size":
+        e[0] = "mm2-set-universe-size"
+    elif head(e) == "clear-universe-size":
+        e[0] = "mm2-clear-universe-size"
+    elif head(e) == "set-concept-prior-confidence":
+        e[0] = "mm2-set-concept-prior-confidence"
+    elif head(e) == "clear-concept-prior-confidence":
+        e[0] = "mm2-clear-concept-prior-confidence"
+    elif head(e) == "concept-node-prior-tv":
+        e[0] = "mm2-concept-node-prior-tv"
+    elif head(e) == "list-len":
+        e[0] = "mm2-list-len"
+    elif head(e) == "UniformPriorTv":
+        e[0] = "mm2-uniform-prior-tv"
+    elif head(e) == "BaseRateWithPriorFormula":
+        e[0] = "mm2-base-rate-with-prior"
+    elif head(e) == "mergetvs":
+        e[0] = "mm2-merge-tvs"
+    elif head(e) == "OrFormula":
+        e[0] = "mm2-formula-or"
+    elif head(e) == "CTVModusPonensFormula":
+        e[0] = "mm2-formula-mp"
+    elif head(e) == "record-compiled-inheritance-subject!":
+        e[0] = "mm2-record-compiled-inheritance-subject!"
+    elif head(e) == "record-compiled-inheritance-concepts!":
+        e[0] = "mm2-record-compiled-inheritance-concepts!"
+    elif head(e) == "ParticleFromPairs":
+        e[0] = "mm2-particle-from-pairs"
+    elif head(e) == "ParticleFromNormal":
+        e[0] = "mm2-particle-from-normal"
+    elif head(e) == "PointMass":
+        e[0] = "mm2-point-mass"
+    elif head(e) == "ParticlePairs":
+        e[0] = "mm2-particle-pairs"
+    elif head(e) == "ParticleAddBernoulliFromSTV":
+        e[0] = "mm2-particle-add-bernoulli-from-stv"
+    elif head(e) == "ParticleMap":
+        e[0] = "mm2-particle-map"
+    elif head(e) == "ParticleMap2":
+        e[0] = "mm2-particle-map2"
+    elif head(e) == "DistMapFormula":
+        e[0] = "mm2-particle-map"
+    elif head(e) == "DistMap2Formula":
+        e[0] = "mm2-particle-map2"
+    elif head(e) == "struct-distance2":
+        e[0] = "mm2-struct-distance2"
+    elif head(e) == "joint-cond-add-sample":
+        e[0] = "mm2-joint-cond-add-sample"
     return e
 
 
@@ -154,7 +210,7 @@ PARTICLE_STORE_RENAMES = {
     "ParticleStorePruneKB": "mm2-particle-store-prune-kb",
     "ParticleSetBudget": "mm2-particle-set-budget",
     "ParticleGetBudget": "mm2-particle-get-budget",
-    "ParticleFromPairs": "mm2-store-ParticleFromPairs",
+    "ParticleFromPairs": "mm2-particle-from-pairs",
 }
 
 
@@ -186,6 +242,12 @@ def convert_test(expr):
     if head(expr) != "test" or len(expr) != 3:
         return None
     queryish, expected = expr[1], expr[2]
+    collapsed_helper = collapsed_portable_helper_test(queryish, expected)
+    if collapsed_helper is not None:
+        return collapsed_helper
+    dispatch_record = dispatch_record_state_test(queryish, expected)
+    if dispatch_record is not None:
+        return dispatch_record
     query_count = query_count_test(queryish, expected)
     if query_count is not None:
         return query_count
@@ -471,11 +533,51 @@ def contains_head_prefix(expr, prefix):
     return any(contains_head_prefix(item, prefix) for item in expr)
 
 
+def first_head(expr, name):
+    if not isinstance(expr, list):
+        return None
+    if head(expr) == name:
+        return expr
+    for item in expr:
+        found = first_head(item, name)
+        if found is not None:
+            return found
+    return None
+
+
 def numeric_pattern_helper_test(queryish):
     if head(queryish) == "joint-cond-add-sample":
         return queryish
     if contains_head(queryish, "struct-distance2"):
         return queryish
+    return None
+
+
+def collapsed_portable_helper_test(queryish, expected):
+    if head(queryish) != "collapse" or len(queryish) != 2:
+        return None
+    inner = queryish[1]
+    if head(inner) not in {
+        "BaseRateWithPriorFormula",
+        "record-compiled-inheritance-subject!",
+        "record-compiled-inheritance-concepts!",
+        "TotalEvidenceOr",
+        "TotalEvidenceTv",
+    }:
+        return None
+    expected_value = expected[0] if isinstance(expected, list) and len(expected) == 1 else expected
+    return ["mm2-test-equal", rename_calls(inner), rename_calls(expected_value)]
+
+
+def dispatch_record_state_test(queryish, expected):
+    if head(queryish) != "let*" or len(queryish) != 3:
+        return None
+    subject_call = first_head(queryish, "record-compiled-inheritance-subject!")
+    if subject_call is not None:
+        return ["mm2-test-record-inheritance-subject", rename_calls(subject_call[1]), expected]
+    concept_call = first_head(queryish, "record-compiled-inheritance-concepts!")
+    if concept_call is not None:
+        return ["mm2-test-record-inheritance-concept", rename_calls(concept_call[1]), expected]
     return None
 
 
@@ -494,11 +596,14 @@ def collapse_once_rules_match_test(queryish):
 def compiler_space_match_test(queryish):
     if head(queryish) == "collapse" and len(queryish) == 2:
         inner = queryish[1]
-        if head(inner) == "match" and len(inner) == 4 and inner[1] == "ccls_head_index":
-            return ["collapse", rename_calls(inner)]
         return None
     if head(queryish) == "match" and len(queryish) == 4 and queryish[1] == "&kb":
-        return rename_calls(queryish)
+        return [
+            "match",
+            "&mork",
+            ["mm2-compiler-fact-ir", rename_calls(queryish[2])],
+            rename_calls(queryish[3]),
+        ]
     return None
 
 
@@ -796,20 +901,28 @@ def forward_chain_query_test(queryish, expected):
     if head(queryish) != "let" or len(queryish) != 4:
         return None
     _binding, forward, query = queryish[1], queryish[2], queryish[3]
-    if head(forward) != "forward-chain" or len(forward) != 3:
+    if head(forward) != "forward-chain" or len(forward) not in {3, 4}:
         return None
     if head(query) != "query" or len(query) != 4:
         return None
     if forward[2] != query[2]:
         return None
-    return [
-        "mm2-test-forward-chain-query",
-        rename_calls(forward[1]),
-        rename_calls(query[1]),
-        rename_calls(query[2]),
-        rename_calls(query[3]),
-        normalize_expected(rename_calls(expected)),
-    ]
+    if len(forward) == 4:
+        seed_type = forward_selected_type(forward, queryish)
+        if seed_type is None:
+            return None
+        return [
+            "mm2-test-forward-from-query",
+            rename_calls(forward[1]),
+            rename_calls(query[1]),
+            rename_calls(query[2]),
+            rename_calls(seed_type),
+            rename_calls(query[3]),
+            normalize_expected(rename_calls(expected)),
+        ]
+    return ["mm2-test-forward-chain-query", rename_calls(forward[1]),
+            rename_calls(query[1]), rename_calls(query[2]), rename_calls(query[3]),
+            normalize_expected(rename_calls(expected))]
 
 
 def forward_has_derived_test(queryish, expected):
@@ -870,6 +983,71 @@ def forward_chainer_agenda_dirty_test(queryish, expected):
     if head(queryish) == "forward-agenda-dirty?" and len(queryish) == 2:
         return ["mm2-test-equal", rename_calls(queryish), rename_calls(expected)]
     return None
+
+
+def forward_selected_type(forward, queryish):
+    if head(forward) != "forward-chain" or len(forward) != 4:
+        return None
+    selected = forward[3]
+    if head(selected) == "test-selected-facts" and len(selected) == 3:
+        return selected[2]
+    if not is_var(selected) or head(queryish) != "let*":
+        return None
+    selected_value = binding_value(queryish[1], selected)
+    pattern = match_pattern_from_collapse(selected_value)
+    scoped = scoped_pattern_kb_type(pattern)
+    return None if scoped is None else scoped[1]
+
+
+def forward_chainer_semantic_derived_test(queryish, expected):
+    forward = first_head(queryish, "forward-chain")
+    derived = first_head(queryish, "forward-has-derived?")
+    if forward is None or derived is None or len(derived) != 3:
+        return None
+    if len(forward) != 4 or forward[2] != derived[1]:
+        return None
+    seed_type = forward_selected_type(forward, queryish)
+    if seed_type is None:
+        return None
+    return [
+        "mm2-test-forward-from-has-derived",
+        rename_calls(forward[1]),
+        rename_calls(forward[2]),
+        rename_calls(seed_type),
+        rename_calls(derived[2]),
+        rename_calls(expected),
+    ]
+
+
+def forward_chainer_materialized_count_test(queryish, expected):
+    if head(queryish) == "let*" and len(queryish) == 3:
+        bindings, body = queryish[1], queryish[2]
+        if head(body) != "list-count" or len(body) != 2 or not is_var(body[1]):
+            return None
+        pattern = match_pattern_from_collapse(binding_value(bindings, body[1]))
+        forward = forward_binding(bindings)
+    elif head(queryish) == "list-count" and len(queryish) == 2:
+        pattern = match_pattern_from_collapse(queryish[1])
+        forward = None
+    else:
+        return None
+    scoped = scoped_pattern_kb_type(pattern)
+    if scoped is None:
+        return None
+    kb, typ = scoped
+    if forward is not None:
+        seed_type = forward_selected_type(forward, queryish)
+        if seed_type is None:
+            return None
+        return [
+            "mm2-test-forward-from-fact-count",
+            rename_calls(forward[1]),
+            rename_calls(kb),
+            rename_calls(seed_type),
+            rename_calls(typ),
+            rename_calls(expected),
+        ]
+    return ["mm2-test-equal", ["mm2-forward-fact-count", kb, typ], rename_calls(expected)]
 
 
 def forward_chainer_fact_count_test(queryish, expected):
@@ -1025,6 +1203,7 @@ def apply_file_adaptations(path_name, out):
         return [
             line.replace("!(mm2-test-query 4 bwdOnlyKb (: $p (Goal) $tv)", "!(mm2-test-query 10 bwdOnlyKb (: $p (Goal) $tv)")
                 .replace("!(mm2-test-forward-chain-query 1 2 composeKb", "!(mm2-test-forward-chain-query 1 4 composeKb")
+                .replace("!(mm2-test-forward-from-query 1 2 composeKb", "!(mm2-test-forward-from-query 1 4 composeKb")
             for line in out
         ]
 
@@ -1102,12 +1281,11 @@ def convert_import(expr):
         return None
     target = expr[2]
     if target == "petta_chainer":
-        return None
-    if isinstance(target, str) and target.startswith("benchmarks/"):
-        return ["import!", expr[1], str(PETTA_METTA_DIR / target)]
+        return []
     if isinstance(target, str) and target.startswith("logic_configs/"):
-        return ["import!", expr[1], str(PETTA_METTA_DIR / target)]
-    return None
+        config_path = PETTA_METTA_DIR / (target + ".metta")
+        return [form for kind, form in parse(tokenize(config_path.read_text())) if kind == "bang"]
+    return []
 
 
 def benchgen_test(expr):
@@ -1125,9 +1303,7 @@ def convert_file(path):
     ]
     particle_store_tail = path.name in PARTIAL_PARTICLE_STORE_FILES
     forward_prefix_only = path.name in PARTIAL_FORWARD_FILES
-    benchgen_helper_state = path.name == "test_benchgen_metta.metta"
-    if benchgen_helper_state:
-        out.insert(1, "; benchmark-generator helper-state coverage; assertions run against PeTTa helper/compiler state")
+    formula_only = path.name == "test_backward_dag_helpers.metta"
     if forward_prefix_only:
         out.insert(1, "; forward materialization subset; PeTTa agenda/proof internals use explicit MM2 adapters")
     unsupported = 0
@@ -1138,19 +1314,21 @@ def convert_file(path):
                 out.append("!" + show(converted))
                 continue
         if kind == "bang" and head(expr) == "import!":
-            converted = convert_import(expr)
-            if converted is not None:
-                out.append("!" + show(converted))
+            for converted in convert_import(expr):
+                out.append("!" + show(rename_calls(converted)))
             continue
         if kind == "bang" and head(expr) == "test":
             if ignored_test(expr):
                 continue
-            if benchgen_helper_state:
-                converted = benchgen_test(expr)
+            if forward_prefix_only:
+                converted = forward_chainer_semantic_derived_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
                     continue
-            if forward_prefix_only:
+                converted = forward_chainer_materialized_count_test(expr[1], expr[2])
+                if converted is not None:
+                    out.append("!" + show(converted))
+                    continue
                 converted = forward_chainer_fact_count_test(expr[1], expr[2])
                 if converted is not None:
                     out.append("!" + show(converted))
@@ -1185,6 +1363,8 @@ def convert_file(path):
                 out.append(f'!(mm2-test-unsupported "{snippet}")')
                 continue
             converted = convert_test(expr)
+            if formula_only and converted is not None and head(converted) == "mm2-test-equal":
+                converted = None
             if converted is not None:
                 out.append("!" + show(converted))
                 continue
@@ -1194,6 +1374,12 @@ def convert_file(path):
             out.append(f'!(mm2-test-unsupported "{snippet}")')
             continue
         prefix = "!" if kind == "bang" else ""
+        if formula_only:
+            continue
+        if head(expr) == "=" and len(expr) >= 2 and head(expr[1]) in {
+            "test-selected-facts", "test-main-facts"
+        }:
+            continue
         out.append(prefix + show(rename_calls(expr)))
     return "\n".join(apply_file_adaptations(path.name, out)) + "\n", unsupported
 
