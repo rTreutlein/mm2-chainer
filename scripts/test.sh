@@ -7,5 +7,6 @@ bash -n "${shell_scripts[@]}"
 
 bash scripts/check-generated-corpus.sh
 bash tests/test_dumppln_converter.sh
+bash tests/test_examples.sh
 bash tests/test_runtime.sh
 bash scripts/run-harness-corpus.sh

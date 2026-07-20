@@ -700,7 +700,7 @@
 
 (= (mm2-refresh-prior-base-rate-list! ()) ())
 (= (mm2-refresh-prior-base-rate-list! (cons $def $rest))
-   (let $_refresh (mm2-refresh-prior-base-rate! $def)
+   (let $_refresh (collapse (mm2-refresh-prior-base-rate! $def))
      (mm2-refresh-prior-base-rate-list! $rest)))
 
 (= (mm2-prior-config-stv no-evidence) (STV 0.0 0.0))
@@ -754,12 +754,12 @@
 
 (= (mm2-refresh-prior-base-rate-config-list! ()) ())
 (= (mm2-refresh-prior-base-rate-config-list! (cons $def $rest))
-   (let $_refresh (mm2-refresh-prior-base-rate-config! $def)
+   (let $_refresh (collapse (mm2-refresh-prior-base-rate-config! $def))
      (mm2-refresh-prior-base-rate-config-list! $rest)))
 
 (= (mm2-refresh-guarded-prior-base-rate-list! ()) ())
 (= (mm2-refresh-guarded-prior-base-rate-list! (cons $def $rest))
-   (let $_refresh (mm2-refresh-guarded-prior-base-rate! $def)
+   (let $_refresh (collapse (mm2-refresh-guarded-prior-base-rate! $def))
      (mm2-refresh-guarded-prior-base-rate-list! $rest)))
 
 (= (mm2-refresh-prior-base-rates!)
@@ -896,23 +896,46 @@
            (mm2-member-inheritance-acc $goal-shape $concept (BaseRateEvidence 0.0 0.0) $ants))
          (cons (: mm2-proved $goal-type $tv) ())))))
 
+(= (mm2-readback-member-inheritance-conclusion
+      $goal-type $goal-shape $kb $subj $concept $out $ccl)
+   (case (mm2-ir-item $ccl)
+     (((subgoal ($goal-shape2 $goal-type2) $out $goal-prf)
+       (if (and (=alpha $goal-type $goal-type2)
+                (=alpha $goal-shape $goal-shape2))
+         (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
+         ()))
+      ($other ()))))
+
 (= (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl)
    (case (mm2-ir-collect $prems)
      (((collected pnil (cons (cpu MemberInheritanceFormula ($kb $subj $concept) $out) ()))
-       (case (mm2-ir-item $ccl)
-         (((subgoal ($goal-shape2 $goal-type2) $out $goal-prf)
-           (if (and (=alpha $goal-type $goal-type2)
-                    (=alpha $goal-shape $goal-shape2))
-             (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
-             ()))
-          ($other ()))))
+       (mm2-readback-member-inheritance-conclusion
+         $goal-type $goal-shape $kb $subj $concept $out $ccl))
+      ((collected pnil
+         (cons
+           (cpu FoldAllCompiled
+             ($kb
+              (MemberInheritanceSample $_obj $subj $concept $_ante-tv $_consequent-tv)
+              $_value
+              $_init
+              WeightedBaseRateAcc
+              (member-inheritance $kb)
+              result-tv)
+             $fold-out)
+           (cons (cpu MemberInheritanceEvidenceFormula ($fold-out) $out) ())))
+       (mm2-readback-member-inheritance-conclusion
+         $goal-type $goal-shape $kb $subj $concept $out $ccl))
       ($other ()))))
 
-(= (mm2-readback-member-inheritance-adds $goal-type $goal-shape $adds)
-   (case $adds
-     (((cons (rules ($prems |- $ccl)) $rest)
-       (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl))
-      ($other ()))))
+(= (mm2-readback-member-inheritance-adds $_goal-type $_goal-shape ()) ())
+(= (mm2-readback-member-inheritance-adds $goal-type $goal-shape (cons $add $rest))
+   (case $add
+     (((rules ($prems |- $ccl))
+       (mm2-ir-append
+         (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl)
+         (mm2-readback-member-inheritance-adds $goal-type $goal-shape $rest)))
+      ($other
+       (mm2-readback-member-inheritance-adds $goal-type $goal-shape $rest)))))
 
 (= (mm2-readback-member-inheritance $goal-item $adds)
    (case (mm2-ir-item $goal-item)
@@ -2099,7 +2122,7 @@
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
             ($_cleanup (mm2-cleanup-queries $cqs)))
-       (mm2-test-equal (length $results) $expected-count))))
+       (mm2-test-equal (length (mm2-result-keys $results)) $expected-count))))
 
 (= (mm2-test-forward-chain-query $rounds $steps $kb (: $prf $type $tv) $expected)
    (let $_forward (mm2-forward-chain $rounds $kb)
