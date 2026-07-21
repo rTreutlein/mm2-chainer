@@ -69,3 +69,9 @@
    memberNativeEmptyKb
    (: $prf (Inheritance A B) $tv)
    ())
+
+; Native member-fold queries open premise Goals internally. They are owned by
+; the query session and must not accumulate after public query cleanup.
+!(mm2-test-equal
+   (collapse (match &mork (, (Goal $goal)) $goal))
+   ())

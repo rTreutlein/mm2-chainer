@@ -5,18 +5,21 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-expected='!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/compile)'
+expected_config='!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/logic_config)'
+expected_compiler='!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/compile)'
 mapfile -t upstream_imports < <(grep -F '!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/' compiler/mm2_chainer.metta)
 
-if [[ "${#upstream_imports[@]}" -ne 1 || "${upstream_imports[0]}" != "$expected" ]]; then
-  printf 'production harness must import only the PeTTaChainer compiler:\n' >&2
+if [[ "${#upstream_imports[@]}" -ne 2 ||
+      "${upstream_imports[0]}" != "$expected_config" ||
+      "${upstream_imports[1]}" != "$expected_compiler" ]]; then
+  printf 'production harness must import only PeTTaChainer compiler frontend dependencies:\n' >&2
   printf '%s\n' "${upstream_imports[@]}" >&2
   exit 1
 fi
 
 if grep -R -n -F '/PeTTaChainer/pettachainer/metta/' \
     compiler tests/harness/generated \
-    --include='*.metta' | grep -v -F "$expected"; then
+    --include='*.metta' | grep -v -F "$expected_config" | grep -v -F "$expected_compiler"; then
   echo 'runtime and generated tests must not import other PeTTaChainer modules' >&2
   exit 1
 fi
@@ -47,10 +50,10 @@ if grep -Eq 'mm2-test-(close|FAIL)' "$tmp_dir/verdicts"; then
 fi
 
 pass_count="$(grep -c '^[(]mm2-test-pass ' "$tmp_dir/verdicts" || true)"
-if [[ "$pass_count" != 9 ]]; then
+if [[ "$pass_count" != 10 ]]; then
   cat "$tmp_dir/output" >&2
   cat "$tmp_dir/verdicts" >&2
-  echo "expected 9 production-boundary passes, got $pass_count" >&2
+  echo "expected 10 production-boundary passes, got $pass_count" >&2
   exit 1
 fi
 

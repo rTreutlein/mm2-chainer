@@ -82,4 +82,12 @@
 
 ; Batch cleanup runs only after every result group has been read and removes
 ; the private query scaffolds without leaking their assumptions.
+!(add-atom &mork (, (Goal (durable-goal))))
 !(mm2-test-query 10 isolatedKb (: $proof (A) $tv) ())
+
+; Query cleanup removes premise/subgoal Goals created while executing a batch,
+; while preserving Goals that existed before the query session.
+!(mm2-test-equal
+   (collapse (match &mork (, (Goal $goal)) $goal))
+   ((durable-goal)))
+!(remove-atom &mork (, (Goal (durable-goal))))

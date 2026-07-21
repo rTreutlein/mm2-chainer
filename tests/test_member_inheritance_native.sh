@@ -17,4 +17,4 @@ if grep -qE 'notsupported-ir|mm2-test-FAIL|ERROR' "$out"; then
   exit 1
 fi
 
-test "$(grep -c 'mm2-test-pass' "$out")" -eq 4
+test "$(grep -c 'mm2-test-pass' "$out")" -eq 5

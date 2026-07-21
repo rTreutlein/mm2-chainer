@@ -26,6 +26,35 @@
        boundaryKb
        (Inheritance Raven $concept)))
    ((Inheritance Raven Bird)))
+
+; MORK canonicalizes variables in stored expressions. Independently copied,
+; alpha-equivalent compiler facts therefore occupy one set entry without a
+; harness-side scan.
+!(let $copy
+   (copy_term
+     ((CompilerMetadataProbe $x)
+      (boundaryKb MAIN ($x))
+      metadata-probe
+      (STV 1.0 1.0)))
+   (mm2-store-compiler-fact-ir! $copy))
+!(let $copy
+   (copy_term
+     ((CompilerMetadataProbe $y)
+      (boundaryKb MAIN ($y))
+      metadata-probe
+      (STV 1.0 1.0)))
+   (mm2-store-compiler-fact-ir! $copy))
+!(mm2-test-equal
+   (length
+     (collapse
+       (match &mork
+         (mm2-compiler-fact-ir
+           ((CompilerMetadataProbe $value)
+            (boundaryKb MAIN ($value))
+            metadata-probe
+            (STV 1.0 1.0)))
+         true)))
+   1)
 !(mm2-test-equal (mm2-kb-universe-size boundaryKb) 4.0)
 !(mm2-test-equal
    (mm2-concept-node-prior-tv boundaryKb Raven)

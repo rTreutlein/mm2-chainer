@@ -24,8 +24,14 @@
 ; - PeTTa's query step budget counts chainer expansions; mm2 steps count exec
 ;   firings. mm2-query scales the budget by mm2-steps-per-round.
 
-; The compiler is the complete upstream boundary. Runtime facts, metadata,
-; caches, proof rows, and forward state belong to &mork.
+; Import the compiler's frontend dependencies before the compiler itself.
+; PeTTaChainer's public entry point now owns this ordering, while MM2 imports
+; the standalone compiler directly and therefore must establish the same
+; frontend environment. Runtime state still belongs entirely to &mork.
+!(import! &self (library lib_roman))
+!(import! &self (library lib_spaces))
+!(import! &self (library lib_he))
+!(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/logic_config)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/PeTTaChainer/pettachainer/metta/compile)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_adapter_support)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/petta_mm2_backend)
@@ -38,14 +44,10 @@
    (case $expr
      ((($_type ($_kb $_ctx $_vars) $_proof $_tv)
        (let $stored (copy_term $expr)
-         (let $seen
-           (collapse
-             (match &mork
-               (mm2-compiler-fact-ir $candidate)
-               (if (=alpha $candidate $stored) true (empty))))
-           (if (== $seen ())
-             (add-atom &mork (mm2-compiler-fact-ir $stored))
-             ()))))
+         ; MORK spaces are alpha-canonical sets: adding an independently
+         ; copied equivalent atom is already idempotent. Do not turn this
+         ; indexed insertion into an O(n) full metadata scan.
+         (add-atom &mork (mm2-compiler-fact-ir $stored))))
       ($_other ()))))
 
 (= (compiler-specialization-fact $kb $trigger)
@@ -1315,6 +1317,34 @@
    (let $_cleanup (mm2-cleanup-query $cq)
      (mm2-cleanup-queries $rest)))
 
+; Query execution can open premise and inheritance-lift Goals that are not
+; present in the compiled-query IR. Snapshot the durable Goals at session
+; start, then remove the inert Goal markers created by that session. Runtime
+; wait/open state remains owned by the compiled public roots and is removed by
+; mm2-cleanup-query; completed dynamic goals have no remaining runtime rows.
+(= (mm2-current-query-goals)
+   (collapse (match &mork (, (Goal $g)) $g)))
+
+(= (mm2-query-goal-member? $_goal ()) false)
+(= (mm2-query-goal-member? $goal (cons $candidate $rest))
+   (if (=alpha $goal $candidate)
+     true
+     (mm2-query-goal-member? $goal $rest)))
+
+(= (mm2-cleanup-created-query-goals $_baseline ()) ())
+(= (mm2-cleanup-created-query-goals $baseline (cons $goal $rest))
+   (let $_cleanup
+        (if (mm2-query-goal-member? $goal $baseline)
+          ()
+          (remove-atom &mork (, (Goal $goal))))
+     (mm2-cleanup-created-query-goals $baseline $rest)))
+
+(= (mm2-cleanup-query-session $cqs $baseline)
+   (let $_compiled (mm2-cleanup-queries $cqs)
+     (mm2-cleanup-created-query-goals
+       $baseline
+       (mm2-current-query-goals))))
+
 (= (mm2-clear-runtime-queue)
    (let* (($_goal (mm2-remove-matches (, (Goal $g))))
           ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises $pending-evset)))
@@ -1373,9 +1403,10 @@
    (mm2-compile-query-ir $kb (: $prf $type $tv)))
 
 (= (mm2-prepare-query-runtime $kb (: $prf $type $tv))
-   (let* (($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
+   (let* (($goals-before (mm2-current-query-goals))
+          ($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
           ($notsup (mm2-run-compiled-queries $kb $cqs)))
-     (prepared-query $cqs $notsup)))
+     (prepared-query $cqs $notsup $goals-before)))
 
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
@@ -1386,37 +1417,50 @@
 ; A batch query is tagged so callers can associate overlapping or identical
 ; query result sets with their original request. Query compilation and goal
 ; installation stay ordered; prior maintenance is paid once for the batch.
-(= (mm2-prepare-query-item $kb (query $id (: $prf $type $tv)))
+(= (mm2-prepare-query-item $kb $goals-before (query $id (: $prf $type $tv)))
    (let $stored-id (copy_term $id)
-     (let (prepared-query $cqs $notsup)
-          (mm2-prepare-query-runtime $kb (: $prf $type $tv))
-       (prepared-query-item $stored-id $cqs $notsup))))
+     (let* (($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
+            ($notsup (mm2-run-compiled-queries $kb $cqs)))
+       (prepared-query-item $stored-id $cqs $notsup $goals-before))))
 
-(= (mm2-prepare-query-items $_kb ()) ())
-(= (mm2-prepare-query-items $kb (cons $query $rest))
-   (let* (($prepared (mm2-prepare-query-item $kb $query))
-          ($tail (mm2-prepare-query-items $kb $rest)))
+(= (mm2-prepare-query-items $_kb $_goals-before ()) ())
+(= (mm2-prepare-query-items $kb $goals-before (cons $query $rest))
+   (let* (($prepared (mm2-prepare-query-item $kb $goals-before $query))
+          ($tail (mm2-prepare-query-items $kb $goals-before $rest)))
      (cons $prepared $tail)))
 
 (= (mm2-prepare-query-many $_kb ()) ())
 (= (mm2-prepare-query-many $kb (cons $query $rest))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
-          ($prepared (mm2-prepare-query-items $kb (cons $query $rest)))
+          ($goals-before (mm2-current-query-goals))
+          ($prepared
+            (mm2-prepare-query-items
+              $kb $goals-before (cons $query $rest)))
           ($_query-refresh (mm2-refresh-prior-base-rates!)))
      $prepared))
 
 (= (mm2-query-many-results ()) ())
 (= (mm2-query-many-results
-      (cons (prepared-query-item $id $cqs $notsup) $rest))
+      (cons (prepared-query-item $id $cqs $notsup $_goals-before) $rest))
    (let* (($results (mm2-query-results $notsup $cqs))
           ($tail (mm2-query-many-results $rest)))
      (cons (query-result $id $results) $tail)))
 
+(= (mm2-cleanup-query-many-compiled ()) ())
+(= (mm2-cleanup-query-many-compiled
+      (cons (prepared-query-item $_id $cqs $_notsup $_goals-before) $rest))
+   (let $_cleanup (mm2-cleanup-queries $cqs)
+     (mm2-cleanup-query-many-compiled $rest)))
+
 (= (mm2-cleanup-query-many ()) ())
 (= (mm2-cleanup-query-many
-      (cons (prepared-query-item $_id $cqs $_notsup) $rest))
-   (let $_cleanup (mm2-cleanup-queries $cqs)
-     (mm2-cleanup-query-many $rest)))
+      (cons (prepared-query-item $_id $_cqs $_notsup $goals-before) $rest))
+   (let $_compiled
+        (mm2-cleanup-query-many-compiled
+          (cons (prepared-query-item $_id $_cqs $_notsup $goals-before) $rest))
+     (mm2-cleanup-created-query-goals
+       $goals-before
+       (mm2-current-query-goals))))
 
 (= (mm2-result-row-equivalent? $row $other)
    (case ($row $other)
@@ -1466,9 +1510,9 @@
          $results))))
 
 (= (mm2-query $steps $kb (: $prf $type $tv))
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        $results)))
 
 ; The step count is one shared batch budget. All result sets are read before
@@ -1482,10 +1526,10 @@
      $results))
 
 (= (mm2-query-wide $steps $kb (: $prf $type $tv))
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($_run (mm2-exec &mork (mm2-test-total-steps $steps)))
             ($results (mm2-query-results $notsup $cqs))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        $results)))
 
 (= (mm2-run-query-wide-first $steps $notsup $cqs)
@@ -1497,9 +1541,9 @@
        $existing)))
 
 (= (mm2-query-wide-first $steps $kb (: $prf $type $tv))
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-wide-first $steps $notsup $cqs))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        $results)))
 
 (= (mm2-run-query-first $steps $notsup $cqs)
@@ -1511,16 +1555,16 @@
        $existing)))
 
 (= (mm2-query-first $steps $kb (: $prf $type $tv))
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-first $steps $notsup $cqs))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        $results)))
 
 (= (mm2-query-materialize $steps $kb (: $prf $type $tv))
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
             ($_materialized (mm2-materialize-scope (mm2-ir-scope-kb $kb)))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        $results)))
 
 ; Harness approximation for PeTTa forward-chain tests: compileadd already
@@ -2415,27 +2459,27 @@
         ($other (mm2-test-equal no-result true))))))
 
 (= (mm2-test-query $steps $kb (: $prf $type $tv) $expected)
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($want (mm2-result-keys $expected))
             ($results
               (if (== $want ())
                 (mm2-run-query-full $steps $notsup $cqs)
                 (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        (mm2-test $results $expected))))
 
 (= (mm2-test-query-proofs $steps $kb (: $prf $type $tv) $expected)
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results
               (mm2-run-query-until
                 (mm2-test-total-steps $steps) $notsup $cqs $expected))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        (mm2-test-proof-results $results $expected))))
 
 (= (mm2-test-query-count $steps $kb (: $prf $type $tv) $expected-count)
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        (mm2-test-equal (length (mm2-result-keys $results)) $expected-count))))
 
 (= (mm2-test-forward-chain-query $rounds $steps $kb (: $prf $type $tv) $expected)
@@ -2448,12 +2492,12 @@
      (mm2-test-query $steps $kb (: $prf $type $tv) $expected)))
 
 (= (mm2-test-query-materialize $steps $kb (: $prf $type $tv) $expected)
-   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+   (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))
      (let* (($want (mm2-result-keys $expected))
             ($results
               (if (== $want ())
                 (mm2-run-query-full $steps $notsup $cqs)
                 (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
             ($_materialized (mm2-materialize-scope (mm2-ir-scope-kb $kb)))
-            ($_cleanup (mm2-cleanup-queries $cqs)))
+            ($_cleanup (mm2-cleanup-query-session $cqs $goals-before)))
        (mm2-test $results $expected))))
