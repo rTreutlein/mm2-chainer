@@ -1,0 +1,359 @@
+; Finite query-batch controller.
+;
+; PeTTa installs each translated query atom and its ownership marker as a
+; separate top-level MORK atom in one add-atoms call.  The controller parks the
+; permanent Z scheduler, snapshots pre-existing Goals while the owned query
+; atoms are detached, reattaches the query batch, executes a finite number of
+; complete runtime rounds, materializes tagged responses, and removes the
+; batch.  Parking Z leaves no live exec after the batch, so mm2-exec returns
+; without relying on its external safety limit.
+
+(mm2-query-controller-runtime)
+
+(mm2-query-control start-active
+  (exec R
+    (, (mm2-query-request $session $budget)
+       (exec Z $loop-pattern $loop-template)
+       (mm2-query-control detach $detach)
+       (mm2-query-control clean-responses $clean-responses)
+       (mm2-query-control snapshot $snapshot)
+       (mm2-query-control stop-clean-responses $stop-clean-responses)
+       (mm2-query-control attach $attach)
+       (mm2-query-control begin $begin))
+    (O
+      (- (mm2-query-request $session $budget))
+      (- (exec Z $loop-pattern $loop-template))
+      (+ (mm2-query-session-loop
+           $session (exec Z $loop-pattern $loop-template)))
+      (+ (mm2-query-session-rounds $session $budget))
+      (+ $detach)
+      (+ $clean-responses)
+      (+ (mm2-query-session-response-cleaner $session $clean-responses))
+      (+ $snapshot)
+      (+ $stop-clean-responses)
+      (+ $attach)
+      (+ $begin))))
+
+(mm2-query-control start-idle
+  (exec R
+    (, (mm2-query-request $session $budget)
+       (mm2-query-idle-loop $idle-loop)
+       (mm2-query-control detach $detach)
+       (mm2-query-control clean-responses $clean-responses)
+       (mm2-query-control snapshot $snapshot)
+       (mm2-query-control stop-clean-responses $stop-clean-responses)
+       (mm2-query-control attach $attach)
+       (mm2-query-control begin $begin))
+    (O
+      (- (mm2-query-request $session $budget))
+      (- (mm2-query-idle-loop $idle-loop))
+      (+ (mm2-query-session-loop $session $idle-loop))
+      (+ (mm2-query-session-rounds $session $budget))
+      (+ $detach)
+      (+ $clean-responses)
+      (+ (mm2-query-session-response-cleaner $session $clean-responses))
+      (+ $snapshot)
+      (+ $stop-clean-responses)
+      (+ $attach)
+      (+ $begin))))
+
+; Query atoms are already present after the bulk add.  Detach them before the
+; durable-Goal snapshot so Goals belonging to this batch are not mistaken for
+; caller-owned state.  Ownership markers remain available for reattachment.
+(mm2-query-control detach
+  (exec S
+    (, (mm2-query-owned $session $atom))
+    (O (- $atom))))
+
+; Responses must survive the third boundary (tagged readback), so the next
+; request clears the preceding batch before any new responses can exist.  The
+; T barrier also removes the cleaner when there was nothing to match.
+(mm2-query-control clean-responses
+  (exec S
+    (, (mm2-query-response $old-session $old-id $old-payload))
+    (O (- (mm2-query-response $old-session $old-id $old-payload)))))
+
+(mm2-query-control snapshot
+  (exec T
+    (, (mm2-query-session-loop $session $saved-loop)
+       (, (Goal $durable-goal)))
+    (O (+ (mm2-query-durable-goal $session $durable-goal)))))
+
+(mm2-query-control stop-clean-responses
+  (exec T
+    (, (mm2-query-session-response-cleaner $session $cleaner))
+    (O
+      (- $cleaner)
+      (- (mm2-query-session-response-cleaner $session $cleaner)))))
+
+(mm2-query-control attach
+  (exec U
+    (, (mm2-query-owned $session $atom))
+    (O (+ $atom))))
+
+(mm2-query-control begin
+  (exec V
+    (, (mm2-query-session-rounds
+         $session (query-budget $rounds $partial))
+       (mm2-query-control round-cons $cons)
+       (mm2-query-control round-nil $nil)
+       (mm2-query-control round-partial $partial-exec))
+    (O
+      (- (mm2-query-session-rounds
+           $session (query-budget $rounds $partial)))
+      (+ (mm2-query-run $session $rounds $partial))
+      (+ $cons)
+      (+ $nil)
+      (+ $partial-exec))))
+
+; One controller tick expands all runtime exec templates.  Their locations
+; precede W, so a complete ordinary runtime round settles before the next tick.
+(mm2-query-control round-cons
+  (exec W
+    (, (mm2-query-run $session (pcons tick $rest) $partial)
+       (exec-template $runtime-exec)
+       (mm2-query-control round-cons $self)
+       (mm2-query-control round-nil $nil)
+       (mm2-query-control round-partial $partial-exec))
+    (O
+      (- (mm2-query-run $session (pcons tick $rest) $partial))
+      (+ (mm2-query-run $session $rest $partial))
+      (+ $runtime-exec)
+      (+ $self)
+      (+ $nil)
+      (+ $partial-exec))))
+
+(mm2-query-control round-nil
+  (exec W
+    (, (mm2-query-run $session pnil no-partial)
+       (mm2-query-control finish $finish-exec))
+    (O
+      (- (mm2-query-run $session pnil no-partial))
+      (+ $finish-exec))))
+
+(mm2-query-control round-partial
+  (exec W
+    (, (mm2-query-run $session pnil (partial $count))
+       (head $count (exec-template $runtime-exec))
+       (mm2-query-control partial-finish $finish-controller))
+    (O
+      (- (mm2-query-run $session pnil (partial $count)))
+      (+ $runtime-exec)
+      (+ (mm2-query-partial-finish $session))
+      (+ $finish-controller))))
+
+(mm2-query-control partial-finish
+  (exec W
+    (, (mm2-query-partial-finish $session)
+       (mm2-query-control finish $finish-exec))
+    (, $finish-exec)))
+
+; Tagged result materialization.  Result rows remain until the next request,
+; which bounds retained responses to one batch while permitting one bulk match
+; after execution.
+(mm2-query-control finish
+  (exec X
+    (, (mm2-query-watch $session $id primary $goal $type)
+       (fact-evidence $goal ($s $c) $evset))
+    (O (+ (mm2-query-response $session $id (stv $type $s $c $evset))))))
+
+(mm2-query-control finish
+  (exec X
+    (, (mm2-query-watch $session $id primary $goal $type)
+       (fact $goal (ctvpair ($ps $pc) ($ns $nc))))
+    (O (+ (mm2-query-response $session $id
+            (ctv $type $ps $pc $ns $nc))))))
+
+; Runtime queue cleanup is global because query execution is serialized by
+; the controller. Persistent facts, proofs, compiler metadata, and forward
+; agenda state are intentionally not part of these transient relations.
+(mm2-query-control finish
+  (exec Y (, (pendingN $a $b $c $d $e))
+    (O (- (pendingN $a $b $c $d $e)))))
+(mm2-query-control finish
+  (exec Y (, (wait-premises $a $b $c $d $e $f))
+    (O (- (wait-premises $a $b $c $d $e $f)))))
+(mm2-query-control finish
+  (exec Y (, (wait-premises-or $a $b $c $d $e $f))
+    (O (- (wait-premises-or $a $b $c $d $e $f)))))
+(mm2-query-control finish
+  (exec Y (, (wait-premises-pool $a $b $c $d))
+    (O (- (wait-premises-pool $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (wait-premise $a $b $c $d $e $f $g))
+    (O (- (wait-premise $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (wait-premise-or $a $b $c $d $e $f $g $h))
+    (O (- (wait-premise-or $a $b $c $d $e $f $g $h)))))
+(mm2-query-control finish
+  (exec Y (, (wait-total-evidence $a $b $c $d $e $f $g))
+    (O (- (wait-total-evidence $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (total-evidence-active $a $b $c $d $e $f $g))
+    (O (- (total-evidence-active $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (wait-premise-pool $a $b $c $d $e))
+    (O (- (wait-premise-pool $a $b $c $d $e)))))
+(mm2-query-control finish
+  (exec Y (, (pool-step $a $b $c $d))
+    (O (- (pool-step $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (wait-inheritance-query-result $a $b $c $d $e))
+    (O (- (wait-inheritance-query-result $a $b $c $d $e)))))
+(mm2-query-control finish
+  (exec Y (, (wait-head $a $b $c $d $e $f))
+    (O (- (wait-head $a $b $c $d $e $f)))))
+(mm2-query-control finish
+  (exec Y (, (compute-plus-checked $a $b $c $d $e $f $g))
+    (O (- (compute-plus-checked $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (open-proof $a $b $c $d))
+    (O (- (open-proof $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (inv-checked $a $b $c $d))
+    (O (- (inv-checked $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (dist-stats-active $a))
+    (O (- (dist-stats-active $a)))))
+(mm2-query-control finish
+  (exec Y (, (dist-stat-contrib $a $b $c $d))
+    (O (- (dist-stat-contrib $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (dist-stat-total $a $b))
+    (O (- (dist-stat-total $a $b)))))
+(mm2-query-control finish
+  (exec Y (, (dist-stat-sumsq $a $b))
+    (O (- (dist-stat-sumsq $a $b)))))
+(mm2-query-control finish
+  (exec Y (, (dist-confidence $a $b))
+    (O (- (dist-confidence $a $b)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt-active $a $b))
+    (O (- (dist-gt-active $a $b)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt-contrib $a $b $c $d))
+    (O (- (dist-gt-contrib $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt-strength $a $b $c))
+    (O (- (dist-gt-strength $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt-open $a $b $c $d $e $f $g))
+    (O (- (dist-gt-open $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt2-active $a $b))
+    (O (- (dist-gt2-active $a $b)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt2-contrib $a $b $c $d $e))
+    (O (- (dist-gt2-contrib $a $b $c $d $e)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt2-strength $a $b $c))
+    (O (- (dist-gt2-strength $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (dist-gt2-open $a $b $c $d $e $f $g))
+    (O (- (dist-gt2-open $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (formula-eval $a $b))
+    (O (- (formula-eval $a $b)))))
+(mm2-query-control finish
+  (exec Y (, (fold-base-rate $a $b $c))
+    (O (- (fold-base-rate $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (fold-base-rate $a $b $c $d))
+    (O (- (fold-base-rate $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (sum $a $b $c))
+    (O (- (sum $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (pair-counts $a $b $c))
+    (O (- (pair-counts $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (or-stv $a $b $c $d $e $f $g))
+    (O (- (or-stv $a $b $c $d $e $f $g)))))
+(mm2-query-control finish
+  (exec Y (, (avg-dist-active $a $b $c))
+    (O (- (avg-dist-active $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (fold-value-bernoulli-active $a $b $c $d))
+    (O (- (fold-value-bernoulli-active $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (fold-value-bernoulli-contrib $a $b $c $d))
+    (O (- (fold-value-bernoulli-contrib $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (dist-average $a $b $c $d))
+    (O (- (dist-average $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (dist-sum $a $b $c $d))
+    (O (- (dist-sum $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (dist-map2-active $a $b $c))
+    (O (- (dist-map2-active $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (dist-map2-contrib $a $b $c))
+    (O (- (dist-map2-contrib $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (fsum $a $b $c $d))
+    (O (- (fsum $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (total-evidence-mp $a $b $c $d $e $f $g $h $i $j))
+    (O (- (total-evidence-mp $a $b $c $d $e $f $g $h $i $j)))))
+(mm2-query-control finish
+  (exec Y (, (member-inheritance-active $a $b $c $d))
+    (O (- (member-inheritance-active $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (fact (member-inheritance-aggregate $a) $b))
+    (O (- (fact (member-inheritance-aggregate $a) $b)))))
+(mm2-query-control finish
+  (exec Y (, (fact-evidence (member-inheritance-aggregate $a) $b $c))
+    (O (- (fact-evidence (member-inheritance-aggregate $a) $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (proved (member-inheritance-aggregate $a) $b $c $d))
+    (O (- (proved (member-inheritance-aggregate $a) $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (member-inheritance-weighted-sample $a $b $c $d))
+    (O (- (member-inheritance-weighted-sample $a $b $c $d)))))
+(mm2-query-control finish
+  (exec Y (, (member-inheritance-weighted-sample-checked $a $b $c $d $e))
+    (O (- (member-inheritance-weighted-sample-checked $a $b $c $d $e)))))
+(mm2-query-control finish
+  (exec Y (, (mm2-query-run $a $b $c))
+    (O (- (mm2-query-run $a $b $c)))))
+(mm2-query-control finish
+  (exec Y (, (mm2-query-partial-finish $a))
+    (O (- (mm2-query-partial-finish $a)))))
+
+; Remove exactly the query atoms installed for this session, then their
+; ownership markers.  The variables in an ownership marker intentionally
+; match an alpha-equivalent top-level query atom.
+(mm2-query-control finish
+  (exec Y0
+    (, (mm2-query-owned $session $atom))
+    (O
+      (- $atom)
+      (- (mm2-query-owned $session $atom)))))
+
+; Preserve only pre-existing Goals that also survived execution.  This avoids
+; resurrecting a durable variable Goal that the runtime legitimately consumed.
+(mm2-query-control finish
+  (exec Y1
+    (, (mm2-query-durable-goal $session $goal)
+       (, (Goal $goal)))
+    (O (+ (mm2-query-durable-survivor $session $goal)))))
+
+(mm2-query-control finish
+  (exec Y2 (, (, (Goal $goal)))
+    (O (- (, (Goal $goal))))))
+(mm2-query-control finish
+  (exec Y2 (, (mm2-query-durable-goal $session $goal))
+    (O (- (mm2-query-durable-goal $session $goal)))))
+
+(mm2-query-control finish
+  (exec Y3 (, (mm2-query-durable-survivor $session $goal))
+    (O
+      (- (mm2-query-durable-survivor $session $goal))
+      (+ (, (Goal $goal))))))
+
+(mm2-query-control finish
+  (exec Y4 (, (mm2-query-session-loop $session $saved-loop))
+    (O
+      (- (mm2-query-session-loop $session $saved-loop))
+      (+ (mm2-query-idle-loop $saved-loop)))))

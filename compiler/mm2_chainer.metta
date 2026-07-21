@@ -36,6 +36,11 @@
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_adapter_support)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/petta_mm2_backend)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_ir_translate)
+!(callPredicate
+   (Predicate
+     (quote
+       (ensure_loaded
+         "/nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_batch.pl"))))
 
 ; Keep the shared compiler's exact fact IR in MORK as compiler-only metadata.
 ; Structural specialization reads this index directly through the frontend's
@@ -1462,6 +1467,172 @@
        $goals-before
        (mm2-current-query-goals))))
 
+; --- Native query-batch controller -----------------------------------------
+;
+; A batch is installed as separate top-level atoms in one add-atoms call.  An
+; ownership marker beside every translated atom lets MORK detach the batch
+; while it snapshots durable Goals and remove it after tagged result
+; materialization.  The caller therefore needs one bulk add, one exec, and one
+; tagged response match, independent of the number of logical queries.
+
+(= (mm2-next-query-session-id)
+   (let $maybe-id (catch (get-state mm2_query_session_id))
+     (let $id (if-error $maybe-id 0 $maybe-id)
+       (progn
+         (change-state! mm2_query_session_id (+ $id 1))
+         (mm2-query-session $id)))))
+
+; A controller round fires the controller tick plus the current 90 runtime
+; templates.  Keep this named separately from the public budget multiplier so
+; runtime-template additions have one explicit controller cost to update.
+(= (mm2-query-controller-round-cost) 91)
+
+(= (mm2-query-controller-budget $remaining)
+   (if (< 0 $remaining)
+     (let (query-budget $rounds $_partial)
+          (mm2-query-controller-budget
+            (- $remaining (mm2-query-controller-round-cost)))
+       (query-budget (pcons tick $rounds) no-partial))
+     (query-budget pnil no-partial)))
+
+(= (mm2-query-controller-cq-atoms ()) ())
+(= (mm2-query-controller-cq-atoms (cons $cq $rest))
+   (mm2-ir-append
+     (mm2-translate-query $cq)
+     (mm2-query-controller-cq-atoms $rest)))
+
+(= (mm2-query-controller-notsupported ()) ())
+(= (mm2-query-controller-notsupported (cons $atom $rest))
+   (case $atom
+     (((notsupported-ir $x)
+       (cons (notsupported-ir $x)
+             (mm2-query-controller-notsupported $rest)))
+      ($_other (mm2-query-controller-notsupported $rest)))))
+
+(= (mm2-query-controller-watch $session $id $cq)
+   (case $cq
+     (((compiled-query $goal-item $adds)
+       (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
+         (let* (($readback-type (mm2-readback-type $shape $type $prf $tv))
+                ($query-goal
+                  (if (mm2-ir-query-add-has-inheritance-lift? $adds)
+                    ($shape $type)
+                    (mm2-ir-query-goal ($shape $type) $prf))))
+           (mm2-query-watch
+             $session $id primary $query-goal $readback-type))))
+      ($other (notsupported-ir (query-watch $other))))))
+
+(= (mm2-query-controller-watches $_session $_id ()) ())
+(= (mm2-query-controller-watches $session $id (cons $cq $rest))
+   (cons (mm2-query-controller-watch $session $id $cq)
+         (mm2-query-controller-watches $session $id $rest)))
+
+(= (mm2-query-controller-prepare-items $_kb $_session ())
+   (controller-prepared () ()))
+(= (mm2-query-controller-prepare-items
+      $kb $session (cons (query $id (: $prf $type $tv)) $rest))
+   (let* (($stored-id (copy_term $id))
+          ($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
+          ($query-atoms (mm2-query-controller-cq-atoms $cqs))
+          ($notsup (mm2-query-controller-notsupported $query-atoms))
+          ($watches
+            (mm2-query-controller-watches $session $stored-id $cqs))
+          ((controller-prepared $tail-prepared $tail-atoms)
+            (mm2-query-controller-prepare-items $kb $session $rest)))
+     (controller-prepared
+       (cons
+         (prepared-query-item $stored-id $cqs $notsup ())
+         $tail-prepared)
+       (mm2-ir-append
+         $query-atoms
+         (mm2-ir-append $watches $tail-atoms)))))
+
+(= (mm2-query-controller-request $session $rounds)
+   (exec Q
+     (, (mm2-query-controller-runtime)
+        (mm2-query-control start-active $start-active)
+        (mm2-query-control start-idle $start-idle))
+     (,
+       (mm2-query-request $session $rounds)
+       $start-active
+       $start-idle)))
+
+(= (mm2-query-controller-owned-atoms $_session ()) ())
+(= (mm2-query-controller-owned-atoms $session (cons $atom $rest))
+   (cons
+     (mm2-query-owned $session (copy_term $atom))
+     (mm2-query-controller-owned-atoms $session $rest)))
+
+(= (mm2-query-controller-install-payload $session $atoms $request)
+   (mm2-ir-append
+     $atoms
+     (mm2-ir-append
+       (mm2-query-controller-owned-atoms $session $atoms)
+       (cons $request ()))))
+
+; Thread the side-effect results through explicit arguments.  PeTTa may reduce
+; independent let* bindings eagerly, so unused throwaway bindings alone do not
+; establish the required add -> exec -> readback order.
+(= (mm2-query-controller-execute $_installed)
+   (mm2-exec &mork 1000000))
+
+(= (mm2-query-controller-readback $_executed $session)
+   (collapse
+     (match &mork
+       (mm2-query-response $session $id $payload)
+       ($id $payload))))
+
+(= (mm2-query-controller-payload-row
+      (stv $type $s $c $evset))
+   (: (mm2-proof-from-evidence $evset) $type (STV $s $c)))
+(= (mm2-query-controller-payload-row
+      (ctv $type $ps $pc $ns $nc))
+   (: mm2-merged-ctv $type
+      (CTV (STV $ps $pc) (STV $ns $nc))))
+
+(= (mm2-query-controller-results-for $_id ()) ())
+(= (mm2-query-controller-results-for
+      $id (cons ($candidate $payload) $rest))
+   (if (== $id $candidate)
+     (cons
+       (mm2-query-controller-payload-row $payload)
+       (mm2-query-controller-results-for $id $rest))
+     (mm2-query-controller-results-for $id $rest)))
+
+(= (mm2-query-controller-group-results () $_raw) ())
+(= (mm2-query-controller-group-results
+      (cons (prepared-query-item $id $_cqs $notsup $_goals-before) $rest)
+      $raw)
+   (cons
+     (query-result
+       $id
+       (mm2-unique-query-results
+         (mm2-ir-append
+           $notsup
+           (mm2-query-controller-results-for $id $raw))))
+     (mm2-query-controller-group-results $rest $raw)))
+
+(= (mm2-query-many-controlled $steps $kb (cons $query $rest))
+   (let* (($session (mm2-next-query-session-id))
+          ((controller-prepared $prepared $atoms)
+            (mm2-query-controller-prepare-items
+              $kb $session (cons $query $rest)))
+          ($budget
+            (mm2-query-controller-budget (mm2-total-steps $steps)))
+          ($request
+            (copy_term
+              (mm2-query-controller-request $session $budget)))
+          ($payload
+            (mm2-query-controller-install-payload
+              $session $atoms $request))
+          ($_install
+            (callPredicate
+              (Predicate (mork_add_atoms $payload $_result))))
+          ($run (mm2-query-controller-execute $_install))
+          ($raw (mm2-query-controller-readback $run $session))
+          ($grouped (mm2-query-controller-group-results $prepared $raw)))
+     $grouped))
+
 (= (mm2-result-row-equivalent? $row $other)
    (case ($row $other)
      ((((: $_prf $type $tv) (: $_wprf $wtype $wtv))
@@ -1519,11 +1690,7 @@
 ; any query scaffold is removed, then the entire batch is cleaned up.
 (= (mm2-query-many $_steps $_kb ()) ())
 (= (mm2-query-many $steps $kb (cons $query $rest))
-   (let* (($prepared (mm2-prepare-query-many $kb (cons $query $rest)))
-          ($_run (mm2-exec &mork (mm2-total-steps $steps)))
-          ($results (mm2-query-many-results $prepared))
-          ($_cleanup (mm2-cleanup-query-many $prepared)))
-     $results))
+   (mm2-query-many-controlled $steps $kb (cons $query $rest)))
 
 (= (mm2-query-wide $steps $kb (: $prf $type $tv))
    (let (prepared-query $cqs $notsup $goals-before) (mm2-prepare-query $kb (: $prf $type $tv))

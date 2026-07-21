@@ -38,7 +38,7 @@
 ; Results stay grouped by caller-provided tags. Identical queries are retained
 ; as two result groups instead of being flattened and deduplicated together.
 !(let $batch
-   (mm2-query-many 100 batchKb
+   (mm2-query-many 40 batchKb
      (cons
        (query original (: $proof (Friend bob alice) $tv))
        (cons
@@ -62,7 +62,7 @@
 ; Total-implication query assumptions use private contexts. Preparing and
 ; executing that query beside a public A query must not make A true publicly.
 !(let $batch
-   (mm2-query-many 100 isolatedKb
+   (mm2-query-many 40 isolatedKb
      (cons
        (query implication
          (: $proof
@@ -90,4 +90,24 @@
 !(mm2-test-equal
    (collapse (match &mork (, (Goal $goal)) $goal))
    ((durable-goal)))
+
+; The controller owns and removes the translated batch, finite scheduler state,
+; and saved loop.  Results from the previous batch are also discarded when the
+; next request starts, while the latest tagged responses remain readable.
+!(mm2-test-equal
+   (collapse (match &mork (mm2-query-owned $session $atom) ($session $atom)))
+   ())
+!(mm2-test-equal
+   (collapse (match &mork (mm2-query-run $session $rounds $partial)
+                           ($session $rounds $partial)))
+   ())
+!(mm2-test-equal
+   (collapse (match &mork (mm2-query-session-loop $session $loop)
+                           ($session $loop)))
+   ())
+!(mm2-test-equal
+   (collapse (match &mork
+               (mm2-query-response $session original $payload)
+               ($session $payload)))
+   ())
 !(remove-atom &mork (, (Goal (durable-goal))))
