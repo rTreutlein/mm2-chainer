@@ -1469,11 +1469,11 @@
 
 ; --- Native query-batch controller -----------------------------------------
 ;
-; A batch is installed as separate top-level atoms in one add-atoms call.  An
-; ownership marker beside every translated atom lets MORK detach the batch
-; while it snapshots durable Goals and remove it after tagged result
-; materialization.  The caller therefore needs one bulk add, one exec, and one
-; tagged response match, independent of the number of logical queries.
+; A batch is installed as ownership markers in one add-atoms call. Each marker
+; contains one complete translated atom; the native controller snapshots
+; durable Goals before attaching those atoms and removes them after tagged
+; result materialization. The caller therefore needs one bulk add, one exec,
+; and one tagged response match, independent of the number of logical queries.
 
 (= (mm2-next-query-session-id)
    (let $maybe-id (catch (get-state mm2_query_session_id))
@@ -1509,6 +1509,17 @@
              (mm2-query-controller-notsupported $rest)))
       ($_other (mm2-query-controller-notsupported $rest)))))
 
+(= (mm2-query-controller-member-atom? $atom)
+   (case $atom
+     (((member-inheritance-query $_g $_sample $_rule $_mode) true)
+      ($_other false))))
+
+(= (mm2-query-controller-has-member-atom? ()) false)
+(= (mm2-query-controller-has-member-atom? (cons $atom $rest))
+   (if (mm2-query-controller-member-atom? $atom)
+     true
+     (mm2-query-controller-has-member-atom? $rest)))
+
 (= (mm2-query-controller-watch $session $id $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
@@ -1528,16 +1539,22 @@
          (mm2-query-controller-watches $session $id $rest)))
 
 (= (mm2-query-controller-prepare-items $_kb $_session ())
-   (controller-prepared () ()))
+   (controller-prepared () () member))
 (= (mm2-query-controller-prepare-items
       $kb $session (cons (query $id (: $prf $type $tv)) $rest))
    (let* (($stored-id (copy_term $id))
           ($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
           ($query-atoms (mm2-query-controller-cq-atoms $cqs))
           ($notsup (mm2-query-controller-notsupported $query-atoms))
+          ($item-mode
+            (if (== $notsup ())
+              (if (mm2-query-controller-has-member-atom? $query-atoms)
+                member
+                full)
+              full))
           ($watches
             (mm2-query-controller-watches $session $stored-id $cqs))
-          ((controller-prepared $tail-prepared $tail-atoms)
+          ((controller-prepared $tail-prepared $tail-atoms $tail-mode)
             (mm2-query-controller-prepare-items $kb $session $rest)))
      (controller-prepared
        (cons
@@ -1545,15 +1562,16 @@
          $tail-prepared)
        (mm2-ir-append
          $query-atoms
-         (mm2-ir-append $watches $tail-atoms)))))
+         (mm2-ir-append $watches $tail-atoms))
+       (if (== $item-mode member) $tail-mode full))))
 
-(= (mm2-query-controller-request $session $rounds)
+(= (mm2-query-controller-request $session $rounds $mode)
    (exec Q
      (, (mm2-query-controller-runtime)
         (mm2-query-control start-active $start-active)
         (mm2-query-control start-idle $start-idle))
      (,
-       (mm2-query-request $session $rounds)
+       (mm2-query-request $session $rounds $mode)
        $start-active
        $start-idle)))
 
@@ -1565,10 +1583,8 @@
 
 (= (mm2-query-controller-install-payload $session $atoms $request)
    (mm2-ir-append
-     $atoms
-     (mm2-ir-append
-       (mm2-query-controller-owned-atoms $session $atoms)
-       (cons $request ()))))
+     (mm2-query-controller-owned-atoms $session $atoms)
+     (cons $request ())))
 
 ; Thread the side-effect results through explicit arguments.  PeTTa may reduce
 ; independent let* bindings eagerly, so unused throwaway bindings alone do not
@@ -1614,14 +1630,14 @@
 
 (= (mm2-query-many-controlled $steps $kb (cons $query $rest))
    (let* (($session (mm2-next-query-session-id))
-          ((controller-prepared $prepared $atoms)
+          ((controller-prepared $prepared $atoms $mode)
             (mm2-query-controller-prepare-items
               $kb $session (cons $query $rest)))
           ($budget
             (mm2-query-controller-budget (mm2-total-steps $steps)))
           ($request
             (copy_term
-              (mm2-query-controller-request $session $budget)))
+              (mm2-query-controller-request $session $budget $mode)))
           ($payload
             (mm2-query-controller-install-payload
               $session $atoms $request))

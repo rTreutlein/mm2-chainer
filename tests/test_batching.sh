@@ -23,9 +23,9 @@ if grep -Eq 'notsupported-ir|mm2-test-(close|FAIL)|ERROR' \
 fi
 
 pass_count="$(grep -c '^[(]mm2-test-pass ' "$tmp_dir/verdicts" || true)"
-if [[ "$pass_count" != 16 ]]; then
+if [[ "$pass_count" != 22 ]]; then
   cat "$tmp_dir/verdicts" >&2
-  echo "expected 16 batching passes, got $pass_count" >&2
+  echo "expected 22 batching passes, got $pass_count" >&2
   exit 1
 fi
 

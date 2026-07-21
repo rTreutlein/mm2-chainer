@@ -1,32 +1,45 @@
 ; Finite query-batch controller.
 ;
-; PeTTa installs each translated query atom and its ownership marker as a
-; separate top-level MORK atom in one add-atoms call.  The controller parks the
-; permanent Z scheduler, snapshots pre-existing Goals while the owned query
-; atoms are detached, reattaches the query batch, executes a finite number of
-; complete runtime rounds, materializes tagged responses, and removes the
-; batch.  Parking Z leaves no live exec after the batch, so mm2-exec returns
+; PeTTa installs each translated query atom inside an ownership marker in one
+; add-atoms call. The controller parks the permanent Z scheduler, snapshots
+; pre-existing Goals before attaching the query batch, executes a finite
+; number of complete runtime rounds, materializes tagged responses, and removes
+; the batch. Parking Z leaves no live exec after the batch, so mm2-exec returns
 ; without relying on its external safety limit.
 
 (mm2-query-controller-runtime)
 
+; A member-inheritance query consumes already-materialized Member facts. It
+; needs frontier/adaptor processing, premise pooling, its native fold stages,
+; and proof merging, but not the pending-rule, base-rate, or distribution
+; priority classes. Mixed and all other batches retain the complete schedule.
+(mm2-query-member-priority 0)
+(mm2-query-member-priority 1)
+(mm2-query-member-priority 4)
+(mm2-query-member-priority 5)
+(mm2-query-member-priority 6)
+(mm2-query-member-priority 7)
+(mm2-query-member-priority 8)
+(mm2-query-member-priority B)
+(mm2-query-member-priority C)
+(mm2-query-member-priority D)
+
 (mm2-query-control start-active
   (exec R
-    (, (mm2-query-request $session $budget)
+    (, (mm2-query-request $session $budget $mode)
        (exec Z $loop-pattern $loop-template)
-       (mm2-query-control detach $detach)
        (mm2-query-control clean-responses $clean-responses)
        (mm2-query-control snapshot $snapshot)
        (mm2-query-control stop-clean-responses $stop-clean-responses)
        (mm2-query-control attach $attach)
        (mm2-query-control begin $begin))
     (O
-      (- (mm2-query-request $session $budget))
+      (- (mm2-query-request $session $budget $mode))
       (- (exec Z $loop-pattern $loop-template))
       (+ (mm2-query-session-loop
            $session (exec Z $loop-pattern $loop-template)))
       (+ (mm2-query-session-rounds $session $budget))
-      (+ $detach)
+      (+ (mm2-query-session-mode $session $mode))
       (+ $clean-responses)
       (+ (mm2-query-session-response-cleaner $session $clean-responses))
       (+ $snapshot)
@@ -36,34 +49,25 @@
 
 (mm2-query-control start-idle
   (exec R
-    (, (mm2-query-request $session $budget)
+    (, (mm2-query-request $session $budget $mode)
        (mm2-query-idle-loop $idle-loop)
-       (mm2-query-control detach $detach)
        (mm2-query-control clean-responses $clean-responses)
        (mm2-query-control snapshot $snapshot)
        (mm2-query-control stop-clean-responses $stop-clean-responses)
        (mm2-query-control attach $attach)
        (mm2-query-control begin $begin))
     (O
-      (- (mm2-query-request $session $budget))
+      (- (mm2-query-request $session $budget $mode))
       (- (mm2-query-idle-loop $idle-loop))
       (+ (mm2-query-session-loop $session $idle-loop))
       (+ (mm2-query-session-rounds $session $budget))
-      (+ $detach)
+      (+ (mm2-query-session-mode $session $mode))
       (+ $clean-responses)
       (+ (mm2-query-session-response-cleaner $session $clean-responses))
       (+ $snapshot)
       (+ $stop-clean-responses)
       (+ $attach)
       (+ $begin))))
-
-; Query atoms are already present after the bulk add.  Detach them before the
-; durable-Goal snapshot so Goals belonging to this batch are not mistaken for
-; caller-owned state.  Ownership markers remain available for reattachment.
-(mm2-query-control detach
-  (exec S
-    (, (mm2-query-owned $session $atom))
-    (O (- $atom))))
 
 ; Responses must survive the third boundary (tagged readback), so the next
 ; request clears the preceding batch before any new responses can exist.  The
@@ -106,19 +110,34 @@
       (+ $nil)
       (+ $partial-exec))))
 
-; One controller tick expands all runtime exec templates.  Their locations
-; precede W, so a complete ordinary runtime round settles before the next tick.
+; One controller tick advances the finite budget and installs a small F-stage
+; expander. Keeping the 90-way exec-template join out of this state-transition
+; rule avoids repeating the controller joins once for every runtime template.
+; F expands the templates in one pass, their priorities settle before G, and G
+; removes the expansion marker before the next W tick can begin.
 (mm2-query-control round-cons
   (exec W
     (, (mm2-query-run $session (pcons tick $rest) $partial)
-       (exec-template $runtime-exec)
+       (mm2-query-session-mode $session $mode)
        (mm2-query-control round-cons $self)
        (mm2-query-control round-nil $nil)
        (mm2-query-control round-partial $partial-exec))
     (O
       (- (mm2-query-run $session (pcons tick $rest) $partial))
       (+ (mm2-query-run $session $rest $partial))
-      (+ $runtime-exec)
+      (+ (mm2-query-expand $session $mode))
+      (+ (exec F
+           (, (mm2-query-expand $session full)
+              (exec-template $runtime-exec))
+           (, $runtime-exec)))
+      (+ (exec F
+           (, (mm2-query-expand $session member)
+              (mm2-query-member-priority $priority)
+              (exec-template (exec $priority $input $output)))
+           (, (exec $priority $input $output))))
+      (+ (exec G
+           (, (mm2-query-expand $session $expand-mode))
+           (O (- (mm2-query-expand $session $expand-mode)))))
       (+ $self)
       (+ $nil)
       (+ $partial-exec))))
@@ -320,6 +339,9 @@
 (mm2-query-control finish
   (exec Y (, (mm2-query-partial-finish $a))
     (O (- (mm2-query-partial-finish $a)))))
+(mm2-query-control finish
+  (exec Y (, (mm2-query-session-mode $a $b))
+    (O (- (mm2-query-session-mode $a $b)))))
 
 ; Remove exactly the query atoms installed for this session, then their
 ; ownership markers.  The variables in an ownership marker intentionally

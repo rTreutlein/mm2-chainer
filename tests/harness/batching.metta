@@ -80,6 +80,35 @@
              (CTV (STV 1.0 1.0) (STV 0.0 1.0)))))
        (mm2-test (batch-test-result public $batch) ()))))
 
+; A batch made entirely of native member-inheritance folds uses the selective
+; controller schedule while retaining the same weighted evidence result.
+!(mm2-test-equal
+   (mm2-compileadd-many memberBatchKb
+     (cons (: ma (Member Alice A) (STV 0.5 0.8))
+       (cons (: mb (Member Alice B) (STV 0.25 0.6)) ())))
+   ())
+!(let $batch
+   (mm2-query-many 40 memberBatchKb
+     (cons (query member-fold (: $proof (Inheritance A B) $tv)) ()))
+   (mm2-test
+     (batch-test-result member-fold $batch)
+     ((: $_ (Inheritance A B) (STV 0.25 0.00029991002699190244)))))
+
+; Mixing a member fold with an ordinary query falls back to the full runtime
+; schedule and keeps both tagged result groups intact.
+!(let $batch
+   (mm2-query-many 40 memberBatchKb
+     (cons (query mixed-fold (: $proof (Inheritance A B) $tv))
+       (cons (query mixed-direct (: $proof (Member Alice A) $tv)) ())))
+   (let $_count (mm2-test-equal (length $batch) 2)
+     (let $_fold
+       (mm2-test
+         (batch-test-result mixed-fold $batch)
+         ((: $_ (Inheritance A B) (STV 0.25 0.00029991002699190244))))
+       (mm2-test
+         (batch-test-result mixed-direct $batch)
+         ((: $_ (Member Alice A) (STV 0.5 0.8)))))))
+
 ; Batch cleanup runs only after every result group has been read and removes
 ; the private query scaffolds without leaking their assumptions.
 !(add-atom &mork (, (Goal (durable-goal))))
@@ -104,6 +133,10 @@
 !(mm2-test-equal
    (collapse (match &mork (mm2-query-session-loop $session $loop)
                            ($session $loop)))
+   ())
+!(mm2-test-equal
+   (collapse (match &mork (mm2-query-session-mode $session $mode)
+                           ($session $mode)))
    ())
 !(mm2-test-equal
    (collapse (match &mork
