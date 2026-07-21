@@ -5,6 +5,21 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# The MM2 runtime uses the PLN sink extensions from the canonical MORK
+# checkout. Do not silently pick up an unrelated or stale cargo-installed
+# binary from PATH; callers can still override either location explicitly.
+MORK_ROOT="${MORK_ROOT:-/nexus/Dev/OpenCog/MORK}"
+MORK_BIN="${MORK_BIN:-$MORK_ROOT/target/release/mork}"
+if [[ ! -x "$MORK_BIN" ]]; then
+  echo "FAIL: compatible MORK CLI not found at $MORK_BIN" >&2
+  echo "build it with: cargo build --release --manifest-path $MORK_ROOT/Cargo.toml -p mork" >&2
+  exit 1
+fi
+
+mork() {
+  "$MORK_BIN" "$@"
+}
+
 fail() {
   echo "FAIL: $*" >&2
   exit 1
