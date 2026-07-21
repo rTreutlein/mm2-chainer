@@ -126,7 +126,7 @@
 
 ; One mm2 exec fires per step and the Z loop re-seeds each round; scale the
 ; PeTTa-style step budget so small budgets still cover whole rounds.
-(= (mm2-steps-per-round) 20)
+(= (mm2-steps-per-round) 22)
 
 ; Positive expected tests use a wider cap and stop as soon as the expected
 ; result is seen; empty-result checks keep the narrower query cap above so
@@ -143,17 +143,44 @@
 ; the atoms are added verbatim. (notsupported-ir ...) markers are both stored
 ; (for postmortem inspection of the space) and returned so they print in the
 ; test transcript.
+(= (mm2-add-member-source-proof! $g $stv $proof-id $evset)
+   (let* (($_source
+            (add-atom &mork
+              (member-inheritance-source-proof $g $proof-id)))
+          ($_index
+            (add-atom &mork
+              (member-inheritance-proof-index $g $proof-id))))
+     (case
+       (collapse
+         (once
+           (match &mork
+             (fact-evidence $g $_old-stv $_old-evset)
+             exists)))
+       ((()
+         (let* (($_fact (add-atom &mork (fact $g $stv)))
+                ($_evidence (add-atom &mork (fact-evidence $g $stv $evset)))
+                ($_proved (add-atom &mork (proved $g $stv $proof-id $evset))))
+           ()))
+        ($_existing
+         (add-atom &mork (open-proof $g $stv $proof-id $evset)))))))
+
 (= (mm2-add-compiled $kb ()) ())
 (= (mm2-add-compiled $kb (cons $atom $rest))
-   (let $_add (add-atom &mork $atom)
-     (case $atom
-       (((notsupported-ir $x)
-         (let $_log (mm2-log-line (notsupported-ir $x))
-           (cons (notsupported-ir $x) (mm2-add-compiled $kb $rest))))
-        ((needs-implication-query $qkb $type)
-         (mm2-ir-append (mm2-ensure-implication-query $qkb $type)
-                        (mm2-add-compiled $kb $rest)))
-        ($other (mm2-add-compiled $kb $rest))))))
+   (case $atom
+     (((mm2-member-source-proof $g $stv $proof-id $evset)
+       (let $_add
+            (mm2-add-member-source-proof! $g $stv $proof-id $evset)
+         (mm2-add-compiled $kb $rest)))
+      ($other
+       (let $_add (add-atom &mork $atom)
+         (case $atom
+           (((notsupported-ir $x)
+             (let $_log (mm2-log-line (notsupported-ir $x))
+               (cons (notsupported-ir $x) (mm2-add-compiled $kb $rest))))
+            ((needs-implication-query $qkb $type)
+             (mm2-ir-append (mm2-ensure-implication-query $qkb $type)
+                            (mm2-add-compiled $kb $rest)))
+            ($_other (mm2-add-compiled $kb $rest)))))))))
 
 (= (mm2-add-forward-triggers-for-premises $_g pnil) ())
 (= (mm2-add-forward-triggers-for-premises $g (pcons $prem $rest))
@@ -239,6 +266,78 @@
             (mm2-apply-computed-base-rate-entry! $pat (STV $s $c))))
      ()))
 
+(= (mm2-member-inheritance-cache-maintenance-needed?)
+   (not
+     (==
+       (collapse
+         (once
+           (match &mork
+             (member-inheritance-cache-def
+               $_cache-goal $scope $subj $concept)
+             (match &mork
+               (member-inheritance-cache-dirty $scope $obj)
+               (match &mork
+                 (fact ($scope (Member $obj $subj)) $_ante-stv)
+                 (match &mork
+                   (fact ($scope (Member $obj $concept)) $_consequent-stv)
+                   dirty))))))
+       ())))
+
+(= (mm2-member-cache-update-kind $cache-goal $obj)
+   (case
+     (collapse
+       (once
+         (match &mork
+           (proved
+             $cache-goal $_stv
+             (member-inheritance-cache-sample $obj) $_evset)
+           exists)))
+     ((()
+       (case
+         (collapse
+           (once (match &mork (fact $cache-goal $_stv) exists)))
+         ((() empty)
+          ($_aggregate new))))
+      ($_existing existing))))
+
+(= (mm2-member-cache-update-atoms)
+   (collapse
+     (match &mork
+       (member-inheritance-cache-dirty $scope $obj)
+       (match &mork
+         (member-inheritance-cache-def $cache-goal $scope $subj $concept)
+         (match &mork
+           (fact ($scope (Member $obj $subj)) $_ante-stv)
+           (match &mork
+             (fact ($scope (Member $obj $concept)) $_consequent-stv)
+             (member-inheritance-cache-update
+               pending (mm2-member-cache-update-kind $cache-goal $obj)
+               $cache-goal $scope $obj $subj $concept)))))))
+
+; Cache subscriptions are installed lazily by the first query. Once one exists,
+; insertion pays two finite member-runtime rounds to merge newly added Member
+; proofs behind a barrier, then applies an O(1) contribution delta for every
+; dirty (subscription, object) pair. Proofs remain immutable; only this derived
+; cache state is replaced.
+(= (mm2-maintain-member-inheritance-cache! $_added)
+   (if (mm2-member-inheritance-cache-maintenance-needed?)
+     (let* (($session (mm2-next-query-session-id))
+            ($updates (mm2-member-cache-update-atoms))
+            ($budget
+              (mm2-query-controller-budget
+                (* 2 (mm2-query-controller-round-cost))))
+            ($request
+              (copy_term
+                (mm2-query-controller-request
+                  $session $budget member-update)))
+            ($payload (mm2-ir-append $updates (cons $request ())))
+            ($_install
+              (callPredicate
+                (Predicate (mork_add_atoms $payload $_result))))
+            ($_run (mm2-query-controller-execute $_install)))
+       ())
+     ()))
+
 ; Eagerly compile the total-implication query scaffold for an
 ; implication-typed rule premise (PeTTa does this lazily at chain time). The
 ; (ti-compiled ...) guard atom keeps one scaffold per (kb, type) -- each
@@ -285,7 +384,8 @@
           ($_forward-dirty (mm2-clear-forward-agenda $kb))
           ($_computed-br (mm2-apply-computed-base-rate-overrides!))
           ($_user-br (mm2-apply-user-base-rate-overrides!))
-          ($_refresh (mm2-refresh-prior-base-rates!)))
+          ($_refresh (mm2-refresh-prior-base-rates!))
+          ($_member-cache (mm2-maintain-member-inheritance-cache! $added)))
      $added))
 
 ; Compile statements in order so each statement's compiler IR is visible to
@@ -1111,26 +1211,99 @@
            (== $head inheritance-query-result)))
      false))
 
-(= (mm2-query-add-member-inheritance-fold? $add)
-   (case $add
-     (((rules ($prems |- $_ccl))
-       (let (collected $_ptypes $cpus) (mm2-ir-collect $prems)
-         (case (mm2-ir-classify (mm2-ir-drop-and $cpus))
-           (((member-inheritance-fold-kind $_kb $_subj $_concept $_sample) true)
-            ($_other false)))))
-      ($_other false))))
+(= (mm2-member-inheritance-cache-bootstrap-for? $_cache-goal ()) false)
+(= (mm2-member-inheritance-cache-bootstrap-for?
+      $cache-goal (cons $atom $rest))
+   (case $atom
+     (((member-inheritance-cache-bootstrap
+          $cache-goal $_scope $_subj $_concept)
+       true)
+      ($_other
+       (mm2-member-inheritance-cache-bootstrap-for? $cache-goal $rest)))))
 
-(= (mm2-query-adds-member-inheritance-fold? ()) false)
-(= (mm2-query-adds-member-inheritance-fold? (cons $add $rest))
-   (if (mm2-query-add-member-inheritance-fold? $add)
-     true
-     (mm2-query-adds-member-inheritance-fold? $rest)))
+(= (mm2-member-inheritance-cache-enabled? $cache-goal $atoms)
+   (or
+     (mm2-member-inheritance-cache-bootstrap-for? $cache-goal $atoms)
+     (not
+       (==
+         (collapse
+           (once
+             (match &mork
+               (member-inheritance-cache-def
+                 $cache-goal $_scope $_subj $_concept)
+               cached)))
+         ()))))
+
+(= (mm2-member-inheritance-cache-query-data-worker $_atoms ())
+   no-member-cache)
+(= (mm2-member-inheritance-cache-query-data-worker
+      $atoms (cons $atom $rest))
+   (case $atom
+     (((member-inheritance-query
+          $_g
+          ($scope
+            (MemberInheritanceSample
+              $_obj $subj $concept $_ante-tv $_consequent-tv))
+          $rule-id
+          $mode)
+       (let $cache-goal (member-inheritance-cache $scope $subj $concept)
+         (if (mm2-member-inheritance-cache-enabled? $cache-goal $atoms)
+           (member-cache-query $cache-goal $rule-id $mode)
+           no-member-cache)))
+      ($_other
+       (mm2-member-inheritance-cache-query-data-worker $atoms $rest)))))
+
+(= (mm2-member-inheritance-cache-query-data $atoms)
+   (mm2-member-inheritance-cache-query-data-worker $atoms $atoms))
+
+; Readback must use state installed by this query, not re-run the translator's
+; extensional-cache eligibility check after the query has derived new Members.
+(= (mm2-member-inheritance-existing-cache-query-data $atoms)
+   (mm2-member-inheritance-cache-query-data-worker () $atoms))
+
+(= (mm2-member-inheritance-cache-result-tv
+      count-confidence $s $c)
+   (STV $s $c))
+(= (mm2-member-inheritance-cache-result-tv
+      (universe-confidence $universe-size) $s $c)
+   (STV
+     $s
+     (if (<= $c 0.0)
+       0.0
+       (min
+         1.0
+         (/ (/ (* 800.0 $c) (- 1.0 $c)) $universe-size)))))
+
+(= (mm2-readback-member-inheritance-cache-data
+      $readback-type no-member-cache)
+   ())
+(= (mm2-readback-member-inheritance-cache-data
+      $readback-type (member-cache-query $cache-goal $rule-id $mode))
+   (collapse
+     (match &mork
+       (fact-evidence $cache-goal ($s $c) $_evset)
+       (: (mm2-member-cache-proof-from-state $cache-goal $rule-id)
+          $readback-type
+          (mm2-member-inheritance-cache-result-tv $mode $s $c)))))
 
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
        (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
          (let* (($readback-type (mm2-readback-type $shape $type $prf $tv))
+                ($member-fold?
+                  (mm2-query-controller-has-member-atom?
+                    (mm2-translate-query $cq)))
+                ($member-data
+                  (if $member-fold?
+                    (mm2-member-inheritance-existing-cache-query-data
+                      (mm2-translate-query $cq))
+                    no-member-cache))
+                ($member-results
+                  (if $member-fold?
+                    (mm2-readback-member-inheritance-cache-data
+                      $readback-type $member-data)
+                    ()))
                 ($query-goal
                   (if (mm2-ir-query-add-has-inheritance-lift? $adds)
                     ($shape $type)
@@ -1144,22 +1317,24 @@
                    (mm2-readback-factored-and $readback-type $shape)
                    (mm2-readback-query-compound-factored-and
                      $readback-type $shape $adds))
-                 (if (or (not (mm2-inheritance-query-proof? $prf))
-                         (mm2-query-adds-member-inheritance-fold? $adds))
-                   (mm2-ir-append
-                     (collapse
-                       (match &mork
-                         (fact-evidence $query-goal ($s $c) $evset)
-                         (: (mm2-proof-from-evidence $evset)
-                            $readback-type
-                            (STV $s $c))))
-                     (collapse
-                       (match &mork
-                         (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
-                         (: mm2-merged-ctv
-                            $readback-type
-                            (CTV (STV $ps $pc) (STV $ns $nc))))))
-                   ())))))))
+                 (if (not (== $member-data no-member-cache))
+                   $member-results
+                   (if (or $member-fold?
+                           (not (mm2-inheritance-query-proof? $prf)))
+                     (mm2-ir-append
+                       (collapse
+                         (match &mork
+                           (fact-evidence $query-goal ($s $c) $evset)
+                           (: (mm2-proof-from-evidence $evset)
+                              $readback-type
+                              (STV $s $c))))
+                       (collapse
+                         (match &mork
+                           (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
+                           (: mm2-merged-ctv
+                              $readback-type
+                              (CTV (STV $ps $pc) (STV $ns $nc))))))
+                     ()))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -1482,10 +1657,10 @@
          (change-state! mm2_query_session_id (+ $id 1))
          (mm2-query-session $id)))))
 
-; A controller round fires the controller tick plus the current 90 runtime
+; A controller round fires the controller tick plus the current 92 runtime
 ; templates.  Keep this named separately from the public budget multiplier so
 ; runtime-template additions have one explicit controller cost to update.
-(= (mm2-query-controller-round-cost) 91)
+(= (mm2-query-controller-round-cost) 93)
 
 (= (mm2-query-controller-budget $remaining)
    (if (< 0 $remaining)
@@ -1525,12 +1700,21 @@
      (((compiled-query $goal-item $adds)
        (let (subgoal ($shape $type) $tv $prf) (mm2-ir-item $goal-item)
          (let* (($readback-type (mm2-readback-type $shape $type $prf $tv))
+                ($member-data
+                  (mm2-member-inheritance-cache-query-data
+                    (mm2-translate-query $cq)))
                 ($query-goal
                   (if (mm2-ir-query-add-has-inheritance-lift? $adds)
                     ($shape $type)
                     (mm2-ir-query-goal ($shape $type) $prf))))
-           (mm2-query-watch
-             $session $id primary $query-goal $readback-type))))
+           (case $member-data
+             (((member-cache-query $cache-goal $rule-id $mode)
+               (mm2-query-watch
+                 $session $id member $cache-goal
+                 $readback-type $rule-id $mode))
+              ($_other
+               (mm2-query-watch
+                 $session $id primary $query-goal $readback-type)))))))
       ($other (notsupported-ir (query-watch $other))))))
 
 (= (mm2-query-controller-watches $_session $_id ()) ())
@@ -1606,14 +1790,50 @@
    (: mm2-merged-ctv $type
       (CTV (STV $ps $pc) (STV $ns $nc))))
 
-(= (mm2-query-controller-results-for $_id ()) ())
-(= (mm2-query-controller-results-for
+(= (mm2-query-controller-member-proof-items $_id ()) ())
+(= (mm2-query-controller-member-proof-items
       $id (cons ($candidate $payload) $rest))
    (if (== $id $candidate)
-     (cons
-       (mm2-query-controller-payload-row $payload)
-       (mm2-query-controller-results-for $id $rest))
-     (mm2-query-controller-results-for $id $rest)))
+     (case $payload
+       (((member-proof-pair $ante-proof $consequent-proof)
+         (cons
+           (mm2-proof-id-source $ante-proof)
+           (cons
+             (mm2-proof-id-source $consequent-proof)
+             (mm2-query-controller-member-proof-items $id $rest))))
+        ($_other
+         (mm2-query-controller-member-proof-items $id $rest))))
+     (mm2-query-controller-member-proof-items $id $rest)))
+
+(= (mm2-query-controller-member-row
+      $id $raw $type $s $c $_cache-goal $rule-id)
+   (: (mm2-proof
+        (cons
+          (mm2-proof-rule-source $rule-id)
+          (list_to_set
+            (mm2-query-controller-member-proof-items $id $raw))))
+      $type (STV $s $c)))
+
+(= (mm2-query-controller-results-for-worker $_id $_raw ()) ())
+(= (mm2-query-controller-results-for-worker
+      $id $raw (cons ($candidate $payload) $rest))
+   (if (== $id $candidate)
+     (case $payload
+       (((member-stv $type $s $c $cache-goal $rule-id)
+         (cons
+           (mm2-query-controller-member-row
+             $id $raw $type $s $c $cache-goal $rule-id)
+           (mm2-query-controller-results-for-worker $id $raw $rest)))
+        ((member-proof-pair $_ante-proof $_consequent-proof)
+         (mm2-query-controller-results-for-worker $id $raw $rest))
+        ($_other
+         (cons
+           (mm2-query-controller-payload-row $payload)
+           (mm2-query-controller-results-for-worker $id $raw $rest)))))
+     (mm2-query-controller-results-for-worker $id $raw $rest)))
+
+(= (mm2-query-controller-results-for $id $raw)
+   (mm2-query-controller-results-for-worker $id $raw $raw))
 
 (= (mm2-query-controller-group-results () $_raw) ())
 (= (mm2-query-controller-group-results
@@ -1664,9 +1884,11 @@
 (= (mm2-unique-query-results ()) ())
 (= (mm2-unique-query-results (cons $row $rest))
    (let $tail (mm2-unique-query-results $rest)
-     (if (mm2-result-row-member? $tail $row)
+     (if (== $row empty)
        $tail
-       (cons $row $tail))))
+       (if (mm2-result-row-member? $tail $row)
+         $tail
+         (cons $row $tail)))))
 
 (= (mm2-query-results $notsup $cqs)
    (mm2-unique-query-results
@@ -2042,6 +2264,41 @@
 
 (= (mm2-proof-from-evidence $evset)
    (mm2-proof (mm2-evidence-proof-items $evset)))
+
+; Member proof names are indexed when immutable proofs are inserted or derived.
+; Joining that index to the cache's per-object rows resolves a complete proof
+; certificate in one MORK call, independent of the population size.
+(= (mm2-member-cache-proof-pair-items ()) ())
+(= (mm2-member-cache-proof-pair-items
+      (cons (member-cache-proof-pair $ante $consequent) $rest))
+   (cons $ante
+     (cons $consequent
+       (mm2-member-cache-proof-pair-items $rest))))
+
+(= (mm2-member-cache-proof-pairs
+      (member-inheritance-cache $scope $subj $concept))
+   (collapse
+     (match &mork
+       (proved
+         (member-inheritance-cache $scope $subj $concept)
+         ($_s $_c) (member-inheritance-cache-sample $obj) $_evset)
+       (match &mork
+         (member-inheritance-proof-index
+           ($scope (Member $obj $subj)) $ante-proof)
+         (match &mork
+           (member-inheritance-proof-index
+             ($scope (Member $obj $concept)) $consequent-proof)
+           (member-cache-proof-pair
+             (mm2-proof-id-source $ante-proof)
+             (mm2-proof-id-source $consequent-proof)))))))
+
+(= (mm2-member-cache-proof-from-state $cache-goal $rule-id)
+   (mm2-proof
+     (cons
+       (mm2-proof-rule-source $rule-id)
+       (list_to_set
+         (mm2-member-cache-proof-pair-items
+           (mm2-member-cache-proof-pairs $cache-goal))))))
 
 (= (mm2-proof-atom-evidence-set ($_type $_scope mm2-forward $_tv))
    (let (forward-proof-row $_c $evset)

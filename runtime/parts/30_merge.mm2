@@ -1,6 +1,18 @@
 ; Proof merge and truth-value revision into canonical facts.
 ; STVs are carried as packed pairs: (strength confidence).
 
+; Every new Member proof updates the persistent proof index and marks its
+; object dirty before the generic revision stages consume the open proof.
+; Explicit source facts install the same index row directly, while this hook
+; covers proofs produced by forward rules.
+(exec-template
+  (exec A
+        (, (open-proof
+             ($scope (Member $obj $_concept)) $_stv $proof-id $_evset))
+        (O (+ (member-inheritance-proof-index
+                ($scope (Member $obj $_concept)) $proof-id))
+           (+ (member-inheritance-cache-dirty $scope $obj)))))
+
 ; If an open-query wait regenerates an already merged proof, drop the open token.
 (exec-template
   (exec B

@@ -20,9 +20,19 @@
 (mm2-query-member-priority 6)
 (mm2-query-member-priority 7)
 (mm2-query-member-priority 8)
+(mm2-query-member-priority A)
 (mm2-query-member-priority B)
 (mm2-query-member-priority C)
 (mm2-query-member-priority D)
+
+; Cache maintenance needs only canonical Member revision plus the temporary
+; delta templates. Keeping those templates out of exec-template prevents every
+; unrelated query from paying their match cost.
+(mm2-query-member-update-priority 6)
+(mm2-query-member-update-priority A)
+(mm2-query-member-update-priority B)
+(mm2-query-member-update-priority C)
+(mm2-query-member-update-priority D)
 
 (mm2-query-control start-active
   (exec R
@@ -111,7 +121,7 @@
       (+ $partial-exec))))
 
 ; One controller tick advances the finite budget and installs a small F-stage
-; expander. Keeping the 90-way exec-template join out of this state-transition
+; expander. Keeping the 92-way exec-template join out of this state-transition
 ; rule avoids repeating the controller joins once for every runtime template.
 ; F expands the templates in one pass, their priorities settle before G, and G
 ; removes the expansion marker before the next W tick can begin.
@@ -135,6 +145,15 @@
               (mm2-query-member-priority $priority)
               (exec-template (exec $priority $input $output)))
            (, (exec $priority $input $output))))
+      (+ (exec F
+           (, (mm2-query-expand $session member-update)
+              (mm2-query-member-update-priority $priority)
+              (exec-template (exec $priority $input $output)))
+           (, (exec $priority $input $output))))
+      (+ (exec F
+           (, (mm2-query-expand $session member-update)
+              (mm2-member-cache-update-template $update-exec))
+           (, $update-exec)))
       (+ (exec G
            (, (mm2-query-expand $session $expand-mode))
            (O (- (mm2-query-expand $session $expand-mode)))))
@@ -182,6 +201,60 @@
        (fact $goal (ctvpair ($ps $pc) ($ns $nc))))
     (O (+ (mm2-query-response $session $id
             (ctv $type $ps $pc $ns $nc))))))
+
+; Member-inheritance watches read their durable aggregate directly, avoiding a
+; second public fact whose snapshot could outlive the query that requested it.
+(mm2-query-control finish
+  (exec X
+    (, (mm2-query-watch
+         $session $id member $cache-goal $type $rule-id count-confidence)
+       (fact-evidence $cache-goal ($s $c) $evset))
+    (O (+ (mm2-query-response
+            $session $id
+            (member-stv
+              $type $s $c $cache-goal $rule-id))))))
+
+(mm2-query-control finish
+  (exec X
+    (, (mm2-query-watch
+         $session $id member $cache-goal $type $rule-id
+         (universe-confidence $universe-size))
+       (fact-evidence $cache-goal ($s $c) $evset))
+    (O (pure
+         (mm2-query-response
+           $session $id
+           (member-stv
+             $type $s $universe-confidence
+             $cache-goal $rule-id))
+         $universe-confidence
+         (ifnz (lte_f64 $c 0.0)
+           then 0.0
+           else
+           (min_f64
+             1.0
+               (div_f64
+                 (div_f64 (product_f64 800.0 $c) (sub_f64 1.0 $c))
+                 $universe-size)))))))
+
+; Batch readback carries source proof pairs in the tagged response itself.
+; The harness receives all pairs through the same bulk response match instead
+; of making one MORK lookup for every contributing object.
+(mm2-query-control finish
+  (exec X
+    (, (mm2-query-watch
+         $session $id member
+         (member-inheritance-cache $scope $subj $concept)
+         $_type $_rule-id $_confidence-mode)
+       (proved
+         (member-inheritance-cache $scope $subj $concept)
+         ($_s $_c) (member-inheritance-cache-sample $obj) $_evset)
+       (member-inheritance-proof-index
+         ($scope (Member $obj $subj)) $ante-proof)
+       (member-inheritance-proof-index
+         ($scope (Member $obj $concept)) $consequent-proof))
+    (O (+ (mm2-query-response
+            $session $id
+            (member-proof-pair $ante-proof $consequent-proof))))))
 
 ; Runtime queue cleanup is global because query execution is serialized by
 ; the controller. Persistent facts, proofs, compiler metadata, and forward

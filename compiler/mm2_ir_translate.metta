@@ -759,6 +759,71 @@
      ((() count-confidence)
       ((cons (universe-size $n) $_rest) (universe-confidence $n)))))
 
+(= (mm2-ir-member-inheritance-cache-has-sample? $scope $subj $concept)
+   (not
+     (==
+       (collapse
+         (once
+           (match &mork
+             (member-inheritance-source-proof
+               ($scope (Member $obj $subj)) $_ante-proof)
+             (match &mork
+               (member-inheritance-source-proof
+                 ($scope (Member $obj $concept)) $_consequent-proof)
+               sample))))
+       ())))
+
+(= (mm2-ir-member-inheritance-cache-bootstrap $ctype $sample-type)
+   (case $sample-type
+     ((($scope
+         (MemberInheritanceSample
+           $_obj $subj $concept $_ante-tv $_consequent-tv))
+       (case
+         (collapse
+           (match &mork
+             (member-inheritance-cache-def
+               (member-inheritance-cache $scope $subj $concept)
+               $scope $subj $concept)
+             cached))
+         ((()
+           (if (mm2-ir-member-inheritance-cache-has-sample?
+                 $scope $subj $concept)
+             (member-inheritance-cache-bootstrap
+               (member-inheritance-cache
+                 (copy_term $scope)
+                 (copy_term $subj)
+                 (copy_term $concept))
+               (copy_term $scope)
+               (copy_term $subj)
+               (copy_term $concept))
+             (empty)))
+          ($_cached (empty)))))
+      ($_other
+       (notsupported-ir
+         (member-inheritance-cache-shape $ctype $sample-type))))))
+
+(= (mm2-ir-member-inheritance-cold-query
+      $ctype $sample-type $rid $mode)
+   (case $sample-type
+     ((($scope
+         (MemberInheritanceSample
+           $_obj $subj $concept $_ante-tv $_consequent-tv))
+       (case
+         (collapse
+           (match &mork
+             (member-inheritance-cache-def
+               (member-inheritance-cache $scope $subj $concept)
+               $scope $subj $concept)
+             cached))
+         ((()
+           (if (mm2-ir-member-inheritance-cache-has-sample?
+                 $scope $subj $concept)
+             (empty)
+             (member-inheritance-cold-query
+               $ctype $sample-type $rid $mode)))
+          ($_cached (empty)))))
+      ($_other (empty)))))
+
 (= (mm2-ir-emit-rule
       $rid
       $ctype
@@ -766,11 +831,13 @@
       (member-inheritance-fold-kind $kb $_subj $_concept $sample-type))
    (case $ptypes
      ((pnil
-       (member-inheritance-query
-         $ctype
-         $sample-type
-         $rid
-         (mm2-ir-member-inheritance-confidence-mode $kb)))
+       (let $mode (mm2-ir-member-inheritance-confidence-mode $kb)
+         (superpose (
+           (member-inheritance-query
+             $ctype $sample-type $rid $mode)
+           (mm2-ir-member-inheritance-cache-bootstrap $ctype $sample-type)
+           (mm2-ir-member-inheritance-cold-query
+             $ctype $sample-type $rid $mode)))))
       ($other
        (notsupported-ir
          (member-inheritance-fold-premises $ctype $ptypes))))))
@@ -881,12 +948,31 @@
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
    (notsupported-ir (rule-tail $ctype $tail)))
 
+(= (mm2-ir-member-inheritance-dirty-marker $g)
+   (case $g
+     ((($scope (Member $obj $_concept))
+       (member-inheritance-cache-dirty
+         (copy_term $scope) (copy_term $obj)))
+      ($_other (empty)))))
+
 (= (mm2-ir-emit-fact $g $prf ($s $c))
-   (superpose (
-     (fact $g ($s $c))
-     (fact-evidence $g ($s $c) (pcons (fact-ev (proof-id $prf) $g) pnil))
-     (proved $g ($s $c) $prf (pcons (fact-ev (proof-id $prf) $g) pnil))
-     (mm2-ir-superpose-list (mm2-ir-dist-atoms $g)))))
+   (case $g
+     ((($_scope (Member $_obj $_concept))
+       ; Member types are monotonic proof sets. Let the harness install the
+       ; first proof as the canonical fact and route later proofs through the
+       ; ordinary revise-proofs sink before refreshing member-fold caches.
+       (superpose (
+         (mm2-member-source-proof
+           $g ($s $c) $prf
+           (pcons (fact-ev (proof-id $prf) $g) pnil))
+         (mm2-ir-member-inheritance-dirty-marker $g)
+         (mm2-ir-superpose-list (mm2-ir-dist-atoms $g)))))
+      ($_other
+       (superpose (
+         (fact $g ($s $c))
+         (fact-evidence $g ($s $c) (pcons (fact-ev (proof-id $prf) $g) pnil))
+         (proved $g ($s $c) $prf (pcons (fact-ev (proof-id $prf) $g) pnil))
+         (mm2-ir-superpose-list (mm2-ir-dist-atoms $g))))))))
 
 ; The TV is is-var-checked before structural matching: a case pattern
 ; (STV $s $c) would UNIFY with a free tv var (identity-query ctxatoms carry

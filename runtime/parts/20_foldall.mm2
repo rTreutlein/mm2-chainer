@@ -5,26 +5,73 @@
 ; binds against canonical facts. The sum sink groups all matching values and
 ; substitutes the computed total into the result goal.
 
-; A concrete Inheritance query over Member observations compiles to a
-; MemberInheritanceSample FoldAll. Open that sample relation through the
-; ordinary backward runtime so asserted and derived memberships take the same
-; proof path.
+; Concrete Member/Inheritance folds are persistent, monotonic subscriptions.
+; The first query installs one cache definition and bootstraps it from the
+; current canonical Member facts. Later Member proof additions mark only their
+; object dirty, so every subscribed (subject, concept) population receives one
+; fresh snapshot for that object instead of rescanning the historical KB.
+;
+; Cache contributions use the same effective revision mass as
+; WeightedBaseRateAcc:
+;   antecedent-strength * antecedent-confidence * consequent-confidence.
+; Their evidence refers to the two canonical Member fact keys. New immutable
+; proofs of either Member type therefore revise the same object contribution
+; through revise-proofs rather than being counted as a second population item.
+
+(exec-template
+  (exec 8
+        (, (member-inheritance-cache-bootstrap
+             $cache-goal $scope $subj $concept)
+           (fact ($scope (Member $obj $subj)) ($ante-s $ante-c))
+           (fact-evidence
+             ($scope (Member $obj $subj)) ($ante-s $ante-c) $_ante-evset)
+           (fact
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c))
+           (fact-evidence
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c) $_consequent-evset))
+        (O (- (member-inheritance-cache-bootstrap
+                $cache-goal $scope $subj $concept))
+           (- (member-inheritance-cache-dirty $scope $obj))
+           (+ (member-inheritance-cache-def
+                $cache-goal $scope $subj $concept))
+           (pure
+             (open-proof
+               $cache-goal
+               ($consequent-s $mass-confidence)
+               (member-inheritance-cache-sample $obj)
+               (pcons
+                 (fact-ev
+                   (fact-key ($scope (Member $obj $subj)))
+                   ($scope (Member $obj $subj)))
+                 (pcons
+                   (fact-ev
+                     (fact-key ($scope (Member $obj $concept)))
+                     ($scope (Member $obj $concept)))
+                   pnil)))
+             $mass-confidence
+             (div_f64
+               (product_f64
+                 (product_f64 $ante-s $ante-c)
+                 $consequent-c)
+               (sum_f64
+                 (product_f64
+                   (product_f64 $ante-s $ante-c)
+                   $consequent-c)
+                 800.0))))))
+
+; A cold query retains the original backward sample path. This is required when
+; either Member premise must first be derived. Warm queries omit this token and
+; read the persistent cache directly.
 (exec-template
   (exec 1
-        (, (member-inheritance-query
+        (, (member-inheritance-cold-query
              $g $sample-goal $rule-id $confidence-mode))
         (O (+ (member-inheritance-active
                 $g $sample-goal $rule-id $confidence-mode))
            (+ (, (Goal $sample-goal))))))
 
-; WeightedBaseRateAcc gives one sample an effective mass
-;   antecedent-strength * antecedent-confidence * consequent-confidence.
-; Encode that mass as a standard revision count. revise-proofs then computes
-; the weighted strength and unions the evidence of every distinct object.
-; The fact-key wrapper keeps different objects independent while retaining a
-; traversable dependency on each complete MemberInheritanceSample proof.
-; The adapter proves the sample relation, while the canonical Member facts
-; supply the two TVs (adapter premise types intentionally do not carry TVs).
 (exec-template
   (exec 5
         (, (member-inheritance-active
@@ -73,8 +120,6 @@
                    $consequent-c)
                  800.0))))))
 
-; MemberInheritanceEvidenceFormula rejects an empty/zero-mass fold. Keep that
-; gate in native MM2 before opening an aggregate proof.
 (exec-template
   (exec 6
         (, (member-inheritance-weighted-sample
@@ -104,10 +149,6 @@
         (O (- (member-inheritance-weighted-sample-checked
                 no-evidence $aggregate-goal $stv $proof-id $evset)))))
 
-; Without a declared universe, the revision count-confidence is already the
-; FoldAll result confidence. A shared rule-evidence item makes later, more
-; complete aggregate snapshots supersede earlier ones instead of being
-; revised as independent proofs.
 (exec-template
   (exec 8
         (, (member-inheritance-active
@@ -116,14 +157,9 @@
            (fact-evidence
              (member-inheritance-aggregate $g) ($s $c) $evset))
         (O (+ (open-proof
-                $g
-                ($s $c)
-                (member-inheritance-fold $rule-id)
+                $g ($s $c) (member-inheritance-fold $rule-id)
                 (pcons (rule-ev $rule-id) $evset))))))
 
-; A closed universe uses observed weighted mass / universe-size. Recover the
-; mass represented by revision confidence (c = mass/(mass+800)) and replace
-; only the confidence; strength and the complete evidence set are unchanged.
 (exec-template
   (exec 8
         (, (member-inheritance-active
@@ -133,8 +169,7 @@
              (member-inheritance-aggregate $g) ($s $c) $evset))
         (O (pure
              (open-proof
-               $g
-               ($s $universe-confidence)
+               $g ($s $universe-confidence)
                (member-inheritance-fold $rule-id)
                (pcons (rule-ev $rule-id) $evset))
              $universe-confidence
@@ -144,8 +179,272 @@
                (min_f64
                  1.0
                  (div_f64
-                   (div_f64 (product_f64 800.0 $c) (sub_f64 1.0 $c))
+                   (div_f64
+                     (product_f64 800.0 $c)
+                     (sub_f64 1.0 $c))
                    $universe-size)))))))
+
+; A cold bootstrap already incorporated every current object. Dirty markers for
+; that same scope are therefore obsolete; insertion maintenance snapshots its
+; markers before running this finite stage and refreshes exactly that snapshot.
+(mm2-member-cache-update-template
+  (exec 6
+        (, (member-inheritance-cache-dirty $scope $obj))
+        (O (- (member-inheritance-cache-dirty $scope $obj)))))
+
+; Insertion maintenance classifies each subscribed object before the native
+; merge round. By priority E the newly added source proofs have already revised
+; their canonical Member facts, so the cache can replace exactly one object's
+; old contribution with its current contribution without rescanning the KB.
+(mm2-member-cache-update-template
+  (exec H
+        (, (member-inheritance-cache-update
+             pending $kind $cache-goal $scope $obj $subj $concept))
+        (O (- (member-inheritance-cache-update
+                pending $kind $cache-goal $scope $obj $subj $concept))
+           (+ (member-inheritance-cache-update
+                ready $kind $cache-goal $scope $obj $subj $concept)))))
+
+(mm2-member-cache-update-template
+  (exec E
+        (, (member-inheritance-cache-update
+             ready existing $cache-goal $scope $obj $subj $concept)
+           (proved
+             $cache-goal ($old-object-s $old-object-c)
+             (member-inheritance-cache-sample $obj) $old-object-evset)
+           (fact $cache-goal ($old-total-s $old-total-c))
+           (fact-evidence
+             $cache-goal ($old-total-s $old-total-c) $aggregate-evset)
+           (fact ($scope (Member $obj $subj)) ($ante-s $ante-c))
+           (fact-evidence
+             ($scope (Member $obj $subj)) ($ante-s $ante-c) $_ante-evset)
+           (fact
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c))
+           (fact-evidence
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c) $_consequent-evset))
+        (O (- (member-inheritance-cache-update
+                ready existing $cache-goal $scope $obj $subj $concept))
+           (- (proved
+                $cache-goal ($old-object-s $old-object-c)
+                (member-inheritance-cache-sample $obj) $old-object-evset))
+           (- (fact $cache-goal ($old-total-s $old-total-c)))
+           (- (fact-evidence
+                $cache-goal ($old-total-s $old-total-c) $aggregate-evset))
+           (pure
+             (member-inheritance-cache-delta
+               $cache-goal $obj $consequent-s
+               $old-object-s $old-total-s $masses
+               $old-object-evset $aggregate-evset)
+             $masses
+             (tuple
+               (ifnz (lte_f64 $old-object-c 0.0)
+                 then 0.0
+                 else
+                 (div_f64
+                   (product_f64 800.0 $old-object-c)
+                   (sub_f64 1.0 $old-object-c)))
+               (ifnz (lte_f64 $old-total-c 0.0)
+                 then 0.0
+                 else
+                 (div_f64
+                   (product_f64 800.0 $old-total-c)
+                   (sub_f64 1.0 $old-total-c)))
+               (product_f64
+                 (product_f64 $ante-s $ante-c)
+                 $consequent-c))))))
+
+(mm2-member-cache-update-template
+  (exec E
+        (, (member-inheritance-cache-update
+             ready new $cache-goal $scope $obj $subj $concept)
+           (fact $cache-goal ($old-total-s $old-total-c))
+           (fact-evidence
+             $cache-goal ($old-total-s $old-total-c) $aggregate-evset)
+           (fact ($scope (Member $obj $subj)) ($ante-s $ante-c))
+           (fact-evidence
+             ($scope (Member $obj $subj)) ($ante-s $ante-c) $_ante-evset)
+           (fact
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c))
+           (fact-evidence
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c) $_consequent-evset))
+        (O (- (member-inheritance-cache-update
+                ready new $cache-goal $scope $obj $subj $concept))
+           (- (fact $cache-goal ($old-total-s $old-total-c)))
+           (- (fact-evidence
+                $cache-goal ($old-total-s $old-total-c) $aggregate-evset))
+           (pure
+             (member-inheritance-cache-delta
+               $cache-goal $obj $consequent-s
+               0.0 $old-total-s $masses
+               (pcons
+                 (fact-ev
+                   (fact-key ($scope (Member $obj $subj)))
+                   ($scope (Member $obj $subj)))
+                 (pcons
+                   (fact-ev
+                     (fact-key ($scope (Member $obj $concept)))
+                     ($scope (Member $obj $concept)))
+                   pnil))
+               (pcons
+                 (fact-ev
+                   (fact-key ($scope (Member $obj $subj)))
+                   ($scope (Member $obj $subj)))
+                 (pcons
+                   (fact-ev
+                     (fact-key ($scope (Member $obj $concept)))
+                     ($scope (Member $obj $concept)))
+                   $aggregate-evset)))
+             $masses
+             (tuple
+               0.0
+               (ifnz (lte_f64 $old-total-c 0.0)
+                 then 0.0
+                 else
+                 (div_f64
+                   (product_f64 800.0 $old-total-c)
+                   (sub_f64 1.0 $old-total-c)))
+               (product_f64
+                 (product_f64 $ante-s $ante-c)
+                 $consequent-c))))))
+
+(mm2-member-cache-update-template
+  (exec E
+        (, (member-inheritance-cache-update
+             ready empty $cache-goal $scope $obj $subj $concept)
+           (fact ($scope (Member $obj $subj)) ($ante-s $ante-c))
+           (fact-evidence
+             ($scope (Member $obj $subj)) ($ante-s $ante-c) $_ante-evset)
+           (fact
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c))
+           (fact-evidence
+             ($scope (Member $obj $concept))
+             ($consequent-s $consequent-c) $_consequent-evset))
+        (O (- (member-inheritance-cache-update
+                ready empty $cache-goal $scope $obj $subj $concept))
+           (pure
+             (member-inheritance-cache-delta
+               $cache-goal $obj $consequent-s
+               0.0 0.0 $masses
+               (pcons
+                 (fact-ev
+                   (fact-key ($scope (Member $obj $subj)))
+                   ($scope (Member $obj $subj)))
+                 (pcons
+                   (fact-ev
+                     (fact-key ($scope (Member $obj $concept)))
+                     ($scope (Member $obj $concept)))
+                   pnil))
+               (pcons
+                 (fact-ev
+                   (fact-key ($scope (Member $obj $subj)))
+                   ($scope (Member $obj $subj)))
+                 (pcons
+                   (fact-ev
+                     (fact-key ($scope (Member $obj $concept)))
+                     ($scope (Member $obj $concept)))
+                   pnil)))
+             $masses
+             (tuple
+               0.0 0.0
+               (product_f64
+                 (product_f64 $ante-s $ante-c)
+                 $consequent-c))))))
+
+(mm2-member-cache-update-template
+  (exec F
+        (, (member-inheritance-cache-delta
+             $cache-goal $obj $consequent-s
+             $old-object-s $old-total-s
+             ($old-object-mass $old-total-mass $new-object-mass)
+             $object-evset $aggregate-evset))
+        (O (- (member-inheritance-cache-delta
+                $cache-goal $obj $consequent-s
+                $old-object-s $old-total-s
+                ($old-object-mass $old-total-mass $new-object-mass)
+                $object-evset $aggregate-evset))
+           (pure
+             (member-inheritance-cache-total
+               $cache-goal $obj $consequent-s
+               $totals
+               $object-evset $aggregate-evset)
+             $totals
+             (tuple
+               $new-object-mass
+               (sum_f64
+                 (sub_f64 $old-total-mass $old-object-mass)
+                 $new-object-mass)
+               (sum_f64
+                 (sub_f64
+                   (product_f64 $old-total-s $old-total-mass)
+                   (product_f64 $old-object-s $old-object-mass))
+                 (product_f64 $consequent-s $new-object-mass)))))))
+
+(mm2-member-cache-update-template
+  (exec G
+        (, (member-inheritance-cache-total
+             $cache-goal $obj $consequent-s
+             ($new-object-mass $new-total-mass $new-total-weight)
+             $object-evset $aggregate-evset))
+        (O (- (member-inheritance-cache-total
+                $cache-goal $obj $consequent-s
+                ($new-object-mass $new-total-mass $new-total-weight)
+                $object-evset $aggregate-evset))
+           (pure
+             (member-inheritance-cache-replacement
+               $cache-goal $obj $replacement
+               $object-evset $aggregate-evset)
+             $replacement
+             (tuple
+               (ifnz (lte_f64 $new-total-mass 0.0)
+                 then no-evidence
+                 else has-evidence)
+               $consequent-s
+               (div_f64
+                 $new-object-mass
+                 (sum_f64 $new-object-mass 800.0))
+               (ifnz (lte_f64 $new-total-mass 0.0)
+                 then 0.0
+                 else (div_f64 $new-total-weight $new-total-mass))
+               (div_f64
+                 $new-total-mass
+                 (sum_f64 $new-total-mass 800.0)))))))
+
+(mm2-member-cache-update-template
+  (exec H
+        (, (member-inheritance-cache-replacement
+             $cache-goal $obj
+             (has-evidence $object-s $object-c $total-s $total-c)
+             $object-evset $aggregate-evset))
+        (O (- (member-inheritance-cache-replacement
+                $cache-goal $obj
+                (has-evidence $object-s $object-c $total-s $total-c)
+                $object-evset $aggregate-evset))
+           (+ (proved
+                $cache-goal ($object-s $object-c)
+                (member-inheritance-cache-sample $obj) $object-evset))
+           (+ (fact $cache-goal ($total-s $total-c)))
+           (+ (fact-evidence
+                $cache-goal ($total-s $total-c) $aggregate-evset)))))
+
+(mm2-member-cache-update-template
+  (exec H
+        (, (member-inheritance-cache-replacement
+             $cache-goal $obj
+             (no-evidence $_object-s $_object-c $_total-s $_total-c)
+             $object-evset $aggregate-evset))
+        (O (- (member-inheritance-cache-replacement
+                $cache-goal $obj
+                (no-evidence $_object-s $_object-c $_total-s $_total-c)
+                $object-evset $aggregate-evset)))))
+
+; Query readback consumes the durable cache fact directly. It deliberately does
+; not materialize another public fact: repeated queries must not leave a stale
+; snapshot that later cache revisions have to supersede.
 (exec-template
   (exec 2
         (, (foldall-sum $g $total $pat $value)
