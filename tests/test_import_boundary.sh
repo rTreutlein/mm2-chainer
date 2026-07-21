@@ -27,6 +27,12 @@ if grep -R -n -F 'mm2_chainer_compat' compiler tests scripts README.md \
   exit 1
 fi
 
+if grep -R -n -E 'mm2-compiler-view-(open|close|add|remove)' \
+    compiler tests scripts README.md; then
+  echo 'obsolete PeTTa compiler-view materialization remains' >&2
+  exit 1
+fi
+
 tmp_dir="$(mktemp -d /tmp/mm2-boundary.XXXXXX)"
 trap 'rm -rf -- "$tmp_dir"' EXIT
 
@@ -41,11 +47,11 @@ if grep -Eq 'mm2-test-(close|FAIL)' "$tmp_dir/verdicts"; then
 fi
 
 pass_count="$(grep -c '^[(]mm2-test-pass ' "$tmp_dir/verdicts" || true)"
-if [[ "$pass_count" != 8 ]]; then
+if [[ "$pass_count" != 9 ]]; then
   cat "$tmp_dir/output" >&2
   cat "$tmp_dir/verdicts" >&2
-  echo "expected 8 production-boundary passes, got $pass_count" >&2
+  echo "expected 9 production-boundary passes, got $pass_count" >&2
   exit 1
 fi
 
-echo "PASS: compiler-only production import and transient compiler view"
+echo "PASS: compiler-only production import and direct MORK metadata lookup"

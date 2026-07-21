@@ -31,9 +31,9 @@
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/petta_mm2_backend)
 !(import! &self /nexus/Dev/OpenCog/NL2PLN_Project/mm2-chainer/compiler/mm2_ir_translate)
 
-; The upstream compiler has two stateful specialization reads hard-coded to
-; &kb. Keep its exact fact IR in &mork and materialize that view only while a
-; compiler call is active; &kb is never production storage.
+; Keep the shared compiler's exact fact IR in MORK as compiler-only metadata.
+; Structural specialization reads this index directly through the frontend's
+; fact-provider boundary; no PeTTa-side KB view is materialized.
 (= (mm2-store-compiler-fact-ir! $expr)
    (case $expr
      ((($_type ($_kb $_ctx $_vars) $_proof $_tv)
@@ -48,31 +48,14 @@
              ()))))
       ($_other ()))))
 
-(= (mm2-compiler-view-add ()) ())
-(= (mm2-compiler-view-add (cons $atom $rest))
-   (let $seen (collapse (match &kb $atom true))
-     (let $_add (if (== $seen ()) (add-atom &kb $atom) ())
-       (mm2-compiler-view-add $rest))))
-
-(= (mm2-compiler-view-remove ()) ())
-(= (mm2-compiler-view-remove (cons $atom $rest))
-   (let $_remove (remove-atom &kb $atom)
-     (mm2-compiler-view-remove $rest)))
-
-(= (mm2-compiler-fact-ir-atoms)
-   (collapse (match &mork (mm2-compiler-fact-ir $atom) $atom)))
-
-(= (mm2-compiler-view-open)
-   (mm2-compiler-view-add (mm2-compiler-fact-ir-atoms)))
-
-(= (mm2-compiler-view-close)
-   (mm2-compiler-view-remove (mm2-compiler-fact-ir-atoms)))
+(= (compiler-specialization-fact $kb $trigger)
+   (match &mork
+     (mm2-compiler-fact-ir
+       ($candidate ($kb $_ctx $_vars) $_prf $_tv))
+     (let $trigger $candidate $candidate)))
 
 (= (mm2-compile-query-ir $kb $query)
-   (let* (($_open (mm2-compiler-view-open))
-          ($compiled (collapse (mm2compileQuery $kb $query)))
-          ($_close (mm2-compiler-view-close)))
-     $compiled))
+   (collapse (mm2compileQuery $kb $query)))
 
 ; compileadd consumes the compiler's external IR without mirroring it into
 ; PeTTa's rule/index/runtime spaces.
@@ -113,9 +96,7 @@
 (= (compileadd $kb $stmt)
    (let*
       (($stmt1 (materialize-stmt-lambdas $stmt))
-        ($_open (mm2-compiler-view-open))
         ($atoms (collapse (mm2compile $kb $stmt1)))
-        ($_close (mm2-compiler-view-close))
         ($iatoms (list_to_set (map-flat internalize-proof-structure $atoms)))
         ($eatoms (map-flat externalize-proof-structure $iatoms))
         ($_subjects (collapse (mm2-foreach-flat mm2-record-compiled-inheritance-subject! $eatoms)))
@@ -291,9 +272,8 @@
           ($_c (callPredicate (Predicate (quote (close $stream))))))
      logged))
 
-(= (mm2-compileadd $kb $stmt)
-   (let* (($atoms (mm2-translate-all (collapse (compileadd $kb $stmt))))
-          ($added (mm2-add-compiled $kb $atoms))
+(= (mm2-finalize-compiled-adds $kb $atoms)
+   (let* (($added (mm2-add-compiled $kb $atoms))
           ($_forward-triggers (mm2-add-forward-triggers $atoms))
           ($_forward-dirty (mm2-clear-forward-agenda $kb))
           ($_computed-br (mm2-apply-computed-base-rate-overrides!))
@@ -301,25 +281,30 @@
           ($_refresh (mm2-refresh-prior-base-rates!)))
      $added))
 
+; Compile statements in order so each statement's compiler IR is visible to
+; later specializations, but defer all MM2 runtime maintenance until the whole
+; batch has been translated.
+(= (mm2-compileadd-atoms $_kb ()) ())
+(= (mm2-compileadd-atoms $kb (cons $stmt $rest))
+   (let* (($atoms (mm2-translate-all (collapse (compileadd $kb $stmt))))
+          ($tail (mm2-compileadd-atoms $kb $rest)))
+     (mm2-ir-append $atoms $tail)))
+
+(= (mm2-compileadd-many $_kb ()) ())
+(= (mm2-compileadd-many $kb (cons $stmt $rest))
+   (let $atoms (mm2-compileadd-atoms $kb (cons $stmt $rest))
+     (mm2-finalize-compiled-adds $kb $atoms)))
+
+(= (mm2-compileadd $kb $stmt)
+   (mm2-compileadd-many $kb (cons $stmt ())))
+
 ; Some PeTTaChainer tests add already-compiled rule IR directly with
 ; add-to-kb. Route those generated harness calls through the MM2 translator
 ; without shadowing PeTTaChainer's own add-to-kb, which compileadd still uses.
 (= (mm2-add-to-kb $stmt)
-   (let* (($atoms (mm2-translate-all (cons $stmt ())))
-          ($added (mm2-add-compiled kb $atoms))
-          ($_forward-triggers (mm2-add-forward-triggers $atoms))
-          ($_forward-dirty (mm2-clear-forward-agenda kb))
-          ($_computed-br (mm2-apply-computed-base-rate-overrides!))
-          ($_user-br (mm2-apply-user-base-rate-overrides!))
-          ($_refresh (mm2-refresh-prior-base-rates!)))
-     $added))
-
-; PeTTa's register-inheritance-induction! installs a rule through its own
-; add-to-kb. Keep a small MM2-side marker so readback can compute the same
-; extensional induction result over the merged fact view.
-(= (register-inheritance-induction! $kb)
-   (let $_mark (add-atom &mork (inheritance-induction-enabled $kb))
-     ()))
+   (mm2-finalize-compiled-adds
+     kb
+     (mm2-translate-all (cons $stmt ()))))
 
 (= (mm2-test-known-concept-node $kb $node $expected)
    (mm2-test-equal (mm2-known-concept-node? $kb $node) $expected))
@@ -965,66 +950,15 @@
 (= (mm2-base-rate-acc-from-stvs $acc (cons $tv $rest))
    (mm2-base-rate-acc-from-stvs (mm2-base-rate-acc $acc $tv) $rest))
 
-(= (mm2-inheritance-base-rate-tv $scope $concept)
-   (mm2-base-rate-tv
-     (mm2-base-rate-acc-from-stvs
-       (BaseRateEvidence 0.0 0.0)
-       (collapse
-         (match &mork
-           (fact ($scope (Inheritance $subj $concept)) ($s $c))
-           (STV $s $c))))))
-
-(= (mm2-inheritance-uniform-prior-tv $scope $concept)
-   (mm2-uniform-prior-tv
-     (collapse
-       (match &mork
-         (fact ($scope (Inheritance $subj $concept)) ($s $c))
-         $subj))))
-
-(= (mm2-inheritance-induction-tvs $scope $a $b)
-   (let* (($brA (mm2-inheritance-base-rate-tv $scope $a))
-          ($brB (mm2-inheritance-base-rate-tv $scope $b))
-          ($brC (mm2-inheritance-uniform-prior-tv $scope $a)))
-     (collapse
-       (match &mork
-         (fact ($scope (Inheritance $c $a)) ($sCA $cCA))
-         (match &mork
-           (fact ($scope (Inheritance $c $b)) ($sCB $cCB))
-           (InductionFormula
-             $brA
-             $brB
-             $brC
-             (STV $sCA $cCA)
-             (STV $sCB $cCB)))))))
-
 (= (mm2-revise-tv-list $tvs)
    (case $tvs
      ((() no-evidence)
       ((cons $tv ()) $tv)
       ((cons $tv $rest) (mm2-merge-tvs $tv (mm2-revise-tv-list $rest))))))
 
-(= (mm2-readback-inheritance-induction-result $goal-type $scope $a $b)
-   (case (mm2-revise-tv-list (mm2-inheritance-induction-tvs $scope $a $b))
-     (((STV $s $c) (cons (: mm2-proved $goal-type (STV $s $c)) ()))
-      ($other ()))))
-
-(= (mm2-readback-inheritance-induction $goal-type $goal-shape)
-   (case ($goal-shape $goal-type)
-     (((($kb MAIN $vars) (Inheritance $a $b))
-       (let $enabled (collapse (match &mork (inheritance-induction-enabled $kb) found))
-         (if (== $enabled ())
-           ()
-           (mm2-readback-inheritance-induction-result
-             $goal-type
-             $goal-shape
-             $a
-             $b))))
-      ($other ()))))
-
-; Readback-level lifting merge for open two-premise And adapter queries.  The
-; runtime still stores every raw adapter proof; PeTTaChainer merges same-output
-; proof groups before parent use by factoring shared premises out, revising the
-; residuals, and reapplying the shared TV once.
+; Open two-premise And queries can expose a merged child before their public
+; adapter goal settles. Read back the logically factored result from the
+; runtime proof rows; this is result projection, not an unsupported-IR path.
 (= (mm2-and-proof-tvs $shape $left $right)
    (collapse
      (match &mork
@@ -1201,25 +1135,24 @@
                (mm2-ir-append
                  (mm2-ir-append
                    (mm2-readback-factored-and $readback-type $shape)
-                   (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
-                 (mm2-ir-append
-                   (mm2-readback-inheritance-induction $readback-type $shape)
-                   (if (or (not (mm2-inheritance-query-proof? $prf))
-                           (mm2-query-adds-member-inheritance-fold? $adds))
-                     (mm2-ir-append
-                       (collapse
-                         (match &mork
-                           (fact-evidence $query-goal ($s $c) $evset)
-                           (: (mm2-proof-from-evidence $evset)
-                              $readback-type
-                              (STV $s $c))))
-                         (collapse
-                           (match &mork
-                             (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
-                             (: mm2-merged-ctv
-                                $readback-type
-                                (CTV (STV $ps $pc) (STV $ns $nc))))))
-                       ()))))))))
+                   (mm2-readback-query-compound-factored-and
+                     $readback-type $shape $adds))
+                 (if (or (not (mm2-inheritance-query-proof? $prf))
+                         (mm2-query-adds-member-inheritance-fold? $adds))
+                   (mm2-ir-append
+                     (collapse
+                       (match &mork
+                         (fact-evidence $query-goal ($s $c) $evset)
+                         (: (mm2-proof-from-evidence $evset)
+                            $readback-type
+                            (STV $s $c))))
+                     (collapse
+                       (match &mork
+                         (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
+                         (: mm2-merged-ctv
+                            $readback-type
+                            (CTV (STV $ps $pc) (STV $ns $nc))))))
+                   ())))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -1439,12 +1372,51 @@
 (= (mm2-compile-query-for-runtime $kb (: $prf $type $tv))
    (mm2-compile-query-ir $kb (: $prf $type $tv)))
 
+(= (mm2-prepare-query-runtime $kb (: $prf $type $tv))
+   (let* (($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
+          ($notsup (mm2-run-compiled-queries $kb $cqs)))
+     (prepared-query $cqs $notsup)))
+
 (= (mm2-prepare-query $kb (: $prf $type $tv))
    (let* (($_refresh (mm2-refresh-prior-base-rates!))
-          ($cqs (mm2-compile-query-for-runtime $kb (: $prf $type $tv)))
-          ($notsup (mm2-run-compiled-queries $kb $cqs))
+          ($prepared (mm2-prepare-query-runtime $kb (: $prf $type $tv)))
           ($_query-refresh (mm2-refresh-prior-base-rates!)))
-     (prepared-query $cqs $notsup)))
+     $prepared))
+
+; A batch query is tagged so callers can associate overlapping or identical
+; query result sets with their original request. Query compilation and goal
+; installation stay ordered; prior maintenance is paid once for the batch.
+(= (mm2-prepare-query-item $kb (query $id (: $prf $type $tv)))
+   (let $stored-id (copy_term $id)
+     (let (prepared-query $cqs $notsup)
+          (mm2-prepare-query-runtime $kb (: $prf $type $tv))
+       (prepared-query-item $stored-id $cqs $notsup))))
+
+(= (mm2-prepare-query-items $_kb ()) ())
+(= (mm2-prepare-query-items $kb (cons $query $rest))
+   (let* (($prepared (mm2-prepare-query-item $kb $query))
+          ($tail (mm2-prepare-query-items $kb $rest)))
+     (cons $prepared $tail)))
+
+(= (mm2-prepare-query-many $_kb ()) ())
+(= (mm2-prepare-query-many $kb (cons $query $rest))
+   (let* (($_refresh (mm2-refresh-prior-base-rates!))
+          ($prepared (mm2-prepare-query-items $kb (cons $query $rest)))
+          ($_query-refresh (mm2-refresh-prior-base-rates!)))
+     $prepared))
+
+(= (mm2-query-many-results ()) ())
+(= (mm2-query-many-results
+      (cons (prepared-query-item $id $cqs $notsup) $rest))
+   (let* (($results (mm2-query-results $notsup $cqs))
+          ($tail (mm2-query-many-results $rest)))
+     (cons (query-result $id $results) $tail)))
+
+(= (mm2-cleanup-query-many ()) ())
+(= (mm2-cleanup-query-many
+      (cons (prepared-query-item $_id $cqs $_notsup) $rest))
+   (let $_cleanup (mm2-cleanup-queries $cqs)
+     (mm2-cleanup-query-many $rest)))
 
 (= (mm2-result-row-equivalent? $row $other)
    (case ($row $other)
@@ -1498,6 +1470,16 @@
      (let* (($results (mm2-run-query-full $steps $notsup $cqs))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        $results)))
+
+; The step count is one shared batch budget. All result sets are read before
+; any query scaffold is removed, then the entire batch is cleaned up.
+(= (mm2-query-many $_steps $_kb ()) ())
+(= (mm2-query-many $steps $kb (cons $query $rest))
+   (let* (($prepared (mm2-prepare-query-many $kb (cons $query $rest)))
+          ($_run (mm2-exec &mork (mm2-total-steps $steps)))
+          ($results (mm2-query-many-results $prepared))
+          ($_cleanup (mm2-cleanup-query-many $prepared)))
+     $results))
 
 (= (mm2-query-wide $steps $kb (: $prf $type $tv))
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))

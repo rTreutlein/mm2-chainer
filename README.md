@@ -78,6 +78,29 @@ duration of `mm2compile` or `mm2compileQuery`. The converted corpus uses
 MM2-owned adapters for shared behavior and omits tests of PeTTa-only runtime
 spaces such as its agenda and backward proof store.
 
+For workloads that insert or query many atoms together, use the native harness
+batch APIs rather than issuing repeated calls from Python:
+
+```metta
+!(mm2-compileadd-many kb
+   (cons (: a (A x) (STV 1.0 1.0))
+     (cons (: aToB
+              (Implication (Premises (A $x)) (Conclusions (B $x)))
+              (CTV (STV 0.9 0.9) (STV 0.0 1.0)))
+       ())))
+
+!(mm2-query-many 100 kb
+   (cons (query a-result (: $proof (A x) $tv))
+     (cons (query b-result (: $proof (B x) $tv))
+       ())))
+```
+
+`mm2-compileadd-many` compiles statements in order, then adds their translated
+atoms and performs forward-trigger, agenda, override, and prior maintenance
+once. `mm2-query-many` installs all tagged goals, runs MM2 once with one shared
+step budget, returns `(query-result tag results)` entries in input order, and
+cleans up only after every result set has been read.
+
 The declared MyClaw environment defaults to `bash scripts/test-integration.sh`.
 That focused test builds MORK from its canonical registered mount and runs the
 reduced mm2 pipeline using only tracked dependency source. The broader

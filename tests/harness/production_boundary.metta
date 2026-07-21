@@ -20,6 +20,12 @@
            true))
        ()))
    true)
+!(mm2-test-equal
+   (collapse
+     (compiler-specialization-fact
+       boundaryKb
+       (Inheritance Raven $concept)))
+   ((Inheritance Raven Bird)))
 !(mm2-test-equal (mm2-kb-universe-size boundaryKb) 4.0)
 !(mm2-test-equal
    (mm2-concept-node-prior-tv boundaryKb Raven)
@@ -35,7 +41,7 @@
 !(mm2-test-cached-base-rate boundaryKb (Sample $x) no-cache-entry)
 !(mm2-test-equal (mm2-kb-universe-size boundaryKb) 5.0)
 
-; The compiler's hard-coded &kb view is transient, including after queries.
+; No compiler metadata is mirrored into PeTTa's &kb, including during queries.
 !(mm2-test-equal
    (collapse
      (match &kb
