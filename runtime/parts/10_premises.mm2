@@ -190,6 +190,39 @@
 ; the rule being evaluated.  Defer that final TV calculation to the
 ; prior-rule-stv sink, which sees the complete proof batch for both patterns.
 (exec-template
+  (exec 3
+        (I (BTM (wait-premise
+                  $g
+                  (stv-prior ($rule-s $rule-c)
+                    (prior-brpat $kb $ante-concept $cons-concept))
+                  $prem
+                  pnil
+                  no-stv
+                  $proof-id
+                  $evset))
+           (BTM (fact $prem ($premise-s $premise-c)))
+           (BTM (fact-evidence
+                  $prem ($premise-s $premise-c) $premise-evset)))
+        (O (- (wait-premise
+                $g
+                (stv-prior ($rule-s $rule-c)
+                  (prior-brpat $kb $ante-concept $cons-concept))
+                $prem
+                pnil
+                no-stv
+                $proof-id
+                $evset))
+           (+ (wait-premises
+                $g
+                (stv-prior-evidenced ($rule-s $rule-c)
+                  (prior-brpat $kb $ante-concept $cons-concept)
+                  $premise-evset)
+                pnil
+                ($premise-s $premise-c)
+                $proof-id
+                $evset)))))
+
+(exec-template
   (exec 4
         (, (wait-premises
              $g
@@ -215,13 +248,46 @@
                 $ante-concept
                 $cons-concept
                 $proof-id
-                $evset)))))
+                $evset
+                pnil)))))
+
+(exec-template
+  (exec 4
+        (, (wait-premises
+             $g
+             (stv-prior-evidenced ($rule-s $rule-c)
+               (prior-brpat $kb $ante-concept $cons-concept)
+               $premise-evset)
+             pnil
+             ($premise-s $premise-c)
+             $proof-id
+             $evset))
+        (O (- (wait-premises
+                $g
+                (stv-prior-evidenced ($rule-s $rule-c)
+                  (prior-brpat $kb $ante-concept $cons-concept)
+                  $premise-evset)
+                pnil
+                ($premise-s $premise-c)
+                $proof-id
+                $evset))
+           (+ (prior-stv-active
+                $g
+                ($premise-s $premise-c)
+                ($rule-s $rule-c)
+                $kb
+                $ante-concept
+                $cons-concept
+                $proof-id
+                $evset
+                $premise-evset)))))
 
 (exec-template
   (exec 5
         (I (BTM (prior-stv-active
                   $g $premise-stv $rule-stv $kb
-                  $ante-concept $cons-concept $proof-id $evset))
+                  $ante-concept $cons-concept $proof-id $evset
+                  $premise-evset))
            (BTM (prior-base-rate-config
                   $kb $ante-concept $mass $ante-prior $divisor))
            (BTM (prior-base-rate-config
@@ -255,6 +321,7 @@
         (O (prior-rule-stv
              $g $premise-stv $rule-stv $kb
              $ante-concept $cons-concept $proof-id $evset
+             $premise-evset
              $mass $ante-prior $cons-prior $divisor
              (prior-candidate
                $ante-subj

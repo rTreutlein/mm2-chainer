@@ -27,6 +27,10 @@ Repository layout:
   - `chain.mm2`: deep transitive forward chain with STV propagation
   - `cyclic.mm2`: self-loop cycle handling
   - `independent.mm2`: parallel satisfaction of independent goals
+- `examples/`
+  - runnable MeTTa ports of the PeTTaChainer `smokes`, `flyingraven`,
+    `direct`, `toothbrush`, `raveninduction`, `deductionrevision`, and `robot`
+    examples, backed by the native MM2/MORK runtime
 - `scripts/`
   - `build-runtime.sh`: assemble ordered runtime parts into one aux file
   - `convert_dumppln_to_mm2_rules.py`: regenerate `rules/full_rules.mm2`
@@ -61,6 +65,9 @@ bash scripts/run-open-multiple-proofs.sh
 bash scripts/run-chain.sh
 bash scripts/run-cyclic.sh
 bash scripts/run-independent.sh
+bash scripts/build-runtime.sh outputs/harness_runtime.mm2
+petta examples/robot.metta
+bash tests/test_examples.sh
 bash scripts/test.sh
 ```
 

@@ -37,5 +37,10 @@ run_example() {
 
 run_example smokes 1
 run_example flyingraven 3
+run_example direct 3
+run_example toothbrush 1
+run_example raveninduction 1
+run_example deductionrevision 2
+run_example robot 1
 
 echo "PASS: runnable examples"

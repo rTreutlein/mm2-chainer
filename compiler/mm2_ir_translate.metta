@@ -388,6 +388,11 @@
    (case $cpu
      (((cpu FoldAllCompiled ($kbid $pat extract-tv (STV 0.0 1.0) OrFormula identity result-tv) $out)
        (let $skb (mm2-ir-scope-kb $kbid) (fold-or ($skb $pat) $out)))
+      ((cpu GroupedFoldAllCompiled ($kbid $pat $_group-vars extract-tv (STV 0.0 1.0) OrFormula identity result-tv) $out)
+       ; Variables shared by the result goal and $pat remain unbound in the
+       ; emitted foldall-or-ctv atom. MORK's sink therefore groups matches by
+       ; exactly the compiler-provided result key without a second mechanism.
+       (let $skb (mm2-ir-scope-kb $kbid) (fold-or ($skb $pat) $out)))
       ($other unsupported-foldall))))
 
 (= (mm2-ir-foldall-total-evidence $cpu)

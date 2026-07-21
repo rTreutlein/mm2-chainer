@@ -22,16 +22,16 @@
    (: $prf (Inheritance Sam (IntSet flies)) $tv)
    ((: $_proof
        (Inheritance Sam (IntSet flies))
-       (STV 0.9733353514140296 0.9015950434779885))))
+       (STV 0.9579792391250098 0.8722887806330414))))
 
 !(mm2-test-query 40 flyingRavenKb
    (: $prf (Inheritance Pingu (IntSet flies)) $tv)
    ((: $_proof
        (Inheritance Pingu (IntSet flies))
-       (STV 0.50019449149775 0.9473834682549807))))
+       (STV 0.4231076631730837 0.9400246915390111))))
 
 !(mm2-test-query 40 flyingRavenKb
    (: $prf (Inheritance Pingu (IntSet flies)) $tv)
    ((: $_proof
        (Inheritance Pingu (IntSet flies))
-       (STV 0.50019449149775 0.9473834682549807))))
+       (STV 0.4231076631730837 0.9400246915390111))))

@@ -28,4 +28,4 @@
    (: $prf (Inheritance Edward (IntSet cancerous)) $tv)
    ((: $_proof
        (Inheritance Edward (IntSet cancerous))
-       (STV 0.4200001198164605 0.9335532708383407))))
+       (STV 0.4200001194564362 0.9335532708555526))))

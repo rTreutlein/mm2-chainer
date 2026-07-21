@@ -50,15 +50,17 @@
 
 ; Existential-disjunction implication queries compile to a FoldAll over the
 ; matching premise facts with OrFormula, followed by CTVModusPonensFormula.
-; Consume the canonical fact stream plus its matching proof record so the
-; aggregate carries both the folded TV and PeTTa-style disjunction proof label.
+; Consume one row per canonical fact. A merged fact's evidence set is the
+; union of its contributing proofs, but no individual `proved` row has that
+; same union, so joining through `proved` would silently drop revised facts.
+; The synthetic source token is only a proof label; overlap checks continue to
+; use the canonical fact-evidence set.
 (exec-template
   (exec 2
         (, (foldall-or-ctv $g $rule-id $pos $neg $pat)
            (fact $pat $stv)
-           (fact-evidence $pat $stv $evset)
-           (proved $pat $stv $proof-id $evset))
-        (O (or-stv $g $rule-id $pos $neg $stv $proof-id $evset))))
+           (fact-evidence $pat $stv $evset))
+        (O (or-stv $g $rule-id $pos $neg $stv (fold-source $pat) $evset))))
 
 ; FoldAllValue with ParticleAddBernoulliFromSTV materializes a count
 ; distribution: each matching fact TV contributes a Bernoulli source, and
