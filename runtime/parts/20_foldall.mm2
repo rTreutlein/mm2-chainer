@@ -4,6 +4,148 @@
 ; fact pattern: the result keeps its pattern variables unbound, while $pat
 ; binds against canonical facts. The sum sink groups all matching values and
 ; substitutes the computed total into the result goal.
+
+; A concrete Inheritance query over Member observations compiles to a
+; MemberInheritanceSample FoldAll. Open that sample relation through the
+; ordinary backward runtime so asserted and derived memberships take the same
+; proof path.
+(exec-template
+  (exec 1
+        (, (member-inheritance-query
+             $g $sample-goal $rule-id $confidence-mode))
+        (O (+ (member-inheritance-active
+                $g $sample-goal $rule-id $confidence-mode))
+           (+ (, (Goal $sample-goal))))))
+
+; WeightedBaseRateAcc gives one sample an effective mass
+;   antecedent-strength * antecedent-confidence * consequent-confidence.
+; Encode that mass as a standard revision count. revise-proofs then computes
+; the weighted strength and unions the evidence of every distinct object.
+; The fact-key wrapper keeps different objects independent while retaining a
+; traversable dependency on each complete MemberInheritanceSample proof.
+; The adapter proves the sample relation, while the canonical Member facts
+; supply the two TVs (adapter premise types intentionally do not carry TVs).
+(exec-template
+  (exec 5
+        (, (member-inheritance-active
+             $g
+             ($scope
+               (MemberInheritanceSample
+                 $obj $_subj $_concept
+                 $_ante-tv $_consequent-tv))
+             $_rule-id
+             $_confidence-mode)
+           (fact
+             ($scope
+               (MemberInheritanceSample
+                 $obj $_subj $_concept
+                 $_sample-ante-tv $_sample-consequent-tv))
+             ($_sample-s $_sample-c))
+           (fact ($scope (Member $obj $_subj)) ($ante-s $ante-c))
+           (fact
+             ($scope (Member $obj $_concept))
+             ($consequent-s $consequent-c)))
+        (O (pure
+             (member-inheritance-weighted-sample
+               (member-inheritance-aggregate $g)
+               ($consequent-s $mass-confidence)
+               (member-inheritance-sample $g $obj)
+               (pcons
+                 (fact-ev
+                   (fact-key
+                     ($scope
+                       (MemberInheritanceSample
+                         $obj $_subj $_concept
+                         $_sample-ante-tv $_sample-consequent-tv)))
+                   ($scope
+                     (MemberInheritanceSample
+                       $obj $_subj $_concept
+                       $_sample-ante-tv $_sample-consequent-tv)))
+                 pnil))
+             $mass-confidence
+             (div_f64
+               (product_f64
+                 (product_f64 $ante-s $ante-c)
+                 $consequent-c)
+               (sum_f64
+                 (product_f64
+                   (product_f64 $ante-s $ante-c)
+                   $consequent-c)
+                 800.0))))))
+
+; MemberInheritanceEvidenceFormula rejects an empty/zero-mass fold. Keep that
+; gate in native MM2 before opening an aggregate proof.
+(exec-template
+  (exec 6
+        (, (member-inheritance-weighted-sample
+             $aggregate-goal ($s $c) $proof-id $evset))
+        (O (- (member-inheritance-weighted-sample
+                $aggregate-goal ($s $c) $proof-id $evset))
+           (pure
+             (member-inheritance-weighted-sample-checked
+               $evidence-tag $aggregate-goal ($s $c) $proof-id $evset)
+             $evidence-tag
+             (ifnz (lte_f64 $c 0.0)
+               then no-evidence
+               else has-evidence)))))
+
+(exec-template
+  (exec 7
+        (, (member-inheritance-weighted-sample-checked
+             has-evidence $aggregate-goal $stv $proof-id $evset))
+        (O (- (member-inheritance-weighted-sample-checked
+                has-evidence $aggregate-goal $stv $proof-id $evset))
+           (+ (open-proof $aggregate-goal $stv $proof-id $evset)))))
+
+(exec-template
+  (exec 7
+        (, (member-inheritance-weighted-sample-checked
+             no-evidence $aggregate-goal $stv $proof-id $evset))
+        (O (- (member-inheritance-weighted-sample-checked
+                no-evidence $aggregate-goal $stv $proof-id $evset)))))
+
+; Without a declared universe, the revision count-confidence is already the
+; FoldAll result confidence. A shared rule-evidence item makes later, more
+; complete aggregate snapshots supersede earlier ones instead of being
+; revised as independent proofs.
+(exec-template
+  (exec 8
+        (, (member-inheritance-active
+             $g $_sample-goal $rule-id count-confidence)
+           (fact (member-inheritance-aggregate $g) ($s $c))
+           (fact-evidence
+             (member-inheritance-aggregate $g) ($s $c) $evset))
+        (O (+ (open-proof
+                $g
+                ($s $c)
+                (member-inheritance-fold $rule-id)
+                (pcons (rule-ev $rule-id) $evset))))))
+
+; A closed universe uses observed weighted mass / universe-size. Recover the
+; mass represented by revision confidence (c = mass/(mass+800)) and replace
+; only the confidence; strength and the complete evidence set are unchanged.
+(exec-template
+  (exec 8
+        (, (member-inheritance-active
+             $g $_sample-goal $rule-id (universe-confidence $universe-size))
+           (fact (member-inheritance-aggregate $g) ($s $c))
+           (fact-evidence
+             (member-inheritance-aggregate $g) ($s $c) $evset))
+        (O (pure
+             (open-proof
+               $g
+               ($s $universe-confidence)
+               (member-inheritance-fold $rule-id)
+               (pcons (rule-ev $rule-id) $evset))
+             $universe-confidence
+             (ifnz (lte_f64 $c 0.0)
+               then 0.0
+               else
+               (min_f64
+                 1.0
+                 (div_f64
+                   (div_f64 (product_f64 800.0 $c) (sub_f64 1.0 $c))
+                   $universe-size)))))))
 (exec-template
   (exec 2
         (, (foldall-sum $g $total $pat $value)

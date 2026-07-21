@@ -452,8 +452,25 @@
       ((cons (cpu OrProjection ($tvin $ev) $out) ()) (proj-kind or))
       ((cons (cpu AndMarginalProjection ($tvin) $out) ()) (proj-kind marg))
       ((cons (cpu NotFormula ($tvin) $out) ()) (proj-kind not))
-      ((cons (cpu MemberInheritanceFormula ($kb $subj $concept) $out) ())
-       (member-inheritance-kind $kb $subj $concept))
+      ((cons
+         (cpu FoldAllCompiled
+           ($kb
+            (MemberInheritanceSample $obj $subj $concept $ante-tv $consequent-tv)
+            (extract-value
+              (MemberInheritanceSample $obj $subj $concept $ante-tv $consequent-tv)
+              (WeightedTv $ante-tv $consequent-tv))
+            (BaseRateEvidence 0.0 0.0)
+            WeightedBaseRateAcc
+            (member-inheritance $kb)
+            result-tv)
+           $fold-out)
+         (cons (cpu MemberInheritanceEvidenceFormula ($fold-out) $out) ()))
+       (member-inheritance-fold-kind
+         $kb
+         $subj
+         $concept
+         ((mm2-ir-scope-kb $kb)
+          (MemberInheritanceSample $obj $subj $concept $ante-tv $consequent-tv))))
       ((cons (cpu CTVModusPonensFormula ($agg (CTV (STV $ps $pc) (STV $ns $nc))) $out) ())
        (ctv-kind ($ps $pc) ($ns $nc)))
       ((cons (cpu + ($lhs $rhs) $res)
@@ -733,10 +750,30 @@
        (ruleN $ctype $rid (total-evidence-ctv $p1 $p2 $fold-scope) $ptypes))
       ($other (notsupported-ir (total-evidence-ctv-premises $ctype $ptypes))))))
 
-(= (mm2-ir-emit-rule $rid $ctype $ptypes (member-inheritance-kind $kb $subj $concept))
+(= (mm2-ir-member-inheritance-confidence-mode $kb)
+   (case
+     (collapse
+       (match &mork
+         (mm2-universe-size $kb $n)
+         (universe-size $n)))
+     ((() count-confidence)
+      ((cons (universe-size $n) $_rest) (universe-confidence $n)))))
+
+(= (mm2-ir-emit-rule
+      $rid
+      $ctype
+      $ptypes
+      (member-inheritance-fold-kind $kb $_subj $_concept $sample-type))
    (case $ptypes
-     ((pnil (member-inheritance-query $ctype $rid $kb $subj $concept))
-      ($other (notsupported-ir (member-inheritance-premises $ctype $ptypes))))))
+     ((pnil
+       (member-inheritance-query
+         $ctype
+         $sample-type
+         $rid
+         (mm2-ir-member-inheritance-confidence-mode $kb)))
+      ($other
+       (notsupported-ir
+         (member-inheritance-fold-premises $ctype $ptypes))))))
 
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (fold-sum-kind $pat $value $out))
    (case $ptypes

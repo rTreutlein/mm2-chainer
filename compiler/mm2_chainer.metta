@@ -914,90 +914,6 @@
        (mm2-readback-total-implication-adds $goal-type $goal-shape $adds))
       ($other ()))))
 
-(= (mm2-member-consequent-tv $scope $obj $concept)
-   (let $hits
-     (collapse
-       (match &mork
-         (fact ($scope (Member $obj $concept)) ($s $c))
-         (STV $s $c)))
-     (if (== $hits ()) no-evidence (car-atom $hits))))
-
-(= (mm2-member-inheritance-acc $_scope $_concept $acc ()) $acc)
-(= (mm2-member-inheritance-acc $scope $concept $acc (cons (member-ant $obj $atv) $rest))
-   (let $btv (mm2-member-consequent-tv $scope $obj $concept)
-     (mm2-member-inheritance-acc
-       $scope
-       $concept
-       (mm2-weighted-base-rate-acc $acc (WeightedTv $atv $btv))
-       $rest)))
-
-(= (mm2-member-inheritance-tv $kb $evidence)
-   (let $universe-size (mm2-kb-universe-size $kb)
-     (if (== $universe-size no-universe-size)
-       (mm2-weighted-count-base-rate-tv $evidence)
-       (mm2-weighted-universe-base-rate-tv $universe-size $evidence))))
-
-(= (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
-   (let $ants
-     (collapse
-       (match &mork
-         (fact ($goal-shape (Member $obj $subj)) ($as $ac))
-         (member-ant $obj (STV $as $ac))))
-     (if (== $ants ())
-       ()
-       (let $tv
-         (mm2-member-inheritance-tv
-           $kb
-           (mm2-member-inheritance-acc $goal-shape $concept (BaseRateEvidence 0.0 0.0) $ants))
-         (cons (: mm2-proved $goal-type $tv) ())))))
-
-(= (mm2-readback-member-inheritance-conclusion
-      $goal-type $goal-shape $kb $subj $concept $out $ccl)
-   (case (mm2-ir-item $ccl)
-     (((subgoal ($goal-shape2 $goal-type2) $out $goal-prf)
-       (if (and (=alpha $goal-type $goal-type2)
-                (=alpha $goal-shape $goal-shape2))
-         (mm2-readback-member-inheritance-result $goal-type $goal-shape $kb $subj $concept)
-         ()))
-      ($other ()))))
-
-(= (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl)
-   (case (mm2-ir-collect $prems)
-     (((collected pnil (cons (cpu MemberInheritanceFormula ($kb $subj $concept) $out) ()))
-       (mm2-readback-member-inheritance-conclusion
-         $goal-type $goal-shape $kb $subj $concept $out $ccl))
-      ((collected pnil
-         (cons
-           (cpu FoldAllCompiled
-             ($kb
-              (MemberInheritanceSample $_obj $subj $concept $_ante-tv $_consequent-tv)
-              $_value
-              $_init
-              WeightedBaseRateAcc
-              (member-inheritance $kb)
-              result-tv)
-             $fold-out)
-           (cons (cpu MemberInheritanceEvidenceFormula ($fold-out) $out) ())))
-       (mm2-readback-member-inheritance-conclusion
-         $goal-type $goal-shape $kb $subj $concept $out $ccl))
-      ($other ()))))
-
-(= (mm2-readback-member-inheritance-adds $_goal-type $_goal-shape ()) ())
-(= (mm2-readback-member-inheritance-adds $goal-type $goal-shape (cons $add $rest))
-   (case $add
-     (((rules ($prems |- $ccl))
-       (mm2-ir-append
-         (mm2-readback-member-inheritance-rule $goal-type $goal-shape $prems $ccl)
-         (mm2-readback-member-inheritance-adds $goal-type $goal-shape $rest)))
-      ($other
-       (mm2-readback-member-inheritance-adds $goal-type $goal-shape $rest)))))
-
-(= (mm2-readback-member-inheritance $goal-item $adds)
-   (case (mm2-ir-item $goal-item)
-     (((subgoal ($goal-shape $goal-type) $goal-tv $goal-prf)
-       (mm2-readback-member-inheritance-adds $goal-type $goal-shape $adds))
-      ($other ()))))
-
 (= (mm2-readback-inheritance-query-direct-proofs $goal-type $pos-shape $pos-type)
    (collapse
      (match &mork
@@ -1254,6 +1170,21 @@
            (== $head inheritance-query-result)))
      false))
 
+(= (mm2-query-add-member-inheritance-fold? $add)
+   (case $add
+     (((rules ($prems |- $_ccl))
+       (let (collected $_ptypes $cpus) (mm2-ir-collect $prems)
+         (case (mm2-ir-classify (mm2-ir-drop-and $cpus))
+           (((member-inheritance-fold-kind $_kb $_subj $_concept $_sample) true)
+            ($_other false)))))
+      ($_other false))))
+
+(= (mm2-query-adds-member-inheritance-fold? ()) false)
+(= (mm2-query-adds-member-inheritance-fold? (cons $add $rest))
+   (if (mm2-query-add-member-inheritance-fold? $add)
+     true
+     (mm2-query-adds-member-inheritance-fold? $rest)))
+
 (= (mm2-readback-query $cq)
    (case $cq
      (((compiled-query $goal-item $adds)
@@ -1268,28 +1199,27 @@
              (mm2-ir-append
                (mm2-readback-inheritance-query $goal-item $adds)
                (mm2-ir-append
-                 (mm2-readback-member-inheritance $goal-item $adds)
                  (mm2-ir-append
-                   (mm2-ir-append
-                     (mm2-readback-factored-and $readback-type $shape)
-                     (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
-                   (mm2-ir-append
-                     (mm2-readback-inheritance-induction $readback-type $shape)
-                     (if (not (mm2-inheritance-query-proof? $prf))
-                       (mm2-ir-append
-                         (collapse
-                           (match &mork
-                             (fact-evidence $query-goal ($s $c) $evset)
-                             (: (mm2-proof-from-evidence $evset)
-                                $readback-type
-                                (STV $s $c))))
+                   (mm2-readback-factored-and $readback-type $shape)
+                   (mm2-readback-query-compound-factored-and $readback-type $shape $adds))
+                 (mm2-ir-append
+                   (mm2-readback-inheritance-induction $readback-type $shape)
+                   (if (or (not (mm2-inheritance-query-proof? $prf))
+                           (mm2-query-adds-member-inheritance-fold? $adds))
+                     (mm2-ir-append
+                       (collapse
+                         (match &mork
+                           (fact-evidence $query-goal ($s $c) $evset)
+                           (: (mm2-proof-from-evidence $evset)
+                              $readback-type
+                              (STV $s $c))))
                          (collapse
                            (match &mork
                              (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
                              (: mm2-merged-ctv
                                 $readback-type
                                 (CTV (STV $ps $pc) (STV $ns $nc))))))
-                       ())))))))))
+                       ()))))))))
       ($other ()))))
 
 (= (mm2-readback-queries ()) ())
@@ -1318,6 +1248,94 @@
    (mm2-ir-append (mm2-add-compiled $kb (mm2-translate-query $cq))
                   (mm2-run-compiled-queries $kb $rest)))
 
+(= (mm2-cleanup-member-inheritance-goal $g)
+   (let* (($_active
+             (mm2-remove-matches
+               (member-inheritance-active $g $sample $rule $mode)))
+          ($_fact
+             (mm2-remove-matches
+               (fact (member-inheritance-aggregate $g) $aggregate-stv)))
+          ($_evidence
+             (mm2-remove-matches
+               (fact-evidence
+                 (member-inheritance-aggregate $g)
+                 $aggregate-stv2
+                 $aggregate-evset)))
+          ($_proved
+             (mm2-remove-matches
+               (proved
+                 (member-inheritance-aggregate $g)
+                 $aggregate-stv3
+                 $aggregate-proof
+                 $aggregate-evset2)))
+          ($_open
+             (mm2-remove-matches
+               (open-proof
+                 (member-inheritance-aggregate $g)
+                 $aggregate-stv4
+                 $aggregate-proof2
+                 $aggregate-evset3)))
+          ($_sample
+             (mm2-remove-matches
+               (member-inheritance-weighted-sample
+                 (member-inheritance-aggregate $g)
+                 $sample-stv
+                 $sample-proof
+                 $sample-evset)))
+          ($_checked
+             (mm2-remove-matches
+               (member-inheritance-weighted-sample-checked
+                 $evidence-tag
+                 (member-inheritance-aggregate $g)
+                 $sample-stv2
+                 $sample-proof2
+                 $sample-evset2))))
+     cleaned))
+
+(= (mm2-clear-member-inheritance-runtime)
+   (let* (($_active
+             (mm2-remove-matches
+               (member-inheritance-active $g $sample $rule $mode)))
+          ($_fact
+             (mm2-remove-matches
+               (fact (member-inheritance-aggregate $g2) $aggregate-stv)))
+          ($_evidence
+             (mm2-remove-matches
+               (fact-evidence
+                 (member-inheritance-aggregate $g3)
+                 $aggregate-stv2
+                 $aggregate-evset)))
+          ($_proved
+             (mm2-remove-matches
+               (proved
+                 (member-inheritance-aggregate $g4)
+                 $aggregate-stv3
+                 $aggregate-proof
+                 $aggregate-evset2)))
+          ($_open
+             (mm2-remove-matches
+               (open-proof
+                 (member-inheritance-aggregate $g5)
+                 $aggregate-stv4
+                 $aggregate-proof2
+                 $aggregate-evset3)))
+          ($_sample
+             (mm2-remove-matches
+               (member-inheritance-weighted-sample
+                 $aggregate-goal
+                 $sample-stv
+                 $sample-proof
+                 $sample-evset)))
+          ($_checked
+             (mm2-remove-matches
+               (member-inheritance-weighted-sample-checked
+                 $evidence-tag
+                 $aggregate-goal2
+                 $sample-stv2
+                 $sample-proof2
+                 $sample-evset2))))
+     cleared))
+
 (= (mm2-cleanup-goal $g)
    (let* (($_goal (mm2-remove-matches (, (Goal $g))))
           ($_pending (mm2-remove-matches (pendingN $priority $g $rule-stv $premises $pending-evset)))
@@ -1331,6 +1349,7 @@
           ($_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2)))
           ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
           ($_inheritance-query (mm2-remove-matches (wait-inheritance-query-result $g $iq-pos $iq-neg $iq-proof-id $iq-evset)))
+          ($_member-inheritance (mm2-cleanup-member-inheritance-goal $g))
           ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
           ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
           ($_dist-stats-active (mm2-remove-matches (dist-stats-active $dist-stats-dist)))
@@ -1376,6 +1395,7 @@
           ($_pool-wait (mm2-remove-matches (wait-premise-pool $g $pool-prem $pool-rest2 $pool-state2 $pool-proof-id2)))
           ($_pool-step (mm2-remove-matches (pool-step $g $pool-step-rest $pool-step-proof-id $pool-result)))
           ($_inheritance-query (mm2-remove-matches (wait-inheritance-query-result $g $iq-pos $iq-neg $iq-proof-id $iq-evset)))
+          ($_member-inheritance (mm2-clear-member-inheritance-runtime))
           ($_head (mm2-remove-matches (wait-head $g $rule-stv $head $others $proof-id $evset)))
           ($_compute (mm2-remove-matches (compute-plus-checked $verdict $g $compute-rule $compute-agg $compute-prem-stv $compute-proof-id $compute-evset)))
           ($_dist-stats-active (mm2-remove-matches (dist-stats-active $dist-stats-dist)))
