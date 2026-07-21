@@ -27,20 +27,26 @@
 !(mm2-compileadd directKb (: fatherAY (Father a y) (STV 1.0 0.9)))
 !(mm2-compileadd directKb (: motherYC (Mother y c) (STV 0.0 0.9)))
 
-!(mm2-test-query 50 directKb
+!(mm2-test-query-proofs 50 directKb
    (: $prf (Grandfather a c) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          (fathersFatherGrandfather fathersMotherGrandfather
+           fatherAB fatherAY fatherBC motherYC))
        (Grandfather a c)
        (STV 0.2501166485375841 0.9230240565975534))))
 
-!(mm2-test-query 50 directKb
+!(mm2-test-query-proofs 50 directKb
    (: $prf (Grandfather $who c) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          (fathersFatherGrandfather fathersMotherGrandfather
+           fatherAB fatherAY fatherBC motherYC))
        (Grandfather a c)
        (STV 0.2501166485375841 0.9230240565975534))))
 
-!(mm2-test-query 50 directKb
+!(mm2-test-query-proofs 50 directKb
    (: $prf (Old $who) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          (fathersFatherGrandfather fathersMotherGrandfather
+           fatherAB fatherAY fatherBC motherYC))
        (Old a)
        (STV 0.2501166485375841 0.9230240245003262))))

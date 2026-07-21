@@ -10,8 +10,13 @@
 !(mm2-compileadd ravenDerivedKb (: rv1BlackObserved (Inheritance rv1 (IntSet black)) (STV 0.8 0.9)))
 !(mm2-compileadd ravenDerivedKb (: rv2BlackObserved (Inheritance rv2 (IntSet black)) (STV 0.0 0.9)))
 
-!(mm2-test-query 300 ravenDerivedKb
+!(mm2-test-query-proofs 300 ravenDerivedKb
    (: $prf (Inheritance raven (IntSet black)) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          ((inheritance-implication rv1BlackObserved)
+           (inheritance-implication rv2BlackObserved)
+           (inheritance-implication rv1RavenObserved)
+           (inheritance-implication rv2RavenObserved)
+           (ctx proof 0)))
        (Inheritance raven (IntSet black))
        (STV 0.31926668671363573 0.7631999714085422))))

@@ -62,8 +62,11 @@
 
 ; MM2 revises the same successful operation chain with a slightly stronger
 ; confidence estimate than PeTTaChainer's current population snapshot.
-!(mm2-test-query 200 toothbrushKb
+!(mm2-test-query-proofs 200 toothbrushKb
    (: $prf (Inheritance X removed) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          ((inheritance-rule-lift waitHardensScrewlike)
+           xUnscrew
+           (inheritance-rule-lift unscrewRemovesHardened)))
        (Inheritance X removed)
        (STV 0.8953382542587163 0.9934873383312783))))

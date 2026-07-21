@@ -24,8 +24,14 @@
 !(mm2-compileadd smokesKb (: smokesAnna (Inheritance Anna (IntSet smokes)) (STV 1.0 0.9)))
 !(mm2-compileadd smokesKb (: smokesEdward (Inheritance Edward (IntSet smokes)) (STV 1.0 0.9)))
 
-!(mm2-test-query 20 smokesKb
+!(mm2-test-query-proofs 20 smokesKb
    (: $prf (Inheritance Edward (IntSet cancerous)) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          ((inheritance-implication smokesEdward)
+           smokingCancerRule
+           (inheritance-rule-lift friendSmokingRule)
+           (ctx proof 0)
+           friendAnnaEdward
+           smokesAnna))
        (Inheritance Edward (IntSet cancerous))
        (STV 0.4200001194564362 0.9335532708555526))))

@@ -81,7 +81,7 @@
    (case $results (
       (() false)
       ((cons
-         (: $_proof
+         (: (mm2-proof $_evidence)
             (And
                (Detection $found $_coord)
                (Inheritance $found $found-category))
@@ -108,7 +108,7 @@
 (= (PLNobjectsOfCategory $objects $category)
    (let $results
       (mm2-query 80 robotKb
-         (: $_proof
+         (: $proof
             (And
                (Detection $label $coord)
                (Inheritance $label $category))

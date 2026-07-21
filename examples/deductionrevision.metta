@@ -9,9 +9,14 @@
 ; Each deduction excludes the source assertions already used by that
 ; application from its query-local marginals. The two independent paths are
 ; then revised into one estimate.
-!(mm2-test-query 30 deductionRevisionKb
+!(mm2-test-query-proofs 30 deductionRevisionKb
    (: $prf (Inheritance A D) $tv)
-   ((: $_proof
+   ((: (mm2-proof
+          ((inheritance-implication aInheritsB)
+           (inheritance-implication aInheritsC)
+           (inheritance-implication bInheritsD)
+           (inheritance-implication cInheritsD)
+           (ctx proof 0)))
        (Inheritance A D)
        (STV 0.4999994166674445 0.001941283033087962))))
 
@@ -32,11 +37,11 @@
       (Implication (Premises (C $x)) (Conclusions (D $x)))
       (CTV (STV 0.5 0.9) (STV 0.0 1.0))))
 
-!(mm2-test-query 100 deductionRevisionImplicationKb
+!(mm2-test-query-proofs 100 deductionRevisionImplicationKb
    (: $prf
       (Implication (Premises (A $x)) (Conclusions (D $x)))
       $tv)
-   ((: $_proof
+   ((: mm2-merged-ctv
        (Implication (Premises (A $x)) (Conclusions (D $x)))
        (CTV
           (STV 0.125 0.9692294378874315)

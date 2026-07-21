@@ -19,8 +19,8 @@
 ;
 ; Known divergences from PeTTaChainer's query:
 ; - mm2 proof identifiers ((scheduledN ...) tokens) differ structurally from
-;   PeTTa proof terms, so mm2-test compares (type, tv) pairs only; expected
-;   results are always given as a list, and their proof slots are ignored.
+;   PeTTa proof terms. mm2-test-query retains the legacy (type, tv) comparison;
+;   mm2-test-query-proofs checks MM2's normalized evidence certificate too.
 ; - PeTTa's query step budget counts chainer expansions; mm2 steps count exec
 ;   firings. mm2-query scales the budget by mm2-steps-per-round.
 
@@ -1001,8 +1001,8 @@
 (= (mm2-readback-inheritance-query-direct-proofs $goal-type $pos-shape $pos-type)
    (collapse
      (match &mork
-       (fact ($pos-shape $pos-type) ($s $c))
-       (: mm2-proved $goal-type (STV $s $c)))))
+       (fact-evidence ($pos-shape $pos-type) ($s $c) $evset)
+       (: (mm2-proof-from-evidence $evset) $goal-type (STV $s $c)))))
 
 (= (mm2-readback-inheritance-query-proofs $goal-type $pos-shape $pos-type)
    ; ReviseProofsSink owns evidence-aware merge and snapshot supersession.
@@ -1278,11 +1278,17 @@
                      (if (not (mm2-inheritance-query-proof? $prf))
                        (mm2-ir-append
                          (collapse
-                           (match &mork (fact $query-goal ($s $c))
-                             (: mm2-merged $readback-type (STV $s $c))))
+                           (match &mork
+                             (fact-evidence $query-goal ($s $c) $evset)
+                             (: (mm2-proof-from-evidence $evset)
+                                $readback-type
+                                (STV $s $c))))
                          (collapse
-                           (match &mork (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
-                             (: mm2-merged $readback-type (CTV (STV $ps $pc) (STV $ns $nc))))))
+                           (match &mork
+                             (fact $query-goal (ctvpair ($ps $pc) ($ns $nc)))
+                             (: mm2-merged-ctv
+                                $readback-type
+                                (CTV (STV $ps $pc) (STV $ns $nc))))))
                        ())))))))))
       ($other ()))))
 
@@ -1740,6 +1746,74 @@
 (= (mm2-forward-evset-proof-names (pcons $_other $rest))
    (mm2-forward-evset-proof-names $rest))
 
+; Render MORK's canonical evidence set as a compact, stable proof
+; certificate. Rule evidence keeps the authored rule/application ID; fact
+; evidence resolves to the source proof ID rather than exposing fact-key
+; storage details.
+(= (mm2-proof-rule-source $rule)
+   (case $rule
+     (((inheritance-implication $source)
+        (inheritance-implication $source))
+       (((inheritance-rule-lift $source) $_application $_context)
+        (inheritance-rule-lift $source))
+       (((query-producer
+           (scheduledN
+             (mm2-query-producer
+               ((inheritance-rule-lift $source) $_lift-app $_lift-context)
+               $_goal $_premises $_downstreams)
+             $_kind $_scheduled-premises))
+          $_fact
+          $_downstream-rule)
+        (inheritance-rule-lift $source))
+      (($source $_application) $source)
+      ($_other $rule))))
+
+(= (mm2-proof-id-source $proof)
+   (case $proof
+     (((scheduledN
+         ($_scope (Inheritance $_subject $consequent))
+         (stv-prior $_tv (prior-brpat $_kb $antecedent $consequent))
+         $_premises)
+       (derived-inheritance $antecedent $consequent))
+      ((scheduledInvN
+         ($_scope (Inheritance $_subject $consequent))
+         $_tv
+         (pcons ($_prem-scope (Inheritance $_subject $antecedent)) $_rest))
+       (inverted-inheritance $antecedent $consequent))
+      ((query-producer
+         (scheduledN
+           (mm2-query-producer
+             ((inheritance-rule-lift $source) $_lift-app $_lift-context)
+             $_goal $_premises $_downstreams)
+           $_kind $_scheduled-premises))
+       (inheritance-rule-lift $source))
+      ($_other $proof))))
+
+(= (mm2-proof-id-sources ()) ())
+(= (mm2-proof-id-sources (cons $proof $rest))
+   (cons (mm2-proof-id-source $proof)
+         (mm2-proof-id-sources $rest)))
+
+(= (mm2-evidence-proof-items $evset)
+   (case $evset
+     ((pnil ())
+      ((pcons $item $rest)
+       (case $item
+         (((rule-ev $rule)
+           (cons (mm2-proof-rule-source $rule)
+                 (mm2-evidence-proof-items $rest)))
+          ((fact-ev (proof-id $prf) $_g)
+           (cons $prf (mm2-evidence-proof-items $rest)))
+          ((fact-ev (fact-key $g) $_fact)
+           (append
+             (mm2-proof-id-sources
+               (mm2-forward-fact-key-proof-names $g))
+             (mm2-evidence-proof-items $rest)))
+          ($_other (mm2-evidence-proof-items $rest))))))))
+
+(= (mm2-proof-from-evidence $evset)
+   (mm2-proof (mm2-evidence-proof-items $evset)))
+
 (= (mm2-proof-atom-evidence-set ($_type $_scope mm2-forward $_tv))
    (let (forward-proof-row $_c $evset)
         (mm2-forward-best-proof-row (mm2-forward-proof-rows $_scope $_type))
@@ -1832,6 +1906,41 @@
      ((() ())
       ((cons (: $prf $type $tv) $rest) (cons ($type $tv) (mm2-result-keys $rest)))
       ((cons $other $rest) (mm2-result-keys $rest)))))
+
+; Proof-sensitive example checks retain only query-result rows and require
+; every expected row alpha-equivalently. Like mm2-test-query they permit
+; additional answers, but unlike it the proof certificate is part of the key.
+(= (mm2-result-rows $list)
+   (case $list
+     ((() ())
+      ((cons (: $prf $type $tv) $rest)
+       (cons (: $prf $type $tv) (mm2-result-rows $rest)))
+      ((cons $_other $rest) (mm2-result-rows $rest)))))
+
+(= (mm2-result-row-alpha-member? $rows $row)
+   (case $rows
+     ((() false)
+      ((cons $candidate $rest)
+       (if (=alpha $candidate $row)
+         true
+         (mm2-result-row-alpha-member? $rest $row))))))
+
+(= (mm2-result-rows-alpha-subset? $subset $rows)
+   (case $subset
+     ((() true)
+      ((cons $row $rest)
+       (and (mm2-result-row-alpha-member? $rows $row)
+            (mm2-result-rows-alpha-subset? $rest $rows))))))
+
+(= (mm2-test-proof-results $results $expected)
+   (let* (($got (mm2-result-rows $results))
+          ($want (mm2-result-rows $expected))
+          ($verdict
+            (if (mm2-result-rows-alpha-subset? $want $got)
+              (mm2-test-pass $want)
+              (mm2-test-FAIL (expected $want) (got $got))))
+          ($_log (mm2-log-line $verdict)))
+     $verdict))
 
 ; Keys are compared alpha-equivalently: open-query results carry free
 ; variables whose identities differ between the expected list and the
@@ -2312,6 +2421,14 @@
                 (mm2-run-query-until (mm2-test-total-steps $steps) $notsup $cqs $expected)))
             ($_cleanup (mm2-cleanup-queries $cqs)))
        (mm2-test $results $expected))))
+
+(= (mm2-test-query-proofs $steps $kb (: $prf $type $tv) $expected)
+   (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
+     (let* (($results
+              (mm2-run-query-until
+                (mm2-test-total-steps $steps) $notsup $cqs $expected))
+            ($_cleanup (mm2-cleanup-queries $cqs)))
+       (mm2-test-proof-results $results $expected))))
 
 (= (mm2-test-query-count $steps $kb (: $prf $type $tv) $expected-count)
    (let (prepared-query $cqs $notsup) (mm2-prepare-query $kb (: $prf $type $tv))
