@@ -49,3 +49,8 @@
   (exec 6
     (, (contribution-dirty $goal))
     (O (- (contribution-dirty $goal)))))
+
+(mm2-contribution-update-template
+  (exec 6
+    (, (member-contribution-dirty $scope $identity))
+    (O (- (member-contribution-dirty $scope $identity)))))

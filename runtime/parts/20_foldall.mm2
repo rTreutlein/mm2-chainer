@@ -35,6 +35,7 @@
                 $cache-goal $scope $subj $concept))
            (- (contribution-dirty ($scope (Member $obj $subj))))
            (- (contribution-dirty ($scope (Member $obj $concept))))
+           (- (member-contribution-dirty $scope $obj))
            (+ (member-inheritance-cache-def
                 $cache-goal $scope $subj $concept))
            (pure

@@ -951,6 +951,16 @@
 (= (mm2-ir-contribution-dirty-marker $g)
    (contribution-dirty (copy_term $g)))
 
+; Member folds are keyed by object, not by every classification of that object.
+; Keep the full fact marker for ordinary base-rate subscriptions, and emit this
+; deduplicated marker for Member/Inheritance contribution maintenance.
+(= (mm2-ir-member-contribution-dirty-marker $g)
+   (case $g
+     ((($scope (Member $obj $_concept))
+       (member-contribution-dirty
+         (copy_term $scope) (copy_term $obj)))
+      ($_other (empty)))))
+
 (= (mm2-ir-emit-fact $g $prf ($s $c))
    (case $g
      ((($_scope (Member $_obj $_concept))
@@ -962,6 +972,7 @@
            $g ($s $c) $prf
            (pcons (fact-ev (proof-id $prf) $g) pnil))
          (mm2-ir-contribution-dirty-marker $g)
+         (mm2-ir-member-contribution-dirty-marker $g)
          (mm2-ir-superpose-list (mm2-ir-dist-atoms $g)))))
       ($_other
        (superpose (

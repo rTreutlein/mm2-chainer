@@ -312,7 +312,7 @@
 (= (mm2-member-contribution-refreshes)
    (collapse
      (match &mork
-       (contribution-dirty ($scope (Member $obj $_changed-concept)))
+       (member-contribution-dirty $scope $obj)
        (match &mork
          (member-inheritance-cache-def $cache-goal $scope $subj $concept)
          (match &mork
