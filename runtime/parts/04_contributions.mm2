@@ -1,0 +1,51 @@
+; Generic incremental weighted-fold maintenance.
+;
+; Domain-specific code emits one refresh per affected identity. The native
+; update-contribution sink atomically replaces that observation, its sufficient
+; statistics, and the target aggregate. Both ordinary base rates and
+; Member/Inheritance folds use this protocol.
+
+(mm2-contribution-update-template
+  (exec E
+    (, (contribution-refresh
+         ready existing $target $identity $value $weight $proof $requested-stv)
+       (contribution-state $target $old-state)
+       (contribution-value $target $old-stv)
+       (contribution-observation
+         $target $identity $old-value $old-weight $old-proof))
+    (O
+      (- (contribution-refresh
+           ready existing $target $identity $value $weight $proof $requested-stv))
+      (update-contribution
+        $target
+        $identity
+        (observation $old-value $old-weight $old-proof)
+        (observation $value $weight $proof)
+        $old-state
+        $old-stv
+        $requested-stv))))
+
+(mm2-contribution-update-template
+  (exec E
+    (, (contribution-refresh
+         ready new $target $identity $value $weight $proof $requested-stv)
+       (contribution-state $target $old-state)
+       (contribution-value $target $old-stv))
+    (O
+      (- (contribution-refresh
+           ready new $target $identity $value $weight $proof $requested-stv))
+      (update-contribution
+        $target
+        $identity
+        no-observation
+        (observation $value $weight $proof)
+        $old-state
+        $old-stv
+        $requested-stv))))
+
+; Maintenance snapshots dirty markers before execution, so they can be cleared
+; after every subscribed target has received its refresh.
+(mm2-contribution-update-template
+  (exec 6
+    (, (contribution-dirty $goal))
+    (O (- (contribution-dirty $goal)))))

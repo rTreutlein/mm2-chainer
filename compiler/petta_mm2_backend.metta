@@ -114,6 +114,10 @@
    (superpose (
      (base-rate-def (copy_term $pat) (copy_term $pat))
      (base-rate (copy_term $pat) (0.0 0.0))
+     (contribution-state (base-rate (copy_term $pat)) (0.0 0.0))
+     (contribution-value (base-rate (copy_term $pat)) (0.0 0.0))
+     (base-rate-contribution-bootstrap
+       (copy_term $pat) (copy_term $pat))
      (mm2-base-rate-materialization-goal $pat))))
 
 (= (mm2-base-rate-support $name $role $pat)
@@ -121,6 +125,9 @@
      (superpose (
        (base-rate-def $key (copy_term $pat))
        (base-rate (copy_term $key) (0.0 0.0))
+       (contribution-state (base-rate (copy_term $key)) (0.0 0.0))
+       (contribution-value (base-rate (copy_term $key)) (0.0 0.0))
+       (base-rate-contribution-bootstrap $key (copy_term $pat))
        (mm2-base-rate-materialization-goal $pat)))))
 
 ; PeTTaChainer's FoldAll base-rate premises can derive compound query facts

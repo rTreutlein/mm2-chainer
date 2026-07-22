@@ -948,12 +948,8 @@
 (= (mm2-ir-emit-rule $_rid $ctype $ptypes (unsupported-tail $tail))
    (notsupported-ir (rule-tail $ctype $tail)))
 
-(= (mm2-ir-member-inheritance-dirty-marker $g)
-   (case $g
-     ((($scope (Member $obj $_concept))
-       (member-inheritance-cache-dirty
-         (copy_term $scope) (copy_term $obj)))
-      ($_other (empty)))))
+(= (mm2-ir-contribution-dirty-marker $g)
+   (contribution-dirty (copy_term $g)))
 
 (= (mm2-ir-emit-fact $g $prf ($s $c))
    (case $g
@@ -965,13 +961,14 @@
          (mm2-member-source-proof
            $g ($s $c) $prf
            (pcons (fact-ev (proof-id $prf) $g) pnil))
-         (mm2-ir-member-inheritance-dirty-marker $g)
+         (mm2-ir-contribution-dirty-marker $g)
          (mm2-ir-superpose-list (mm2-ir-dist-atoms $g)))))
       ($_other
        (superpose (
          (fact $g ($s $c))
          (fact-evidence $g ($s $c) (pcons (fact-ev (proof-id $prf) $g) pnil))
          (proved $g ($s $c) $prf (pcons (fact-ev (proof-id $prf) $g) pnil))
+         (mm2-ir-contribution-dirty-marker $g)
          (mm2-ir-superpose-list (mm2-ir-dist-atoms $g))))))))
 
 ; The TV is is-var-checked before structural matching: a case pattern

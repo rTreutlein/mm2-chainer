@@ -20,19 +20,19 @@
 (mm2-query-member-priority 6)
 (mm2-query-member-priority 7)
 (mm2-query-member-priority 8)
+(mm2-query-member-priority 9)
 (mm2-query-member-priority A)
 (mm2-query-member-priority B)
 (mm2-query-member-priority C)
 (mm2-query-member-priority D)
 
-; Cache maintenance needs only canonical Member revision plus the temporary
-; delta templates. Keeping those templates out of exec-template prevents every
-; unrelated query from paying their match cost.
-(mm2-query-member-update-priority 6)
-(mm2-query-member-update-priority A)
-(mm2-query-member-update-priority B)
-(mm2-query-member-update-priority C)
-(mm2-query-member-update-priority D)
+; Contribution maintenance separates canonical proof revision from the small
+; update protocol, so contribution values are sampled only after revision.
+(mm2-query-contribution-update-priority 6)
+(mm2-query-contribution-merge-priority A)
+(mm2-query-contribution-merge-priority B)
+(mm2-query-contribution-merge-priority C)
+(mm2-query-contribution-merge-priority D)
 
 (mm2-query-control start-active
   (exec R
@@ -121,7 +121,7 @@
       (+ $partial-exec))))
 
 ; One controller tick advances the finite budget and installs a small F-stage
-; expander. Keeping the 92-way exec-template join out of this state-transition
+; expander. Keeping the 93-way exec-template join out of this state-transition
 ; rule avoids repeating the controller joins once for every runtime template.
 ; F expands the templates in one pass, their priorities settle before G, and G
 ; removes the expansion marker before the next W tick can begin.
@@ -146,14 +146,19 @@
               (exec-template (exec $priority $input $output)))
            (, (exec $priority $input $output))))
       (+ (exec F
-           (, (mm2-query-expand $session member-update)
-              (mm2-query-member-update-priority $priority)
+           (, (mm2-query-expand $session contribution-update)
+              (mm2-query-contribution-update-priority $priority)
               (exec-template (exec $priority $input $output)))
            (, (exec $priority $input $output))))
       (+ (exec F
-           (, (mm2-query-expand $session member-update)
-              (mm2-member-cache-update-template $update-exec))
+           (, (mm2-query-expand $session contribution-update)
+              (mm2-contribution-update-template $update-exec))
            (, $update-exec)))
+      (+ (exec F
+           (, (mm2-query-expand $session contribution-merge)
+              (mm2-query-contribution-merge-priority $priority)
+              (exec-template (exec $priority $input $output)))
+           (, (exec $priority $input $output))))
       (+ (exec G
            (, (mm2-query-expand $session $expand-mode))
            (O (- (mm2-query-expand $session $expand-mode)))))
@@ -208,7 +213,7 @@
   (exec X
     (, (mm2-query-watch
          $session $id member $cache-goal $type $rule-id count-confidence)
-       (fact-evidence $cache-goal ($s $c) $evset))
+       (fact $cache-goal ($s $c)))
     (O (+ (mm2-query-response
             $session $id
             (member-stv
@@ -219,7 +224,7 @@
     (, (mm2-query-watch
          $session $id member $cache-goal $type $rule-id
          (universe-confidence $universe-size))
-       (fact-evidence $cache-goal ($s $c) $evset))
+       (fact $cache-goal ($s $c)))
     (O (pure
          (mm2-query-response
            $session $id
@@ -245,9 +250,9 @@
          $session $id member
          (member-inheritance-cache $scope $subj $concept)
          $_type $_rule-id $_confidence-mode)
-       (proved
-         (member-inheritance-cache $scope $subj $concept)
-         ($_s $_c) (member-inheritance-cache-sample $obj) $_evset)
+       (contribution-observation
+         (fact (member-inheritance-cache $scope $subj $concept))
+         $obj $_value $_weight $_proof)
        (member-inheritance-proof-index
          ($scope (Member $obj $subj)) $ante-proof)
        (member-inheritance-proof-index

@@ -22,7 +22,9 @@
              (positive-fact $patM ($fact-s $fact-c))
              (fact $patM ($fact-s $fact-c))
              (fact $patM (ctvpair ($fact-s $fact-c) $negative))))
-        (O (fold-base-rate $patQ $old ($fact-s $fact-c)))))
+        (O (fold-base-rate
+             $patQ $old ($fact-s $fact-c)
+             (base-rate-contribution-value $old)))))
 
 ; STV-derived rule CTVs need PeTTa's recursion guard: when a rule computes the
 ; base rate used to derive its own CTV, proofs carrying that rule's evidence do

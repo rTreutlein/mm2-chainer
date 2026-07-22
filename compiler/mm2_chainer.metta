@@ -266,77 +266,160 @@
             (mm2-apply-computed-base-rate-entry! $pat (STV $s $c))))
      ()))
 
-(= (mm2-member-inheritance-cache-maintenance-needed?)
+(= (mm2-contribution-update-kind $target $identity)
+   (case
+     (collapse
+       (once
+         (match &mork
+           (contribution-observation
+             $target $identity $_value $_weight $_proof)
+           exists)))
+     ((() new)
+      ($_existing existing))))
+
+(= (mm2-base-rate-contribution-refreshes)
+   (collapse
+     (match &mork
+       (contribution-dirty $g)
+       (match &mork
+         (base-rate-def $key $g)
+         (match &mork
+           (fact $g ($s $c))
+           (match &mork
+             (base-rate $key $old-stv)
+             (contribution-refresh
+               ready
+               (mm2-contribution-update-kind
+                 (base-rate $key) (fact-key $g))
+               (base-rate $key) (fact-key $g)
+               $s $c (fact-key $g) $old-stv)))))))
+
+(= (mm2-base-rate-bootstrap-refreshes)
+   (collapse
+     (match &mork
+       (base-rate-contribution-bootstrap $key $pattern)
+       (match &mork
+         (fact $pattern ($s $c))
+         (match &mork
+           (base-rate $key $old-stv)
+           (contribution-refresh
+             ready
+             (mm2-contribution-update-kind
+               (base-rate $key) (fact-key $pattern))
+             (base-rate $key) (fact-key $pattern)
+             $s $c (fact-key $pattern) $old-stv))))))
+
+(= (mm2-member-contribution-refreshes)
+   (collapse
+     (match &mork
+       (contribution-dirty ($scope (Member $obj $_changed-concept)))
+       (match &mork
+         (member-inheritance-cache-def $cache-goal $scope $subj $concept)
+         (match &mork
+           (fact ($scope (Member $obj $subj)) ($ante-s $ante-c))
+           (match &mork
+             (fact ($scope (Member $obj $concept))
+               ($consequent-s $consequent-c))
+             (match &mork
+               (fact $cache-goal $old-stv)
+               (contribution-refresh
+                 ready
+                 (mm2-contribution-update-kind (fact $cache-goal) $obj)
+                 (fact $cache-goal) $obj
+                 $consequent-s
+                 (* (* $ante-s $ante-c) $consequent-c)
+                 (pcons
+                   (fact-ev
+                     (fact-key ($scope (Member $obj $subj)))
+                     ($scope (Member $obj $subj)))
+                   (pcons
+                     (fact-ev
+                       (fact-key ($scope (Member $obj $concept)))
+                       ($scope (Member $obj $concept)))
+                     pnil))
+                 $old-stv))))))))
+
+(= (mm2-contribution-refreshes)
+   (mm2-ir-append
+     (mm2-base-rate-bootstrap-refreshes)
+     (mm2-ir-append
+       (mm2-base-rate-contribution-refreshes)
+       (mm2-member-contribution-refreshes))))
+
+; Canonical proof revision must finish before contribution values are sampled.
+(= (mm2-contribution-proof-maintenance-needed?)
    (not
      (==
        (collapse
          (once
            (match &mork
-             (member-inheritance-cache-def
-               $_cache-goal $scope $subj $concept)
+             (contribution-dirty $g)
              (match &mork
-               (member-inheritance-cache-dirty $scope $obj)
-               (match &mork
-                 (fact ($scope (Member $obj $subj)) $_ante-stv)
-                 (match &mork
-                   (fact ($scope (Member $obj $concept)) $_consequent-stv)
-                   dirty))))))
+               (open-proof $g $_stv $_proof-id $_evset)
+               needed))))
        ())))
 
-(= (mm2-member-cache-update-kind $cache-goal $obj)
-   (case
-     (collapse
-       (once
-         (match &mork
-           (proved
-             $cache-goal $_stv
-             (member-inheritance-cache-sample $obj) $_evset)
-           exists)))
-     ((()
-       (case
-         (collapse
-           (once (match &mork (fact $cache-goal $_stv) exists)))
-         ((() empty)
-          ($_aggregate new))))
-      ($_existing existing))))
-
-(= (mm2-member-cache-update-atoms)
-   (collapse
-     (match &mork
-       (member-inheritance-cache-dirty $scope $obj)
-       (match &mork
-         (member-inheritance-cache-def $cache-goal $scope $subj $concept)
-         (match &mork
-           (fact ($scope (Member $obj $subj)) $_ante-stv)
-           (match &mork
-             (fact ($scope (Member $obj $concept)) $_consequent-stv)
-             (member-inheritance-cache-update
-               pending (mm2-member-cache-update-kind $cache-goal $obj)
-               $cache-goal $scope $obj $subj $concept)))))))
-
-; Cache subscriptions are installed lazily by the first query. Once one exists,
-; insertion pays two finite member-runtime rounds to merge newly added Member
-; proofs behind a barrier, then applies an O(1) contribution delta for every
-; dirty (subscription, object) pair. Proofs remain immutable; only this derived
-; cache state is replaced.
-(= (mm2-maintain-member-inheritance-cache! $_added)
-   (if (mm2-member-inheritance-cache-maintenance-needed?)
+(= (mm2-settle-contribution-proofs!)
+   (if (mm2-contribution-proof-maintenance-needed?)
      (let* (($session (mm2-next-query-session-id))
-            ($updates (mm2-member-cache-update-atoms))
             ($budget
               (mm2-query-controller-budget
-                (* 2 (mm2-query-controller-round-cost))))
+                (mm2-query-controller-round-cost)))
             ($request
               (copy_term
                 (mm2-query-controller-request
-                  $session $budget member-update)))
-            ($payload (mm2-ir-append $updates (cons $request ())))
+                  $session $budget contribution-merge)))
             ($_install
               (callPredicate
-                (Predicate (mork_add_atoms $payload $_result))))
+                (Predicate (mork_add_atoms (cons $request ()) $_result))))
             ($_run (mm2-query-controller-execute $_install)))
        ())
      ()))
+
+; Once proofs are canonical, one finite round replaces only affected identities
+; in matching weighted folds.
+(= (mm2-maintain-contributions! $_added)
+   (let $_settle (mm2-settle-contribution-proofs!)
+     (let $updates (mm2-contribution-refreshes)
+       (if (== $updates ())
+         (let $_bootstrap
+              (mm2-remove-matches
+                (base-rate-contribution-bootstrap $_key $_pattern))
+           ())
+         (let* (($session (mm2-next-query-session-id))
+                ($budget
+                  (mm2-query-controller-budget
+                    (mm2-query-controller-round-cost)))
+                ($request
+                  (copy_term
+                    (mm2-query-controller-request
+                      $session $budget contribution-update)))
+                ($payload (mm2-ir-append $updates (cons $request ())))
+                ($_install
+                  (callPredicate
+                    (Predicate (mork_add_atoms $payload $_result))))
+                ($_run (mm2-query-controller-execute $_install))
+                ($_bootstrap
+                  (mm2-remove-matches
+                    (base-rate-contribution-bootstrap $_key $_pattern))))
+           ())))))
+
+; Contribution maintenance is an internal finite controller pass. Restore the
+; normal scheduler afterwards so the next public query enters through the
+; proven active-controller path. Without this, ordinary base-rate maintenance
+; is the first compile-time operation to park the scheduler before any query.
+(= (mm2-resume-runtime-loop! $_maintenance)
+   (let $_resume
+        (collapse
+          (match &mork
+            (mm2-query-idle-loop $loop)
+            (let $_remove
+                 (remove-atom &mork (mm2-query-idle-loop $loop))
+              (add-atom &mork $loop))))
+     ()))
+
+(= (mm2-apply-user-base-rate-overrides-after! $_runtime)
+   (mm2-apply-user-base-rate-overrides!))
 
 ; Eagerly compile the total-implication query scaffold for an
 ; implication-typed rule premise (PeTTa does this lazily at chain time). The
@@ -383,9 +466,10 @@
           ($_forward-triggers (mm2-add-forward-triggers $atoms))
           ($_forward-dirty (mm2-clear-forward-agenda $kb))
           ($_computed-br (mm2-apply-computed-base-rate-overrides!))
-          ($_user-br (mm2-apply-user-base-rate-overrides!))
           ($_refresh (mm2-refresh-prior-base-rates!))
-          ($_member-cache (mm2-maintain-member-inheritance-cache! $added)))
+          ($contributions (mm2-maintain-contributions! $added))
+          ($runtime (mm2-resume-runtime-loop! $contributions))
+          ($_user-br (mm2-apply-user-base-rate-overrides-after! $runtime)))
      $added))
 
 ; Compile statements in order so each statement's compiler IR is visible to
@@ -670,7 +754,20 @@
      (let $_br (mm2-remove-matches (base-rate $pat $tv))
        (let $_def (mm2-remove-matches (base-rate-def $pat $match))
          (let $_entry (mm2-remove-matches (base-rate-cache-entry $pat $source $stored-tv $mode))
-           ())))))
+           (let $_state
+                (mm2-remove-matches
+                  (contribution-state (base-rate $pat) $_sums))
+             (let $_observations
+                  (mm2-remove-matches
+                    (contribution-observation
+                      (base-rate $pat) $_id $_value $_weight $_proof))
+               (let $_value
+                    (mm2-remove-matches
+                      (contribution-value (base-rate $pat) $_value-stv))
+                 (let $_bootstrap
+                      (mm2-remove-matches
+                        (base-rate-contribution-bootstrap $pat $_match))
+                   ())))))))))
 
 (= (mm2-add-base-rate-support $kb $pattern)
    (let $pat (mm2-scoped-base-rate-pattern $kb $pattern)
@@ -678,7 +775,17 @@
             ($mpat (copy_term $pat))
             ($seed (copy_term $pat))
             ($_def (add-atom &mork (base-rate-def $qpat $mpat)))
-            ($_seed (add-atom &mork (base-rate $seed (0.0 0.0)))))
+            ($_seed (add-atom &mork (base-rate $seed (0.0 0.0))))
+            ($_state
+              (add-atom &mork
+                (contribution-state (base-rate (copy_term $pat)) (0.0 0.0))))
+            ($_value
+              (add-atom &mork
+                (contribution-value (base-rate (copy_term $pat)) (0.0 0.0))))
+            ($_bootstrap
+              (add-atom &mork
+                (base-rate-contribution-bootstrap
+                  (copy_term $pat) (copy_term $pat)))))
        ())))
 
 (= (mm2-direct-fact-base-rate $pat)
@@ -1281,7 +1388,7 @@
       $readback-type (member-cache-query $cache-goal $rule-id $mode))
    (collapse
      (match &mork
-       (fact-evidence $cache-goal ($s $c) $_evset)
+       (fact $cache-goal ($s $c))
        (: (mm2-member-cache-proof-from-state $cache-goal $rule-id)
           $readback-type
           (mm2-member-inheritance-cache-result-tv $mode $s $c)))))
@@ -1657,10 +1764,10 @@
          (change-state! mm2_query_session_id (+ $id 1))
          (mm2-query-session $id)))))
 
-; A controller round fires the controller tick plus the current 92 runtime
+; A controller round fires the controller tick plus the current 93 runtime
 ; templates.  Keep this named separately from the public budget multiplier so
 ; runtime-template additions have one explicit controller cost to update.
-(= (mm2-query-controller-round-cost) 93)
+(= (mm2-query-controller-round-cost) 94)
 
 (= (mm2-query-controller-budget $remaining)
    (if (< 0 $remaining)
@@ -2279,9 +2386,9 @@
       (member-inheritance-cache $scope $subj $concept))
    (collapse
      (match &mork
-       (proved
-         (member-inheritance-cache $scope $subj $concept)
-         ($_s $_c) (member-inheritance-cache-sample $obj) $_evset)
+       (contribution-observation
+         (fact (member-inheritance-cache $scope $subj $concept))
+         $obj $_value $_weight $_proof)
        (match &mork
          (member-inheritance-proof-index
            ($scope (Member $obj $subj)) $ante-proof)

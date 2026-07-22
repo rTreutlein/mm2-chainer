@@ -38,7 +38,7 @@
    memberNativeKb
    (: $prf (Inheritance A B) $tv)
    ((: (mm2-proof
-          (inheritance-query-result a2 b2 a1 b1))
+          (inheritance-query-result a1 b1 a2 b2))
        (Inheritance A B)
        (STV 0.39999999999999997 0.7290000000000001))))
 
@@ -77,7 +77,7 @@
 !(mm2-test-query-proofs
    100 memberCacheKb (: $prf (Inheritance A B) $tv)
    ((: (mm2-proof
-          (inheritance-query-result cacheA2 cacheB2 cacheA1 cacheB1))
+          (inheritance-query-result cacheA1 cacheB1 cacheA2 cacheB2))
        (Inheritance A B)
        (STV 0.39999999999999997 0.001819184536182807))))
 ; A partial new object cannot contribute yet and must not leave a stale cache
@@ -87,7 +87,7 @@
 !(mm2-test-query-proofs
    100 memberCacheKb (: $prf (Inheritance A B) $tv)
    ((: (mm2-proof
-          (inheritance-query-result cacheA2 cacheB2 cacheA1 cacheB1))
+          (inheritance-query-result cacheA1 cacheB1 cacheA2 cacheB2))
        (Inheritance A B)
        (STV 0.39999999999999997 0.001819184536182807))))
 !(mm2-compileadd memberCacheKb
@@ -96,7 +96,7 @@
    100 memberCacheKb (: $prf (Inheritance A B) $tv)
    ((: (mm2-proof
           (inheritance-query-result
-            cacheA2 cacheB2 cacheA1 cacheB1 cacheB1Second))
+            cacheA1 cacheB1 cacheB1Second cacheA2 cacheB2))
        (Inheritance A B)
        (STV 0.3076923076923077 0.0018669684355532101))))
 !(mm2-test-equal
