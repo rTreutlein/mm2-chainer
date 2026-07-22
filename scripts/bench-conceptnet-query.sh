@@ -43,6 +43,7 @@ own_distractors="${MM2_CONCEPTNET_BENCH_OWN_DISTRACTORS:-8}"
 other_distractors="${MM2_CONCEPTNET_BENCH_OTHER_DISTRACTORS:-16}"
 keep_mm2_outputs="${MM2_CONCEPTNET_BENCH_KEEP_MM2_OUTPUTS:-1}"
 out_dir="${MM2_CONCEPTNET_BENCH_OUT_DIR:-outputs/conceptnet_query_bench}"
+rules_file="${MM2_FULL_RULES:-outputs/full_rules.mm2}"
 petta_root="${PETTACHAINER_ROOT:-$ROOT_DIR/../PeTTaChainer}"
 lock_dir="outputs/.bench-conceptnet-query.lock"
 petta_tmp=""
@@ -307,7 +308,7 @@ run_mm2_case() {
 
   start_ns="$(now_ns)"
   set +e
-  timeout "$timeout_s" mork run rules/full_rules.mm2 --steps "$steps" --aux-path "$runtime" "$out" > "$log" 2>&1
+  timeout "$timeout_s" mork run "$rules_file" --steps "$steps" --aux-path "$runtime" "$out" > "$log" 2>&1
   status=$?
   set -e
   end_ns="$(now_ns)"
@@ -337,7 +338,7 @@ profile_mm2_timing() {
   local out="$out_dir/mm2.timing.mm2"
   local log="$out_dir/mm2.timing.log"
 
-  timeout "$timeout_s" mork run rules/full_rules.mm2 --steps "$steps" --timing --aux-path "$runtime" "$out" > "$log" 2>&1
+  timeout "$timeout_s" mork run "$rules_file" --steps "$steps" --timing --aux-path "$runtime" "$out" > "$log" 2>&1
 
   LC_ALL=C awk '
     index($0, "(timing ") == 1 {
@@ -419,6 +420,7 @@ case "$keep_mm2_outputs" in
 esac
 
 mkdir -p outputs
+bash scripts/prepare-conceptnet-rules.sh "$rules_file"
 if ! mkdir "$lock_dir" 2>/dev/null; then
   echo "another ConceptNet query benchmark appears to be running; remove $lock_dir if this is stale" >&2
   exit 2

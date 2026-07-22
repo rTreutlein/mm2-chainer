@@ -12,7 +12,7 @@ Repository layout:
     - `30_merge.mm2`: proof merge and canonical fact revision
     - `90_loop.mm2`: `exec-template` activation loop
 - `rules/`
-  - `full_rules.mm2`: full paired one-premise rule export with rule STVs
+  - `conceptnet_fixture.mm2`: small deterministic ConceptNet-derived runtime regression
   - `reduced_rules.mm2`: reduced example rule set with two distinct proofs for one atom
 - `compiler/`
   - `mm2_chainer.metta`: production PeTTa-to-MM2 harness; imports only the
@@ -33,7 +33,8 @@ Repository layout:
     examples, backed by the native MM2/MORK runtime
 - `scripts/`
   - `build-runtime.sh`: assemble ordered runtime parts into one aux file
-  - `convert_dumppln_to_mm2_rules.py`: regenerate `rules/full_rules.mm2`
+  - `convert_dumppln_to_mm2_rules.py`: generate the ignored full ConceptNet rule corpus
+  - `prepare-conceptnet-rules.sh`: generate `outputs/full_rules.mm2` on demand
     from the sibling ConceptNet `dumppln.txt` export
   - `run-full.sh`: run the full pipeline
   - `run-reduced.sh`: run the reduced STV merge example
@@ -118,8 +119,14 @@ Regenerate the ConceptNet rule export after rebuilding the sibling `cnet`
 dump:
 
 ```bash
-python3 scripts/convert_dumppln_to_mm2_rules.py ../cnet/dumppln.txt rules/full_rules.mm2
+python3 scripts/convert_dumppln_to_mm2_rules.py ../cnet/dumppln.txt outputs/full_rules.mm2
 ```
+
+The complete ConceptNet export is generated benchmark data and is intentionally
+not tracked. `scripts/run-full.sh` and the ConceptNet benchmark generate
+`outputs/full_rules.mm2` on demand from `../cnet/dumppln.txt`. Set
+`MM2_CONCEPTNET_DUMP` to use a dump elsewhere, or `MM2_FULL_RULES` to use an
+already-generated rules file.
 
 `scripts/test.sh` first syntax-checks the shell runners, verifies the generated
 PeTTaChainer corpus is in sync with `scripts/convert_petta_tests.py`, then
@@ -223,7 +230,8 @@ MM2_CONCEPTNET_BENCH_OBJECTS=32 MM2_CONCEPTNET_BENCH_PET_DISTRACTORS=64 MM2_CONC
 bash scripts/bench-conceptnet-scale.sh
 ```
 
-It builds the `And (Own (i $a)) (Pet $a)` seed over `rules/full_rules.mm2`.
+It builds the `And (Own (i $a)) (Pet $a)` seed over the ignored generated
+`outputs/full_rules.mm2` corpus.
 By default it uses 8 complete answer objects, 8 Pet-only distractors, 8
 Own-only distractors, and 16 unrelated distractor facts. Complete objects keep a
 `Dog -> Pet` route so the default run has a stable expected answer count, but

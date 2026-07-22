@@ -3,6 +3,10 @@
 # Generated outputs
 outputs/
 
+# Generated ConceptNet corpora
+/rules/full_rules.mm2
+/rules.mm2
+
 # Local MM2 scratch probes
 /test*.mm2
 __pycache__/

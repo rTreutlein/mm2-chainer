@@ -1,0 +1,12 @@
+; Minimal deterministic ConceptNet-derived regression fixture.
+; The complete generated ConceptNet corpus belongs under outputs/, not Git.
+
+(ruleN (Pet $x) a___r_CapableOf___c_en_dog___c_en_pet_capableof (ctv (0.7 0.976282) (0 1)) (pcons (Dog $x) pnil))
+(ruleN (Mammal $x) a___r_IsA___c_en_dog___c_en_mammal_isa (ctv (0.9 0.929066) (0 1)) (pcons (Dog $x) pnil))
+(ruleN (Mammal $x) a___r_IsA___c_en_dog___c_en_mammal_n_isa (ctv (0.9 0.221199) (0 1)) (pcons (Dog $x) pnil))
+(ruleN (Pet $x) a___r_IsA___c_en_dog___c_en_pet_isa (ctv (0.9 0.950213) (0 1)) (pcons (Dog $x) pnil))
+(ruleN (Mammal $x) a___r_IsA___c_en_dog_n___c_en_mammal_isa (ctv (0.9 0.393469) (0 1)) (pcons (Dog $x) pnil))
+(ruleN (Animal $x) a___r_IsA___c_en_mammal___c_en_animal_n_isa (ctv (0.9 0.393469) (0 1)) (pcons (Mammal $x) pnil))
+(ruleN (Animal $x) a___r_IsA___c_en_mammal_n___c_en_animal_isa (ctv (0.9 0.393469) (0 1)) (pcons (Mammal $x) pnil))
+(ruleN (Animal $x) a___r_IsA___c_en_pet___c_en_animal_isa (ctv (0.9 0.864665) (0 1)) (pcons (Pet $x) pnil))
+(ruleN (Animal $x) a___r_IsA___c_en_pet_n_wn_animal___c_en_animal_n_wn_isa (ctv (0.9 0.632121) (0 1)) (pcons (Pet $x) pnil))

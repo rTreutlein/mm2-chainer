@@ -195,14 +195,14 @@ run_reduced_test() {
   assert_no_line_regex "$out" '^\(completed '
 }
 
-run_full_test() {
-  local runtime="outputs/test_full_runtime.mm2"
-  local out="outputs/test_full.mm2"
+run_conceptnet_fixture_test() {
+  local runtime="outputs/test_conceptnet_fixture_runtime.mm2"
+  local out="outputs/test_conceptnet_fixture.mm2"
   build_runtime_from_seed "$runtime" runtime/default_seed.mm2
-  mork run rules/full_rules.mm2 --steps "$(steps_budget 12 0)" --aux-path "$runtime" "$out" >/dev/null
+  mork run rules/conceptnet_fixture.mm2 --steps "$(steps_budget 12 0)" --aux-path "$runtime" "$out" >/dev/null
 
   assert_contains "$out" "(fact (Pet x) (0.7633570570722736 0.9836728385892818))"
-  assert_contains "$out" "(fact (Animal x) (0.6870213513650462 0.9639576298196996))"
+  assert_contains "$out" "(fact (Animal x) (0.69799483462183 0.9670678064489028))"
   assert_contains "$out" "(proved (Pet x) (0.7 0.9762819997775877) (scheduledN (Pet x) (ctv (0.7 0.976282) (0 1)) (pcons (Dog x) pnil)) (pcons (fact-ev (fact-key (Dog x)) (Dog x)) (pcons (rule-ev a___r_CapableOf___c_en_dog___c_en_pet_capableof) pnil)))"
   assert_contains "$out" "(proved (Pet x) (0.9 0.9502129991872743) (scheduledN (Pet x) (ctv (0.9 0.950213) (0 1)) (pcons (Dog x) pnil)) (pcons (fact-ev (fact-key (Dog x)) (Dog x)) (pcons (rule-ev a___r_IsA___c_en_dog___c_en_pet_isa) pnil)))"
   assert_no_line_regex "$out" '^\(pendingN \$'
@@ -211,7 +211,7 @@ run_full_test() {
   runtime_templates="$(runtime_template_count)"
   local out_templates
   out_templates="$(grep -c '^(exec-template' "$out")"
-  assert_eq "$out_templates" "$runtime_templates" "full exec-template count"
+  assert_eq "$out_templates" "$runtime_templates" "ConceptNet fixture exec-template count"
 
   assert_no_line_regex "$out" '^\(open-proof '
   assert_no_line_regex "$out" '^\(selected-merge '
@@ -581,7 +581,7 @@ EOF
 }
 
 run_reduced_test
-run_full_test
+run_conceptnet_fixture_test
 run_priority_test
 run_reference_compose_test
 run_reference_open_query_test
